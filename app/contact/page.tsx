@@ -3,15 +3,26 @@ import Link from 'next/link'
 import { ArrowLeft, Mail, MapPin, Clock, Send } from 'lucide-react'
 import { Footer } from '@/components/footer'
 
+const BASE_URL = 'https://scoop-afrique.com'
+
 export const metadata: Metadata = {
   title: 'Contact',
   description: 'Contactez l\'equipe Scoop.Afrique. Partenariats, publicite, presse ou simplement pour nous dire bonjour.',
   alternates: {
-    canonical: '/contact',
+    canonical: `${BASE_URL}/contact`,
   },
   openGraph: {
+    type: 'website',
+    url: `${BASE_URL}/contact`,
     title: 'Contactez Scoop.Afrique',
-    description: 'Partenariats, publicite, presse ou simplement pour nous dire bonjour.',
+    description: 'Contactez l\'equipe Scoop.Afrique. Partenariats, publicite, presse ou simplement pour nous dire bonjour.',
+    siteName: 'Scoop.Afrique',
+    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop.Afrique' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Contactez Scoop.Afrique',
+    description: 'Contactez l\'equipe Scoop.Afrique. Partenariats, publicite, presse.',
   },
 }
 

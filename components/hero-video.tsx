@@ -13,7 +13,7 @@ interface HeroVideoProps {
 
 const socialLinks = [
   { name: "TikTok", handle: "@Scoop.Afrique", href: "https://tiktok.com/@Scoop.Afrique", followers: "837.5K" },
-  { name: "Facebook", handle: "@scoop.afrique", href: "https://facebook.com/scoop.afrique", followers: "359K" },
+  { name: "Facebook", handle: "@scoop.afrique", href: "https://www.facebook.com/profile.php?id=61568464568442", followers: "359K" },
   { name: "Threads", handle: "@Scoop.Afrique", href: "https://threads.net/@Scoop.Afrique", followers: "24.5K" },
   { name: "Instagram", handle: "@Scoop.Afrique", href: "https://instagram.com/Scoop.Afrique", followers: "23.5K" },
   { name: "YouTube", handle: "@Scoop.Afrique", href: "https://youtube.com/@Scoop.Afrique", followers: "6.5K" },
@@ -66,7 +66,7 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
   return (
     <section
       ref={containerRef}
-      className="relative flex h-screen w-full items-center justify-center overflow-hidden"
+      className="relative flex h-screen min-h-[100dvh] w-full items-center justify-center overflow-hidden"
     >
       {/* Video Background */}
       <div
@@ -122,13 +122,13 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
         <AfricanPattern className="h-full w-full animate-float" />
       </div>
 
-      {/* Content */}
+      {/* Content — zone centrale scrollable pour que le bouton ne soit jamais coupé */}
       <div
-        className="relative z-10 flex h-full w-full flex-col justify-between px-6 py-8 md:px-12 lg:px-20"
+        className="relative z-10 flex h-full w-full flex-col px-6 py-6 md:px-12 lg:px-20 lg:py-8"
         style={{ opacity }}
       >
         {/* Top bar */}
-        <header className="flex items-start justify-between">
+        <header className="flex shrink-0 items-start justify-between">
           <div className="flex flex-col gap-1">
             <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               Abidjan, Cote d{"'"}Ivoire
@@ -164,8 +164,8 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
           </div>
         </header>
 
-        {/* Main title */}
-        <div className="flex flex-col items-center justify-center gap-6 text-center">
+        {/* Main title + CTA — scrollable si contenu trop grand */}
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto overflow-x-hidden py-4 text-center sm:gap-6">
           {/* Logo placeholder - Replace YOUR_LOGO_SVG with your actual logo */}
           <div className="relative">
             {/* 
@@ -176,14 +176,14 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
               Taille recommandee: largeur max 600px sur desktop
             */}
             <div className="logo-placeholder mb-4 flex flex-col items-center justify-center border-2 border-dashed border-primary/30 p-8">
-              <span className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              {/* <span className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
                 Emplacement Logo
-              </span>
+              </span> */}
               
               {/* Temporary text logo - Replace with SVG */}
               <div className="flex flex-col items-center">
                 <GlitchText
-                  text="SCOOP"
+                  text="SCOOP."
                   as="h1"
                   className="font-brasika text-[15vw] font-black uppercase leading-none tracking-tight text-foreground md:text-[10vw]"
                   delay={200}
@@ -191,9 +191,9 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
                 <div className="flex items-center gap-2">
                   <span className="h-3 w-3 rounded-full bg-primary" />
                   <GlitchText
-                    text="AFRIQUE"
+                    text="Afrique"
                     as="h1"
-                    className="font-brasika text-[15vw] font-black uppercase leading-none tracking-tight text-primary md:text-[10vw]"
+                    className="font-sans text-[15vw] font-black uppercase leading-none tracking-tight text-primary md:text-[10vw]"
                     delay={400}
                   />
                 </div>
@@ -204,10 +204,12 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
               </span>
             </div>
             
-            {/* Glitch layers */}
+            {/* Glitch layers — Brasika pour SCOOP, point primary */}
             <div className="pointer-events-none absolute inset-0 select-none opacity-0 mix-blend-screen transition-opacity duration-100 hover:opacity-100">
-              <span className="absolute left-[2px] top-0 font-brasika text-[15vw] font-black uppercase leading-none tracking-tight text-primary/30 md:text-[10vw]">
-                SCOOP.AFRIQUE
+              <span className="absolute left-[2px] top-0 flex items-center gap-0.5 text-[15vw] font-black uppercase leading-none tracking-tight text-primary/30 md:text-[10vw]">
+                <span className="font-brasika">SCOOP.</span>
+                <span className="inline-block h-[0.32em] w-[0.32em] shrink-0 rounded-full bg-primary" />
+                <span className="font-sans">Afrique</span>
               </span>
             </div>
           </div>
@@ -216,11 +218,11 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
             Le media digital qui decrypte l{"'"}Afrique autrement.
           </p>
 
-          {/* CTA */}
-          <div className="mt-4 flex items-center gap-4">
+          {/* CTA — flex-shrink-0 pour que le bouton reste entier */}
+          <div className="mt-2 flex flex-shrink-0 items-center justify-center gap-4 sm:mt-4">
             <a
               href="#manifeste"
-              className="group relative overflow-hidden border-2 border-primary bg-transparent px-8 py-4 font-sans text-sm font-bold uppercase tracking-widest text-primary transition-all duration-300 hover:text-primary-foreground"
+              className="group relative overflow-hidden border-2 border-primary bg-transparent px-6 py-3 font-sans text-sm font-bold uppercase tracking-widest text-primary transition-all duration-300 hover:text-primary-foreground sm:px-8 sm:py-4"
               data-hover
             >
               <span className="relative z-10">Decouvrir</span>
@@ -234,7 +236,7 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
         </div>
 
         {/* Bottom stats */}
-        <footer className="flex flex-wrap items-end justify-between gap-4">
+        <footer className="mt-auto flex shrink-0 flex-wrap items-end justify-between gap-4 pt-4">
           <div className="flex gap-8">
             {[
               { value: "1.25M+", label: "Abonnes" },

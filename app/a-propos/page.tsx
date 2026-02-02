@@ -3,13 +3,24 @@ import Link from 'next/link'
 import { ArrowLeft, Users, Eye, Globe, Heart } from 'lucide-react'
 import { Footer } from '@/components/footer'
 
+const BASE_URL = 'https://scoop-afrique.com'
+
 export const metadata: Metadata = {
   title: 'A Propos',
   description: 'Decouvrez Scoop.Afrique, le media digital africain nouvelle generation. Notre mission, notre equipe et notre vision pour l\'Afrique.',
   alternates: {
-    canonical: '/a-propos',
+    canonical: `${BASE_URL}/a-propos`,
   },
   openGraph: {
+    type: 'website',
+    url: `${BASE_URL}/a-propos`,
+    title: 'A Propos de Scoop.Afrique',
+    description: 'Decouvrez Scoop.Afrique, le media digital africain nouvelle generation. Notre mission, notre equipe et notre vision pour l\'Afrique.',
+    siteName: 'Scoop.Afrique',
+    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop.Afrique' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
     title: 'A Propos de Scoop.Afrique',
     description: 'Decouvrez Scoop.Afrique, le media digital africain nouvelle generation.',
   },

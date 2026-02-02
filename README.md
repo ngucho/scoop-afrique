@@ -31,14 +31,14 @@ Landing page temporaire pour **Scoop.Afrique**, le media digital africain.
 
 | File | Status | Description |
 |------|--------|-------------|
-| `/public/robots.txt` | Done | Autorise le crawl, bloque `/api/`, `/_next/`, `/admin/` |
-| `/app/sitemap.ts` | Done | Sitemap auto-genere avec toutes les pages publiques |
-| Canonical URLs | Done | Via `metadata.alternates.canonical` sur chaque page |
+| `/app/robots.ts` | Done | robots.txt dynamique (HTTP 200), Allow /, Sitemap, Disallow /api/, /_next/, /admin/ |
+| `/app/sitemap.ts` | Done | sitemap.xml dynamique avec lastmod, changefreq, priority |
+| Canonical URLs | Done | Via `metadata.alternates.canonical` (URL absolue) sur chaque page |
 
 **Verification** :
-- `https://domain.com/robots.txt` accessible
-- `https://domain.com/sitemap.xml` liste toutes les URLs
-- Chaque page a `<link rel="canonical" ...>`
+- `https://scoop-afrique.com/robots.txt` et `https://scoop-afrique.com/sitemap.xml` accessibles (HTTP 200)
+- Google Search Console : soumettre sitemap et vérifier l’indexation
+- Chaque page a `<link rel="canonical" ...>` avec URL absolue
 
 ### 2. Metadata & Sharing
 
@@ -48,8 +48,13 @@ Landing page temporaire pour **Scoop.Afrique**, le media digital africain.
 | Meta description | Defini pour chaque page |
 | Open Graph | Complete (type, locale, site_name, images) |
 | Twitter Cards | `summary_large_image` avec image 1200x630 |
-| Favicons | ico, svg, png (192x192, 512x512), apple-touch-icon |
+| Favicons | `icon.svg`, `apple-icon.png` utilisés ; ajouter `favicon.ico` et `og-image.png` (voir ci-dessous) |
 | Web App Manifest | `/app/manifest.ts` avec theme colors |
+
+**Assets requis pour un aperçu de lien complet** :
+- **`/public/og-image.png`** : image **1200×630 px** pour Open Graph / Twitter (partage WhatsApp, LinkedIn, X, etc.). À créer si absent.
+- **`/public/favicon.ico`** : favicon classique (optionnel si `icon.svg` suffit).
+- **`/public/icon-192x192.png`** et **`/public/icon-512x512.png`** : pour le manifest (PWA). À ajouter si besoin.
 
 **Verification** :
 - Partager un lien affiche titre/image/description corrects
