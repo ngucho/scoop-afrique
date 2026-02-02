@@ -6,7 +6,7 @@ import { GlitchText } from "./glitch-text";
 const manifesteLines = [
   { text: "Nous sommes nés", highlight: false },
   { text: "de la frustration.", highlight: true },
-  { text: "Frustres par des médias", highlight: false },
+  { text: "Frustrés par des médias", highlight: false },
   { text: "déconnectés de notre réalité.", highlight: false },
   { text: "Nous avons décidé", highlight: false },
   { text: "de créer le nôtre.", highlight: true },
