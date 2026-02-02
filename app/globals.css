@@ -222,9 +222,9 @@
   color: var(--primary-foreground);
 }
 
-/* Brasika font for logo */
+/* Brasika font for logo — chargée via next/font/local (public/fonts/brasika-display-trial.otf) */
 .font-brasika {
-  font-family: 'Brasika', 'Impact', 'Arial Black', sans-serif;
+  font-family: var(--font-brasika), 'Impact', 'Arial Black', sans-serif;
   font-weight: 900;
   letter-spacing: -0.02em;
 }

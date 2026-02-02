@@ -3,16 +3,24 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Footer } from '@/components/footer'
 
+const BASE_URL = 'https://scoop-afrique.com'
+
 export const metadata: Metadata = {
   title: 'Mentions Legales',
   description: 'Mentions legales de Scoop.Afrique. Informations sur l\'editeur, l\'hebergeur et les conditions d\'utilisation.',
   alternates: {
-    canonical: '/mentions-legales',
+    canonical: `${BASE_URL}/mentions-legales`,
   },
-  robots: {
-    index: true,
-    follow: true,
+  openGraph: {
+    type: 'website',
+    url: `${BASE_URL}/mentions-legales`,
+    title: 'Mentions Legales | Scoop.Afrique',
+    description: 'Mentions legales de Scoop.Afrique. Editeur, hebergeur et conditions d\'utilisation.',
+    siteName: 'Scoop.Afrique',
+    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop.Afrique' }],
   },
+  twitter: { card: 'summary_large_image' },
+  robots: { index: true, follow: true },
 }
 
 export default function LegalNoticePage() {

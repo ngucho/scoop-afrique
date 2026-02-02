@@ -1,29 +1,30 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { GlitchText } from "./glitch-text";
 import { Play, Heart, MessageCircle, Share2, Eye } from "lucide-react";
 
-// Placeholder publications - Replace with real content
+// Publications — images dans public/publications (3 TikTok, 2 Insta, 2 FB)
 const publications = {
   tiktok: [
     {
       id: 1,
-      thumbnail: "/publications/tiktok-1.jpg",
+      thumbnail: "/publications/publication-tiktok1.png",
       views: "2.5M",
       likes: "156K",
       title: "La reaction de ce joueur...",
     },
     {
       id: 2,
-      thumbnail: "/publications/tiktok-2.jpg",
+      thumbnail: "/publications/publication-tiktok2.png",
       views: "1.8M",
       likes: "98K",
       title: "Quand le president dit...",
     },
     {
       id: 3,
-      thumbnail: "/publications/tiktok-3.jpg",
+      thumbnail: "/publications/publication-tiktok3.png",
       views: "3.2M",
       likes: "245K",
       title: "Cette scene incroyable...",
@@ -32,39 +33,39 @@ const publications = {
   instagram: [
     {
       id: 1,
-      thumbnail: "/publications/instagram-1.jpg",
+      thumbnail: "/publications/publication-insta1.png",
       likes: "45K",
       comments: "1.2K",
     },
     {
       id: 2,
-      thumbnail: "/publications/instagram-2.jpg",
+      thumbnail: "/publications/publication-insta2.png",
       likes: "38K",
       comments: "890",
     },
     {
       id: 3,
-      thumbnail: "/publications/instagram-3.jpg",
-      likes: "52K",
-      comments: "1.5K",
+      thumbnail: "/publications/publication-insta3.png",
+      likes: "38K",
+      comments: "890",
     },
   ],
   facebook: [
     {
       id: 1,
-      thumbnail: "/publications/facebook-1.jpg",
+      thumbnail: "/publications/publication-fb1.png",
       reactions: "12K",
       shares: "3.2K",
     },
     {
       id: 2,
-      thumbnail: "/publications/facebook-2.jpg",
+      thumbnail: "/publications/publication-fb2.png",
       reactions: "8.5K",
       shares: "2.1K",
     },
   ],
   youtube: {
-    videoId: "YOUR_VIDEO_ID", // Replace with actual YouTube video ID
+    videoId: "9wo4zKEEeb4",
     title: "Notre derniere video",
     views: "125K",
     duration: "12:34",
@@ -170,12 +171,15 @@ export function PublicationsSection() {
                 onMouseLeave={() => setHoveredItem(null)}
                 data-hover
               >
-                {/* Placeholder background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 to-pink-500/20" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    [TikTok {item.id}]
-                  </span>
+                {/* Image — 9/16 (portrait TikTok) */}
+                <div className="absolute inset-0">
+                  <Image
+                    src={item.thumbnail}
+                    alt={`TikTok ${item.id}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
+                  />
                 </div>
 
                 {/* Play button */}
@@ -222,12 +226,15 @@ export function PublicationsSection() {
                 onMouseLeave={() => setHoveredItem(null)}
                 data-hover
               >
-                {/* Placeholder background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-orange-400/20" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    [Instagram {item.id}]
-                  </span>
+                {/* Image — 1/1 (portrait Instagram) */}
+                <div className="absolute inset-0">
+                  <Image
+                    src={item.thumbnail}
+                    alt={`Instagram ${item.id}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
+                  />
                 </div>
 
                 {/* Hover overlay */}
@@ -262,12 +269,15 @@ export function PublicationsSection() {
                 onMouseLeave={() => setHoveredItem(null)}
                 data-hover
               >
-                {/* Placeholder background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-blue-400/20" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="font-mono text-xs text-muted-foreground">
-                    [Facebook {item.id}]
-                  </span>
+                {/* Image — 16:9 (paysage Facebook) */}
+                <div className="absolute inset-0">
+                  <Image
+                    src={item.thumbnail}
+                    alt={`Facebook ${item.id}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover"
+                  />
                 </div>
 
                 {/* Hover overlay */}
@@ -306,19 +316,15 @@ export function PublicationsSection() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Video embed placeholder */}
+            {/* YouTube embed — https://youtu.be/9wo4zKEEeb4 */}
             <div className="relative aspect-video overflow-hidden bg-secondary">
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                <div className="flex h-20 w-20 items-center justify-center border-2 border-primary bg-primary/20">
-                  <Play className="h-8 w-8 fill-primary text-primary" />
-                </div>
-                <span className="font-mono text-sm text-muted-foreground">
-                  [Video YouTube]
-                </span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  Remplacez YOUR_VIDEO_ID dans le code
-                </span>
-              </div>
+              <iframe
+                src={`https://www.youtube.com/embed/${publications.youtube.videoId}?rel=0`}
+                title={publications.youtube.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full"
+              />
             </div>
 
             {/* Video info */}

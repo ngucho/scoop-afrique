@@ -1,6 +1,7 @@
 import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Space_Grotesk, Geist_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
@@ -13,6 +14,12 @@ const spaceGrotesk = Space_Grotesk({
 const geistMono = Geist_Mono({ 
   subsets: ["latin"], 
   variable: '--font-mono',
+  display: 'swap',
+});
+
+const brasika = localFont({
+  src: '../public/fonts/brasika-display-trial.otf',
+  variable: '--font-brasika',
   display: 'swap',
 });
 
@@ -48,7 +55,7 @@ export const metadata: Metadata = {
     telephone: false,
   },
   alternates: {
-    canonical: '/',
+    canonical: BASE_URL,
   },
   openGraph: {
     type: 'website',
@@ -93,7 +100,7 @@ export const metadata: Metadata = {
       { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   verification: {
@@ -105,7 +112,7 @@ export const metadata: Metadata = {
     // },
   },
   category: 'news',
-    generator: 'v0.app'
+  generator: 'Next.js',
 }
 
 export const viewport: Viewport = {
@@ -214,7 +221,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${spaceGrotesk.variable} ${geistMono.variable} font-sans antialiased`}>
+      <body className={`${spaceGrotesk.variable} ${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
         {children}
         <Analytics />
       </body>

@@ -3,16 +3,24 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { Footer } from '@/components/footer'
 
+const BASE_URL = 'https://scoop-afrique.com'
+
 export const metadata: Metadata = {
   title: 'Politique de Confidentialite',
   description: 'Politique de confidentialite de Scoop.Afrique. Comment nous collectons, utilisons et protegeons vos donnees personnelles.',
   alternates: {
-    canonical: '/politique-de-confidentialite',
+    canonical: `${BASE_URL}/politique-de-confidentialite`,
   },
-  robots: {
-    index: true,
-    follow: true,
+  openGraph: {
+    type: 'website',
+    url: `${BASE_URL}/politique-de-confidentialite`,
+    title: 'Politique de Confidentialite | Scoop.Afrique',
+    description: 'Politique de confidentialite de Scoop.Afrique. Donnees personnelles et cookies.',
+    siteName: 'Scoop.Afrique',
+    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop.Afrique' }],
   },
+  twitter: { card: 'summary_large_image' },
+  robots: { index: true, follow: true },
 }
 
 export default function PrivacyPolicyPage() {

@@ -23,8 +23,10 @@ export function Footer() {
     <footer className="relative overflow-hidden border-t border-border bg-background">
       {/* Large background text */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
-        <span className="whitespace-nowrap font-brasika text-[20vw] font-black uppercase leading-none tracking-tighter text-muted/5">
-          SCOOP.AFRIQUE
+        <span className="whitespace-nowrap text-[20vw] font-black uppercase leading-none tracking-tighter text-muted/5">
+          <span className="font-brasika">SCOOP</span>
+          <span className="inline-block h-[0.28em] w-[0.28em] shrink-0 rounded-full bg-primary align-middle" />
+          <span className="font-sans">AFRIQUE</span>
         </span>
       </div>
 
@@ -45,11 +47,14 @@ export function Footer() {
                   className="font-brasika text-3xl font-black uppercase leading-none tracking-tight text-foreground"
                   scramble={false}
                 />
-                <span className="mx-1 h-2 w-2 rounded-full bg-primary" />
+                <span
+                  className="inline-block h-3 w-3 shrink-0 rounded-full bg-primary align-middle"
+                  aria-hidden
+                />
                 <GlitchText
                   text="AFRIQUE"
                   as="h3"
-                  className="font-brasika text-3xl font-black uppercase leading-none tracking-tight text-primary"
+                  className="font-sans text-3xl font-black uppercase leading-none tracking-tight text-primary"
                   scramble={false}
                 />
               </div>
