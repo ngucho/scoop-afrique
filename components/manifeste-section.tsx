@@ -4,24 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import { GlitchText } from "./glitch-text";
 
 const manifesteLines = [
-  { text: "Nous sommes nes", highlight: false },
+  { text: "Nous sommes nés", highlight: false },
   { text: "de la frustration.", highlight: true },
-  { text: "Frustres par des medias", highlight: false },
-  { text: "deconnectes de notre realite.", highlight: false },
-  { text: "Nous avons decide", highlight: false },
-  { text: "de creer le notre.", highlight: true },
+  { text: "Frustres par des médias", highlight: false },
+  { text: "déconnectés de notre réalité.", highlight: false },
+  { text: "Nous avons décidé", highlight: false },
+  { text: "de créer le nôtre.", highlight: true },
 ];
 
 const values = [
   {
     number: "01",
-    title: "Authenticite",
-    description: "Une information vraie, verifiee, sans filtre ni compromis.",
+    title: "Authenticité",
+    description: "Une information vraie, vérifiée, sans filtre ni compromis.",
   },
   {
     number: "02",
-    title: "Accessibilite",
-    description: "Un contenu pense pour tous, partout, sur tous les ecrans.",
+    title: "Accessibilité",
+    description: "Un contenu pensé pour tous, partout, sur tous les écrans.",
   },
   {
     number: "03",
@@ -124,11 +124,11 @@ export function ManifesteSection() {
           <div className="flex flex-col justify-end">
             <blockquote className="border-l-2 border-primary pl-6">
               <p className="mb-4 font-sans text-lg text-muted-foreground md:text-xl">
-                &ldquo;Scoop Afrique, c{"'"}est la voix d{"'"}une generation qui refuse
+                &ldquo;Scoop Afrique, c{"'"}est la voix d{"'"}une génération qui refuse
                 le silence. Nous informons, nous analysons, nous inspirons.&rdquo;
               </p>
               <footer className="font-mono text-sm text-primary">
-                — L{"'"}equipe Scoop Afrique
+                — L{"'"}équipe Scoop Afrique
               </footer>
             </blockquote>
           </div>

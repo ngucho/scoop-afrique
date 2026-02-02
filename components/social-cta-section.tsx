@@ -105,8 +105,8 @@ export function SocialCtaSection() {
               <span className="text-primary">suivez-nous.</span>
             </h2>
             <p className="mb-12 max-w-md text-lg text-muted-foreground">
-              Notre contenu est deja disponible sur vos plateformes preferees.
-              +1.25 million de personnes nous font deja confiance.
+              Notre contenu est déjà disponible sur vos plateformes préférées.
+              +1.25 million de personnes nous font déjà confiance.
             </p>
 
             {/* Featured platform */}
@@ -238,7 +238,7 @@ export function SocialCtaSection() {
                 Une question ? Un partenariat ?
               </h3>
               <p className="mt-2 text-muted-foreground">
-                Notre equipe vous repond sous 48h.
+                Notre équipe vous répond sous 48h.
               </p>
             </div>
             <a

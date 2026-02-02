@@ -60,14 +60,9 @@ export function Footer() {
               </div>
             </div>
             <p className="mt-4 text-sm text-muted-foreground">
-              Le media digital qui decrypte
+              Le média digital qui décrypte
               <br />
               l{"'"}Afrique autrement.
-            </p>
-            <p className="mt-4 border-l-2 border-primary pl-3 text-xs italic text-muted-foreground">
-              Attention aux imitations. Le vrai Scoop.Afrique
-              <br />
-              c{"'"}est nous — avec le point.
             </p>
           </div>
 
@@ -137,7 +132,7 @@ export function Footer() {
             <div className="mt-6 inline-flex items-center gap-2 border border-primary/30 bg-primary/5 px-3 py-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               <span className="font-mono text-xs uppercase tracking-widest text-primary">
-                Experience immersive
+                Expérience immersive
               </span>
             </div>
           </div>
@@ -146,25 +141,25 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 md:flex-row">
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            {new Date().getFullYear()} Scoop.Afrique — Tous droits reserves
+            {new Date().getFullYear()} Scoop Afrique — Tous droits réservés
           </p>
           <div className="flex items-center gap-6">
             <Link 
               href="/politique-de-confidentialite" 
               className="font-mono text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary"
             >
-              Confidentialite
+              Confidentialité
             </Link>
             <Link 
               href="/mentions-legales" 
               className="font-mono text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary"
             >
-              Mentions Legales
+              Mentions Légales
             </Link>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Site en construction
+                Site en construction...
               </span>
             </div>
           </div>

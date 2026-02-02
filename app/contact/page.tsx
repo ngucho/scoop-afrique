@@ -7,22 +7,22 @@ const BASE_URL = 'https://scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'Contact',
-  description: 'Contactez l\'equipe Scoop.Afrique. Partenariats, publicite, presse ou simplement pour nous dire bonjour.',
+  description: 'Contactez l&apos;équipe Scoop Afrique. Partenariats, publicité, presse ou simplement pour nous dire bonjour.',
   alternates: {
     canonical: `${BASE_URL}/contact`,
   },
   openGraph: {
     type: 'website',
     url: `${BASE_URL}/contact`,
-    title: 'Contactez Scoop.Afrique',
-    description: 'Contactez l\'equipe Scoop.Afrique. Partenariats, publicite, presse ou simplement pour nous dire bonjour.',
-    siteName: 'Scoop.Afrique',
-    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop.Afrique' }],
+    title: 'Contactez Scoop Afrique',
+    description: 'Contactez l&apos;équipe Scoop Afrique. Partenariats, publicité, presse ou simplement pour nous dire bonjour.',
+    siteName: 'Scoop Afrique',
+    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop Afrique' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Contactez Scoop.Afrique',
-    description: 'Contactez l\'equipe Scoop.Afrique. Partenariats, publicite, presse.',
+    title: 'Contactez Scoop Afrique',
+    description: 'Contactez l&apos;équipe Scoop Afrique. Partenariats, publicité, presse.',
   },
 }
 
@@ -36,7 +36,7 @@ const contactInfo = [
   {
     icon: MapPin,
     title: 'Localisation',
-    value: 'Abidjan, Cote d\'Ivoire',
+    value: 'Abidjan, Côte d&apos;Ivoire',
     href: null,
   },
   {
@@ -49,20 +49,20 @@ const contactInfo = [
 
 const departments = [
   {
-    title: 'Partenariats & Publicite',
+    title: 'Partenariats & Publicité',
     description: 'Pour les collaborations commerciales, sponsorings et placements de produits.',
     email: 'Contact@scoop-afrique.com',
     subject: 'Partenariat',
   },
   {
     title: 'Redaction & Presse',
-    description: 'Pour les communiques de presse, propositions d\'articles et informations.',
+    description: 'Pour les communiques de presse, propositions d&apos;articles et informations.',
     email: 'Contact@scoop-afrique.com',
     subject: 'Presse',
   },
   {
     title: 'Support Technique',
-    description: 'Pour signaler un probleme technique ou une erreur sur le site.',
+    description: 'Pour signaler un problème technique ou une erreur sur le site.',
     email: 'Contact@scoop-afrique.com',
     subject: 'Support Technique',
   },
@@ -79,7 +79,7 @@ export default function ContactPage() {
             className="inline-flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
-            Retour a l&apos;accueil
+            Retour à l&apos;accueil
           </Link>
         </div>
       </header>
@@ -87,10 +87,10 @@ export default function ContactPage() {
       {/* Content */}
       <article className="mx-auto max-w-4xl px-6 py-16">
         <h1 className="mb-4 text-4xl font-bold tracking-tight md:text-5xl">
-          Contactez <span className="text-primary">Scoop.Afrique</span>
+          Contactez <span className="text-primary">Scoop Afrique</span>
         </h1>
         <p className="mb-12 text-xl text-muted-foreground">
-          Une question ? Une proposition ? Nous sommes a l&apos;ecoute.
+          Une question ? Une proposition ? Nous sommes à l&apos;écoute.
         </p>
 
         {/* Contact Info Cards */}
@@ -117,7 +117,7 @@ export default function ContactPage() {
         </div>
 
         {/* Departments */}
-        <h2 className="mb-8 text-2xl font-bold">Departements</h2>
+        <h2 className="mb-8 text-2xl font-bold">Départements</h2>
         <div className="mb-16 space-y-6">
           {departments.map((dept) => (
             <div 
@@ -143,7 +143,7 @@ export default function ContactPage() {
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-8 text-center">
           <h2 className="mb-4 text-2xl font-bold">Suivez-nous</h2>
           <p className="mb-6 text-muted-foreground">
-            Pour les reponses rapides, contactez-nous sur nos reseaux sociaux.
+            Pour les réponses rapides, contactez-nous sur nos réseaux sociaux.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a
