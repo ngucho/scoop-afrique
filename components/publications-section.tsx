@@ -5,7 +5,12 @@ import Image from "next/image";
 import { GlitchText } from "./glitch-text";
 import { Play, Heart, MessageCircle, Share2, Eye } from "lucide-react";
 
-// Publications — images dans public/publications (3 TikTok, 2 Insta, 2 FB)
+// Liens de base — remplacez par les URLs des posts/videos si vous les avez
+const TIKTOK_PROFILE = "https://www.tiktok.com/@Scoop.Afrique";
+const INSTAGRAM_PROFILE = "https://www.instagram.com/Scoop.Afrique";
+const FACEBOOK_PROFILE = "https://www.facebook.com/profile.php?id=61568464568442";
+
+// Publications — images dans public/publications (3 TikTok, 2 Insta, 2 FB) + lien vers la publication
 const publications = {
   tiktok: [
     {
@@ -14,6 +19,7 @@ const publications = {
       views: "2.5M",
       likes: "156K",
       title: "La reaction de ce joueur...",
+      url: TIKTOK_PROFILE + "/video/7575118278981340472", // ex: "https://www.tiktok.com/@Scoop.Afrique/video/..."
     },
     {
       id: 2,
@@ -21,6 +27,7 @@ const publications = {
       views: "1.8M",
       likes: "98K",
       title: "Quand le president dit...",
+      url: TIKTOK_PROFILE + "/video/7564090185709899020",
     },
     {
       id: 3,
@@ -28,6 +35,7 @@ const publications = {
       views: "3.2M",
       likes: "245K",
       title: "Cette scene incroyable...",
+      url: TIKTOK_PROFILE + "/photo/7592945282971897099",
     },
   ],
   instagram: [
@@ -36,18 +44,21 @@ const publications = {
       thumbnail: "/publications/publication-insta1.png",
       likes: "45K",
       comments: "1.2K",
+      url: INSTAGRAM_PROFILE + "/p/DUGjoX4jL2L/", // ex: "https://www.instagram.com/p/..."
     },
     {
       id: 2,
       thumbnail: "/publications/publication-insta2.png",
       likes: "38K",
       comments: "890",
+      url: INSTAGRAM_PROFILE + "/p/DT3wUuSDA3H/",
     },
     {
       id: 3,
       thumbnail: "/publications/publication-insta3.png",
       likes: "38K",
       comments: "890",
+      url: INSTAGRAM_PROFILE + "/p/DT3KjHbDBUJ/",
     },
   ],
   facebook: [
@@ -56,12 +67,14 @@ const publications = {
       thumbnail: "/publications/publication-fb1.png",
       reactions: "12K",
       shares: "3.2K",
+      url: "https://www.facebook.com/photo?fbid=122165253944615485&set=a.122116308248615485", // ex: "https://www.facebook.com/.../posts/..."
     },
     {
       id: 2,
       thumbnail: "/publications/publication-fb2.png",
       reactions: "8.5K",
       shares: "2.1K",
+      url: "https://www.facebook.com/photo?fbid=122164579460615485&set=a.122116308248615485",
     },
   ],
   youtube: {
@@ -159,9 +172,12 @@ export function PublicationsSection() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {activePlatform === "tiktok" &&
             publications.tiktok.map((item, index) => (
-              <div
+              <a
                 key={item.id}
-                className={`group relative aspect-[9/16] cursor-pointer overflow-hidden border border-border bg-card transition-all duration-500 ${
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`group relative block aspect-[9/16] cursor-pointer overflow-hidden border border-border bg-card transition-all duration-500 ${
                   isVisible
                     ? "translate-y-0 opacity-100"
                     : "translate-y-8 opacity-0"
@@ -209,14 +225,17 @@ export function PublicationsSection() {
                     </span>
                   </div>
                 </div>
-              </div>
+              </a>
             ))}
 
           {activePlatform === "instagram" &&
             publications.instagram.map((item, index) => (
-              <div
+              <a
                 key={item.id}
-                className={`group relative aspect-square cursor-pointer overflow-hidden border border-border bg-card transition-all duration-500 ${
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`group relative block aspect-square cursor-pointer overflow-hidden border border-border bg-card transition-all duration-500 ${
                   isVisible
                     ? "translate-y-0 opacity-100"
                     : "translate-y-8 opacity-0"
@@ -226,7 +245,7 @@ export function PublicationsSection() {
                 onMouseLeave={() => setHoveredItem(null)}
                 data-hover
               >
-                {/* Image — 1/1 (portrait Instagram) */}
+                {/* Image — 1/1 (carré Instagram) */}
                 <div className="absolute inset-0">
                   <Image
                     src={item.thumbnail}
@@ -252,14 +271,17 @@ export function PublicationsSection() {
                     {item.comments}
                   </span>
                 </div>
-              </div>
+              </a>
             ))}
 
           {activePlatform === "facebook" &&
             publications.facebook.map((item, index) => (
-              <div
+              <a
                 key={item.id}
-                className={`group relative aspect-video cursor-pointer overflow-hidden border border-border bg-card transition-all duration-500 ${
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`group relative block aspect-video cursor-pointer overflow-hidden border border-border bg-card transition-all duration-500 ${
                   isVisible
                     ? "translate-y-0 opacity-100"
                     : "translate-y-8 opacity-0"
@@ -295,7 +317,7 @@ export function PublicationsSection() {
                     {item.shares}
                   </span>
                 </div>
-              </div>
+              </a>
             ))}
         </div>
 
