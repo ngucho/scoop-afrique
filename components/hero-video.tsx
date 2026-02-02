@@ -175,7 +175,7 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
               Importez votre logo SVG ici ou remplacez le contenu
               Taille recommandee: largeur max 600px sur desktop
             */}
-            <div className="logo-placeholder mb-4 flex flex-col items-center justify-center border-2 border-dashed border-primary/30 p-8">
+            <div className="logo-placeholder mb-4 flex flex-col items-center justify-center p-8">
               {/* <span className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
                 Emplacement Logo
               </span> */}
@@ -200,7 +200,7 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
               </div>
               
               <span className="mt-4 font-mono text-[10px] text-muted-foreground/50">
-                Le point fait la difference
+                Sur la Pop, On mise tout!
               </span>
             </div>
             
@@ -208,7 +208,6 @@ export function HeroVideo({ videoSrc, posterImage, fallbackImage }: HeroVideoPro
             <div className="pointer-events-none absolute inset-0 select-none opacity-0 mix-blend-screen transition-opacity duration-100 hover:opacity-100">
               <span className="absolute left-[2px] top-0 flex items-center gap-0.5 text-[15vw] font-black uppercase leading-none tracking-tight text-primary/30 md:text-[10vw]">
                 <span className="font-brasika">SCOOP.</span>
-                <span className="inline-block h-[0.32em] w-[0.32em] shrink-0 rounded-full bg-primary" />
                 <span className="font-sans">Afrique</span>
               </span>
             </div>
