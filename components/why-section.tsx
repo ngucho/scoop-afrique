@@ -7,22 +7,22 @@ import { MarqueeBand } from "./marquee-band";
 const features = [
   {
     number: "01",
-    title: "INFORMATION VERIFIEE",
-    description: "Chaque information est sourcee, verifiee et contextualisee avant publication.",
+    title: "INFORMATION VÉRIFIÉE",
+    description: "Chaque information est sourcée, vérifiée et contextualisée avant publication.",
     stat: "100%",
     statLabel: "Fact-checked",
   },
   {
     number: "02",
-    title: "DONNEES EXCLUSIVES",
-    description: "Des analyses approfondies avec des chiffres et statistiques inedits sur l'Afrique.",
+    title: "DONNÉES EXCLUSIVES",
+    description: "Des analyses approfondies avec des chiffres et statistiques inédites sur l'Afrique.",
     stat: "490M+",
     statLabel: "Vues totales",
   },
   {
     number: "03",
     title: "FORMAT NATIF",
-    description: "Contenu optimise pour chaque plateforme : TikTok, Instagram, YouTube, Threads.",
+    description: "Contenu optimisé pour chaque plateforme : TikTok, Instagram, YouTube, Threads.",
     stat: "5",
     statLabel: "Plateformes",
   },
@@ -31,12 +31,12 @@ const features = [
     title: "VOIX AFRICAINE",
     description: "Une perspective authentique, par des Africains, pour les Africains et le monde.",
     stat: "12+",
-    statLabel: "Pays touches",
+    statLabel: "Pays touchés",
   },
 ];
 
 const services = [
-  "Couverture Mediatique",
+  "Couverture Médiatique",
   "Promotion Artiste",
   "Promotion Concert",
   "Reportage Pro",
@@ -93,7 +93,7 @@ export function WhySection() {
           {/* Title */}
           <div className="mb-20 max-w-4xl">
             <h2 className="font-sans text-4xl font-black uppercase leading-none tracking-tight text-foreground md:text-6xl lg:text-7xl">
-              Le media qui
+              Le média qui
               <br />
               <span className="text-primary">change les codes</span>
             </h2>
@@ -195,7 +195,7 @@ export function WhySection() {
 
       {/* Bottom marquee */}
       <MarqueeBand
-        text="ACTUALITE — POP CULTURE — SPORT — POLITIQUE — ECONOMIE — DIVERTISSEMENT"
+        text="ACTUALITÉ — POP CULTURE — SPORT — POLITIQUE — ÉCONOMIE — DIVERTISSEMENT"
         direction="right"
         speed={30}
       />

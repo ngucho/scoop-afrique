@@ -137,13 +137,13 @@ export function PublicationsSection() {
         {/* Main heading */}
         <div className="mb-16 max-w-3xl">
           <h2 className="mb-6 font-sans text-4xl font-black uppercase leading-none tracking-tight text-foreground md:text-5xl lg:text-6xl">
-            Decouvrez notre
+            Découvrez notre
             <br />
             <span className="text-primary">contenu viral</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            Un apercu de ce qui fait vibrer notre communaute chaque jour.
-            Des millions de vues, des millions de reactions.
+            Un aperçu de ce qui fait vibrer notre communauté chaque jour.
+            Des millions de vues, des millions de réactions.
           </p>
         </div>
 
@@ -371,7 +371,7 @@ export function PublicationsSection() {
                 className="group relative inline-flex w-fit items-center gap-2 overflow-hidden border-2 border-primary bg-transparent px-6 py-3 font-mono text-sm uppercase tracking-wider text-primary transition-all duration-300 hover:text-primary-foreground"
                 data-hover
               >
-                <span className="relative z-10">Voir la chaine</span>
+                <span className="relative z-10">Voir la chaîne</span>
                 <span className="absolute inset-0 -translate-x-full bg-primary transition-transform duration-300 group-hover:translate-x-0" />
               </a>
             </div>
