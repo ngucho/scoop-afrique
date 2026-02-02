@@ -1,0 +1,14 @@
+# Scoop.Afrique - Robots.txt
+# https://scoop-afrique.com
+
+User-agent: *
+Allow: /
+
+# Block admin and internal routes
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+Disallow: /private/
+
+# Sitemap
+Sitemap: https://scoop-afrique.com/sitemap.xml

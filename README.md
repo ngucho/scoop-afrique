@@ -23,37 +23,140 @@ Landing page temporaire pour **Scoop.Afrique**, le media digital africain.
 | Instagram | @Scoop.Afrique | 23.5K |
 | YouTube | @Scoop.Afrique | 6.5K |
 
-## Design
+---
 
-Le design s'inspire de l'esthetique **Urban Street Art** combinee avec le **patrimoine africain** :
+## SEO & Technical Implementation
 
-- **Typographie** : Space Grotesk (corps) + Brasika (logo)
-- **Palette** : Rouge Scoop (#FF3131), noir profond, blanc pur
-- **Themes** : Mode clair et mode sombre disponibles
-- **Animations** : Glitch effects, parallax, text scramble, cursor tracking
-- **Motifs** : Patterns geometriques africains
+### 1. Indexation & Crawl Control
+
+| File | Status | Description |
+|------|--------|-------------|
+| `/public/robots.txt` | Done | Autorise le crawl, bloque `/api/`, `/_next/`, `/admin/` |
+| `/app/sitemap.ts` | Done | Sitemap auto-genere avec toutes les pages publiques |
+| Canonical URLs | Done | Via `metadata.alternates.canonical` sur chaque page |
+
+**Verification** :
+- `https://domain.com/robots.txt` accessible
+- `https://domain.com/sitemap.xml` liste toutes les URLs
+- Chaque page a `<link rel="canonical" ...>`
+
+### 2. Metadata & Sharing
+
+| Element | Implementation |
+|---------|----------------|
+| Title | Unique par page avec template `%s | Scoop.Afrique` |
+| Meta description | Defini pour chaque page |
+| Open Graph | Complete (type, locale, site_name, images) |
+| Twitter Cards | `summary_large_image` avec image 1200x630 |
+| Favicons | ico, svg, png (192x192, 512x512), apple-touch-icon |
+| Web App Manifest | `/app/manifest.ts` avec theme colors |
+
+**Verification** :
+- Partager un lien affiche titre/image/description corrects
+- Pas de titres dupliques entre pages
+
+### 3. Structured Data (Schema.org)
+
+JSON-LD implementes dans `/app/layout.tsx` :
+
+```json
+{
+  "@type": "NewsMediaOrganization",
+  "name": "Scoop.Afrique",
+  "url": "https://scoop-afrique.com",
+  "logo": {...},
+  "sameAs": ["tiktok", "facebook", "instagram", "youtube", "threads"],
+  "contactPoint": {...}
+}
+```
+
+```json
+{
+  "@type": "WebSite",
+  "name": "Scoop.Afrique",
+  "url": "https://scoop-afrique.com",
+  "publisher": {"@id": ".../#organization"}
+}
+```
+
+**Verification** :
+- Donnees structurees presentes dans le code source HTML
+- Tester avec Google Rich Results Test
+
+### 4. Security Headers
+
+Configures dans `/next.config.mjs` :
+
+| Header | Valeur |
+|--------|--------|
+| Strict-Transport-Security | `max-age=63072000; includeSubDomains; preload` |
+| X-Content-Type-Options | `nosniff` |
+| X-Frame-Options | `SAMEORIGIN` |
+| X-XSS-Protection | `1; mode=block` |
+| Referrer-Policy | `strict-origin-when-cross-origin` |
+| Permissions-Policy | `camera=(), microphone=(), geolocation=()` |
+| Content-Security-Policy | Baseline restrictif |
+
+**Verification** :
+- Scanner avec securityheaders.com
+- Pas d'avertissements mixed-content
+
+### 5. Trust Pages
+
+| Page | URL | Status |
+|------|-----|--------|
+| A Propos | `/a-propos` | Done |
+| Contact | `/contact` | Done |
+| Politique de Confidentialite | `/politique-de-confidentialite` | Done |
+| Mentions Legales | `/mentions-legales` | Done |
+
+### 6. Performance Optimization
+
+- [x] `next/image` pour les images optimisees
+- [x] Lazy loading des medias below-the-fold
+- [x] Fonts avec `display: swap`
+- [x] Cache-Control pour assets statiques (1 an)
+- [x] CSS animations avec transforms GPU-accelerees
+- [x] Intersection Observer pour animations au scroll
+
+**Verification** :
+- Lighthouse Performance > 90 sur mobile
+- Pas de gros layout shifts (CLS)
+
+---
 
 ## Structure du Projet
 
 ```
 /app
-  /page.tsx          # Page principale
-  /layout.tsx        # Layout avec fonts et metadata
-  /globals.css       # Styles globaux, themes et animations
+  /page.tsx                      # Page principale
+  /layout.tsx                    # Layout avec metadata et JSON-LD
+  /globals.css                   # Styles, themes, animations
+  /sitemap.ts                    # Sitemap auto-genere
+  /manifest.ts                   # Web App Manifest
+  /a-propos/page.tsx             # Page A Propos
+  /contact/page.tsx              # Page Contact
+  /politique-de-confidentialite/page.tsx
+  /mentions-legales/page.tsx
 
 /components
-  /hero-video.tsx         # Hero avec video et logo
-  /manifeste-section.tsx  # Vision et valeurs
-  /why-section.tsx        # Pourquoi nous choisir
+  /hero-video.tsx           # Hero avec video et logo
+  /manifeste-section.tsx    # Vision et valeurs
+  /why-section.tsx          # Pourquoi nous choisir
   /publications-section.tsx # Apercu des publications
-  /social-cta-section.tsx # CTA reseaux sociaux
-  /footer.tsx             # Footer avec contact
-  /theme-toggle.tsx       # Bouton theme clair/sombre
-  /cursor-tracker.tsx     # Curseur personnalise (desktop)
-  /glitch-text.tsx        # Texte avec effet glitch
-  /marquee-band.tsx       # Bande defilante
-  /african-pattern.tsx    # Motif SVG africain
+  /social-cta-section.tsx   # CTA reseaux sociaux
+  /footer.tsx               # Footer avec liens
+  /theme-toggle.tsx         # Bouton theme clair/sombre
+  /cursor-tracker.tsx       # Curseur personnalise (desktop)
+  /glitch-text.tsx          # Texte avec effet glitch
+  /marquee-band.tsx         # Bande defilante
+  /african-pattern.tsx      # Motif SVG africain
+
+/public
+  /robots.txt               # Regles de crawl
 ```
+
+---
 
 ## Personnalisation
 
@@ -77,11 +180,41 @@ Le logo est en placeholder dans deux fichiers :
 </div>
 ```
 
-**Important** : Utilisez la classe `font-brasika` pour le texte du logo si vous gardez du texte.
+### 2. Configurer le Domaine
 
-### 2. Ajouter votre Video Hero
+Dans les fichiers suivants, remplacez `scoop-afrique.com` par votre domaine :
 
-Dans `/app/page.tsx` :
+- `/app/layout.tsx` : `BASE_URL`
+- `/app/sitemap.ts` : `BASE_URL`
+- `/public/robots.txt` : URL du sitemap
+
+### 3. Ajouter les Images SEO
+
+Creez dans `/public/` :
+- `og-image.png` (1200x630) - Image pour partage social
+- `logo.png` (512x512) - Logo pour schema.org
+- `icon-192x192.png` - Icon PWA
+- `icon-512x512.png` - Icon PWA large
+- `apple-touch-icon.png` (180x180) - Icon iOS
+- `favicon.ico` - Favicon classique
+- `icon.svg` - Favicon SVG
+
+### 4. Google Search Console & Bing
+
+1. Verifier le site dans Google Search Console
+2. Ajouter le code de verification dans `/app/layout.tsx` :
+```tsx
+verification: {
+  google: 'votre-code-google',
+  other: {
+    'msvalidate.01': 'votre-code-bing',
+  },
+}
+```
+3. Soumettre le sitemap (`/sitemap.xml`)
+
+### 5. Video Hero
+
 ```tsx
 <HeroVideo
   videoSrc="/videos/votre-video.mp4"
@@ -90,129 +223,84 @@ Dans `/app/page.tsx` :
 />
 ```
 
-### 3. Ajouter les Publications
+### 6. Publications
 
-Creez un dossier `/public/publications/` et ajoutez vos images :
-- `tiktok-1.jpg`, `tiktok-2.jpg`, `tiktok-3.jpg`
-- `instagram-1.jpg`, `instagram-2.jpg`, `instagram-3.jpg`
-- `facebook-1.jpg`, `facebook-2.jpg`
+Creez `/public/publications/` avec vos images, puis editez `/components/publications-section.tsx`.
 
-Puis editez `/components/publications-section.tsx` pour mettre a jour les chemins et les statistiques.
-
-### 4. Integrer une Video YouTube
+### 7. Video YouTube
 
 Dans `/components/publications-section.tsx`, remplacez `YOUR_VIDEO_ID` :
 ```tsx
 youtube: {
   videoId: "votre_video_id",
   title: "Titre de votre video",
-  views: "125K",
-  duration: "12:34",
 }
 ```
 
-### 5. Modifier les Couleurs
+### 8. Modifier les Couleurs
 
-Dans `/app/globals.css`, la couleur primaire est definie en OKLCH :
+Dans `/app/globals.css` :
 ```css
-/* Rouge Scoop #FF3131 */
+/* Rouge Scoop #FF3131 en OKLCH */
 --primary: oklch(0.59 0.24 25);
 ```
 
-Pour changer la couleur, utilisez un convertisseur HEX vers OKLCH.
+---
 
-### 6. Theme Clair/Sombre
+## Checklist Pre-Production
 
-Le toggle de theme est dans le header du hero. Les deux themes sont definis dans `globals.css` :
-- `:root` = theme clair
-- `.dark` = theme sombre (par defaut)
+### SEO
+- [ ] Configurer le domaine correct dans `BASE_URL`
+- [ ] Ajouter `og-image.png` (1200x630)
+- [ ] Ajouter tous les favicons
+- [ ] Verifier Google Search Console
+- [ ] Verifier Bing Webmaster Tools
+- [ ] Soumettre sitemap
 
-## Animations Disponibles
+### Securite
+- [ ] Configurer SPF, DKIM, DMARC pour email
+- [ ] Tester headers sur securityheaders.com
+- [ ] Activer HTTPS force (Vercel le fait par defaut)
 
-| Classe | Description |
-|--------|-------------|
-| `animate-glitch` | Effet glitch tremblant |
-| `animate-glitch-skew` | Glitch avec skew |
-| `animate-noise` | Animation bruit/grain |
-| `animate-scanline` | Ligne de scan TV |
-| `animate-float` | Flottement doux |
-| `animate-pulse-glow` | Pulsation lumineuse |
-| `animate-text-reveal` | Revelation de texte |
-| `animate-marquee` | Defilement horizontal |
-| `animate-draw-line` | Dessin de ligne SVG |
+### Contenu
+- [ ] Remplacer le logo placeholder
+- [ ] Ajouter la video hero
+- [ ] Ajouter les images de publications
+- [ ] Completer les mentions legales (forme juridique, directeur)
+- [ ] Verifier tous les liens sociaux
 
-## Composants Reutilisables
+### Performance
+- [ ] Tester Lighthouse sur mobile
+- [ ] Verifier Core Web Vitals
+- [ ] Optimiser les images
 
-### GlitchText
-```tsx
-<GlitchText
-  text="VOTRE TEXTE"
-  as="h1"                    // h1, h2, h3, p, span
-  className="text-4xl"
-  delay={200}                // Delai avant animation (ms)
-  scramble={true}            // Activer effet scramble
-/>
-```
+### Monitoring
+- [ ] Configurer Sentry pour les erreurs
+- [ ] Activer Vercel Analytics (deja integre)
+- [ ] Configurer alertes uptime
 
-### ThemeToggle
-```tsx
-<ThemeToggle /> // Bouton soleil/lune pour switcher le theme
-```
+---
 
-### MarqueeBand
-```tsx
-<MarqueeBand
-  text="VOTRE TEXTE"
-  direction="left"           // left ou right
-  speed={25}                 // Duree en secondes
-/>
-```
+## Ameliorations Futures
 
-### AfricanPattern
-```tsx
-<AfricanPattern className="w-96 h-96 text-primary" />
-```
+1. **Rate Limiting** - Ajouter sur les routes API si formulaires
+2. **Captcha** - Turnstile/reCAPTCHA si abus detecte
+3. **Newsletter** - Integrer Mailchimp/ConvertKit avec double opt-in
+4. **Articles** - Ajouter schema `NewsArticle` pour chaque article
+5. **Recherche** - Activer `SearchAction` dans schema.org
+6. **Breadcrumbs** - Ajouter pour les pages profondes
+7. **Push Notifications** - Web Push (optionnel)
 
-## Ameliorations Possibles
-
-1. **Ajouter une police Brasika custom**
-   - Telechargez la police Brasika
-   - Ajoutez-la dans `/public/fonts/`
-   - Configurez-la dans `layout.tsx` et `globals.css`
-
-2. **Integrer les vrais embeds**
-   - TikTok embed API
-   - Instagram oEmbed
-   - YouTube iframe
-
-3. **Ajouter un formulaire newsletter**
-   - Integrer avec Mailchimp/ConvertKit
-   - Ajouter validation email
-
-4. **Analytics**
-   - Vercel Analytics (deja integre)
-   - Google Analytics
-   - Meta Pixel
-
-5. **SEO**
-   - Open Graph images
-   - Twitter cards
-   - Schema.org markup
-
-## Performance
-
-- Lazy loading des composants lourds
-- Animations optimisees avec CSS transforms
-- Intersection Observer pour animations au scroll
-- Curseur custom desactive sur mobile
-- Theme persiste en local (JavaScript)
+---
 
 ## Contact
 
-- **Email professionnel** : Contact@scoop-afrique.com
-- **Instagram** : @Scoop.Afrique
+- **Email** : Contact@scoop-afrique.com
 - **TikTok** : @Scoop.Afrique
+- **Instagram** : @Scoop.Afrique
 - **Facebook** : @scoop.afrique
+- **YouTube** : @Scoop.Afrique
+- **Threads** : @Scoop.Afrique
 
 ---
 
