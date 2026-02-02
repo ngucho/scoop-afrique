@@ -1,13 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { GlitchText } from "./glitch-text";
 
-const footerLinks = [
+const socialLinks = [
   { label: "TikTok", href: "https://tiktok.com/@Scoop.Afrique" },
   { label: "Facebook", href: "https://facebook.com/scoop.afrique" },
   { label: "Threads", href: "https://threads.net/@Scoop.Afrique" },
   { label: "Instagram", href: "https://instagram.com/Scoop.Afrique" },
   { label: "YouTube", href: "https://youtube.com/@Scoop.Afrique" },
+];
+
+const pageLinks = [
+  { label: "A Propos", href: "/a-propos" },
+  { label: "Contact", href: "/contact" },
+  { label: "Politique de Confidentialite", href: "/politique-de-confidentialite" },
+  { label: "Mentions Legales", href: "/mentions-legales" },
 ];
 
 export function Footer() {
@@ -21,9 +29,9 @@ export function Footer() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl px-6 py-16 md:px-12 md:py-24 lg:px-20">
-        <div className="grid gap-12 md:grid-cols-3">
+        <div className="grid gap-12 md:grid-cols-4">
           {/* Brand */}
-          <div>
+          <div className="md:col-span-1">
             {/* 
               ===============================================
               REMPLACEZ CE BLOC PAR VOTRE LOGO SVG
@@ -58,13 +66,34 @@ export function Footer() {
             </p>
           </div>
 
-          {/* Links */}
+          {/* Pages */}
+          <div>
+            <h4 className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              Navigation
+            </h4>
+            <ul className="space-y-2">
+              {pageLinks.map((link) => (
+                <li key={link.label}>
+                  <Link
+                    href={link.href}
+                    className="group inline-flex items-center gap-2 text-sm text-foreground transition-colors hover:text-primary"
+                    data-hover
+                  >
+                    <span className="h-px w-0 bg-primary transition-all duration-300 group-hover:w-4" />
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Social Links */}
           <div>
             <h4 className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
               Suivez-nous
             </h4>
             <ul className="space-y-2">
-              {footerLinks.map((link) => (
+              {socialLinks.map((link) => (
                 <li key={link.label}>
                   <a
                     href={link.href}
@@ -114,7 +143,19 @@ export function Footer() {
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             {new Date().getFullYear()} Scoop.Afrique — Tous droits reserves
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
+            <Link 
+              href="/politique-de-confidentialite" 
+              className="font-mono text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary"
+            >
+              Confidentialite
+            </Link>
+            <Link 
+              href="/mentions-legales" 
+              className="font-mono text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary"
+            >
+              Mentions Legales
+            </Link>
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
