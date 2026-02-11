@@ -1,0 +1,31 @@
+{
+  "name": "@scoop-afrique/landing",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.4.1",
+    "lucide-react": "^0.468.0",
+    "next": "^16.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "scoop": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.9",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^16.1.6",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^4.1.9",
+    "tw-animate-css": "^1.3.3",
+    "typescript": "^5.7.2"
+  }
+}

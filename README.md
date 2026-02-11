@@ -1,314 +1,163 @@
-# Scoop.Afrique - Landing Page
+# Scoop.Afrique — Monorepo
 
-Landing page temporaire pour **Scoop.Afrique**, le media digital africain.
+Monorepo **pnpm** pour **Scoop.Afrique** : design system partagé (**scoop**) et trois applications — **landing**, **frontend** (webapp média), **backend** (API).
 
-> **Note importante** : Le vrai Scoop.Afrique s'ecrit avec un **POINT** (Scoop.Afrique). Attention aux medias parasites qui utilisent un nom similaire sans le point.
+> **Note** : Le vrai Scoop.Afrique s'écrit avec un **point** (Scoop.Afrique).
 
-## Informations Cles
+## Structure du monorepo
 
-| Element | Valeur |
+| Cible | Rôle |
+|-------|------|
+| **`apps/landing`** | Site vitrine actuel (Next.js). En ligne en attendant la webapp. |
+| **`apps/frontend`** | Future webapp : articles, likes, commentaires, newsletter, annonces, espace employés (rédaction, accès, articles, perf, encarts pub, partenaires). |
+| **`apps/backend`** | API (Hono + Node) : articles, auth, newsletter, annonces, admin. Couche métier, sécurité, pas d’UI. |
+| **`packages/scoop`** | Design system (Atomic Design, Tailwind v4, style shadcn). **Une seule source de vérité** pour l’UI ; utilisé par landing et frontend. |
+
+```
+/
+  apps/
+    landing/          # Next.js — vitrine (hero, manifeste, publications, a-propos, contact, etc.)
+    frontend/         # Next.js — webapp (articles, newsletter, admin)
+    backend/          # Hono/Node — API (health, articles, auth à venir)
+  packages/
+    scoop/            # Design system (atoms, molecules, organisms, patterns, theme)
+  pnpm-workspace.yaml # apps/*, packages/*
+  package.json       # Scripts racine (dev, build par app)
+```
+
+## Prérequis et installation
+
+- **Node** 20+
+- **pnpm** 9+
+
+```bash
+# À la racine du repo
+pnpm install
+```
+
+En cas d’erreur **« Unexpected store location »** avec pnpm, exécuter une seule fois à la racine : `pnpm install`, ou configurer le store global : `pnpm config set store-dir <chemin> --global`.
+
+## Build et vérification
+
+Tout le monorepo (scoop, landing, frontend, backend) :
+
+```bash
+pnpm build
+```
+
+Build par application :
+
+```bash
+pnpm build:landing    # Next.js landing
+pnpm build:frontend   # Next.js webapp
+pnpm build:backend    # Compilation TypeScript backend
+```
+
+Pour vérifier que tout se build correctement : exécuter `pnpm build` à la racine. Aucune erreur = packages et apps OK.
+
+## Développement
+
+Lancer une seule app :
+
+```bash
+pnpm dev:landing      # http://localhost:3000
+pnpm dev:frontend     # http://localhost:3001
+pnpm dev:backend      # http://localhost:4000
+```
+
+Lancer toutes les apps en parallèle :
+
+```bash
+pnpm dev
+```
+
+## Design system : package `scoop`
+
+- **Thème par défaut** : clair (dark via `.dark` sur `<html>`).
+- **Couleur primaire** : `#FF3131` (Scoop Red).
+- **Police logo** : Brasika.
+- **Curseur** : simple (anneau + point) pour ne pas distraire.
+
+### Structure `packages/scoop/src/`
+
+- **theme.css** — Variables CSS (light/dark), keyframes, `@theme` Tailwind v4  
+- **utils/cn.ts** — `cn()` (clsx + tailwind-merge)  
+- **atoms** — Button, Dot, Text, Badge, Link, Separator, Heading  
+- **molecules** — SectionHeader, Card, GlitchText, MarqueeBand, ThemeToggle, Blockquote, FillHoverAnchor, NavLinksList, BackLink  
+- **patterns** — AfricanPattern  
+- **organisms** — CursorTracker  
+- **providers** — ThemeProvider  
+
+### Storybook (visualisation et développement)
+
+Le package `scoop` inclut **Storybook** pour visualiser et développer les composants. Les logos du média (Scoop.Afrique) sont utilisés dans la marque Storybook et dans la page d’introduction.
+
+```bash
+# Depuis la racine
+pnpm --filter scoop storybook
+
+# Ou depuis packages/scoop
+cd packages/scoop && pnpm storybook
+```
+
+- **URL** : http://localhost:6006  
+- **Contenu** : page Introduction (avec logo), stories pour tous les atomes, molécules, organismes et patterns.  
+- **Thème** : bascule Light/Dark dans la toolbar.  
+- **Build statique** : `pnpm --filter scoop build-storybook` (sortie dans `packages/scoop/storybook-static`).
+
+### Utilisation dans une app
+
+- Dans le CSS global de l’app : `@import 'scoop/theme.css'` après Tailwind.
+- Composants : `import { Button, GlitchText, CursorTracker } from 'scoop'`.
+- Les apps n’inventent pas de composants UI : tout vient de `scoop` (ou de class names SSR-safe exposés par l’app, ex. `lib/landing.ts` dans la landing).
+
+## Landing (`apps/landing`)
+
+- **Next.js** App Router, SEO (robots, sitemap, métadonnées, JSON-LD), headers de sécurité.
+- **Pages** : `/`, `/a-propos`, `/contact`, `/mentions-legales`, `/politique-de-confidentialite`.
+- **Composants** : `components/` (hero, manifeste, why, publications, social-cta, footer) utilisent uniquement `scoop` et `lib/landing.ts` (class names SSR-safe).
+- **Assets** : `apps/landing/public/` (fonts, publications, favicons).
+- **Scripts** : `apps/landing/scripts/resize-publications.mjs` pour redimensionner les images de publications (ex. depuis la racine : `node apps/landing/scripts/resize-publications.mjs` ; nécessite `sharp` dans `apps/landing`).
+
+## Frontend (`apps/frontend`)
+
+- **Next.js** webapp : pages publiques (articles, newsletter), espace admin (login, tableau de bord), `not-found`, `loading`.
+- **UI** : 100 % `scoop` ; config API dans `lib/config.ts`, client API dans `lib/api/client.ts`.
+- **Middleware** : protection des routes `/admin/*` (sauf `/admin/login`) ; redirection vers login si non authentifié (à brancher sur session backend).
+- **Séparation** : Server Components par défaut ; client uniquement quand nécessaire.
+- **Env** : copier `apps/frontend/.env.example` en `.env.local` et renseigner `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`.
+
+## Backend (`apps/backend`)
+
+- **Hono** sur Node ; ESM, TypeScript.
+- **Structure** : `src/config`, `src/middleware` (CORS, security headers), `src/routes` (health, articles, auth, newsletter), `src/services/` (couche métier à venir).
+- **Sécurité** : CORS restreint, headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy), pas de secrets en dur.
+- **API** : `/` (health), `/api/v1/articles`, `/api/v1/auth` (login, logout, me), `/api/v1/newsletter` (subscribe, unsubscribe). Placeholders à connecter DB et auth.
+- **Env** : copier `apps/backend/.env.example` en `.env` et renseigner `PORT`, `CORS_ORIGINS`, `API_PREFIX`.
+
+## Informations clés
+
+| Élément | Valeur |
 |---------|--------|
-| **Couleur primaire** | `#FF3131` (Scoop Red) |
-| **Police logo** | Brasika |
 | **Email** | Contact@scoop-afrique.com |
-| **Localisation** | Abidjan, Cote d'Ivoire |
+| **Localisation** | Abidjan, Côte d'Ivoire |
+| **Réseaux** | TikTok @Scoop.Afrique, Facebook, Threads, Instagram, YouTube |
 
-## Reseaux Sociaux
+## Documentation
 
-| Plateforme | Handle | Abonnes |
-|------------|--------|---------|
-| TikTok | @Scoop.Afrique | 837.5K |
-| Facebook | @scoop.afrique | 359K |
-| Threads | @Scoop.Afrique | 24.5K |
-| Instagram | @Scoop.Afrique | 23.5K |
-| YouTube | @Scoop.Afrique | 6.5K |
+La documentation complète (architecture, API, auth, déploiement) est dans le dossier **`docs/`** :
 
----
+- **[docs/README.md](docs/README.md)** — Index de toute la documentation.
+- **[docs/DOCUMENTATION_COMPLETE.md](docs/DOCUMENTATION_COMPLETE.md)** — Vue d’ensemble du projet en français (objectifs, stack, apps, design system, déploiement).
+- **[docs/DEPLOYMENT_VERCEL.md](docs/DEPLOYMENT_VERCEL.md)** — Déploiement sur Vercel : landing, frontend et backend (avec alternatives Railway/Render).
 
-## SEO & Technical Implementation
+## Checklist pré-production (landing)
 
-### 1. Indexation & Crawl Control
-
-| File | Status | Description |
-|------|--------|-------------|
-| `/app/robots.ts` | Done | robots.txt dynamique (HTTP 200), Allow /, Sitemap, Disallow /api/, /_next/, /admin/ |
-| `/app/sitemap.ts` | Done | sitemap.xml dynamique avec lastmod, changefreq, priority |
-| Canonical URLs | Done | Via `metadata.alternates.canonical` (URL absolue) sur chaque page |
-
-**Verification** :
-- `https://scoop-afrique.com/robots.txt` et `https://scoop-afrique.com/sitemap.xml` accessibles (HTTP 200)
-- Google Search Console : soumettre sitemap et vérifier l’indexation
-- Chaque page a `<link rel="canonical" ...>` avec URL absolue
-
-### 2. Metadata & Sharing
-
-| Element | Implementation |
-|---------|----------------|
-| Title | Unique par page avec template `%s | Scoop.Afrique` |
-| Meta description | Defini pour chaque page |
-| Open Graph | Complete (type, locale, site_name, images) |
-| Twitter Cards | `summary_large_image` avec image 1200x630 |
-| Favicons | `icon.svg`, `apple-icon.png` utilisés ; ajouter `favicon.ico` et `og-image.png` (voir ci-dessous) |
-| Web App Manifest | `/app/manifest.ts` avec theme colors |
-
-**Assets requis pour un aperçu de lien complet** :
-- **`/public/og-image.png`** : image **1200×630 px** pour Open Graph / Twitter (partage WhatsApp, LinkedIn, X, etc.). À créer si absent.
-- **`/public/favicon.ico`** : favicon classique (optionnel si `icon.svg` suffit).
-- **`/public/icon-192x192.png`** et **`/public/icon-512x512.png`** : pour le manifest (PWA). À ajouter si besoin.
-
-**Verification** :
-- Partager un lien affiche titre/image/description corrects
-- Pas de titres dupliques entre pages
-
-### 3. Structured Data (Schema.org)
-
-JSON-LD implementes dans `/app/layout.tsx` :
-
-```json
-{
-  "@type": "NewsMediaOrganization",
-  "name": "Scoop.Afrique",
-  "url": "https://scoop-afrique.com",
-  "logo": {...},
-  "sameAs": ["tiktok", "facebook", "instagram", "youtube", "threads"],
-  "contactPoint": {...}
-}
-```
-
-```json
-{
-  "@type": "WebSite",
-  "name": "Scoop.Afrique",
-  "url": "https://scoop-afrique.com",
-  "publisher": {"@id": ".../#organization"}
-}
-```
-
-**Verification** :
-- Donnees structurees presentes dans le code source HTML
-- Tester avec Google Rich Results Test
-
-### 4. Security Headers
-
-Configures dans `/next.config.mjs` :
-
-| Header | Valeur |
-|--------|--------|
-| Strict-Transport-Security | `max-age=63072000; includeSubDomains; preload` |
-| X-Content-Type-Options | `nosniff` |
-| X-Frame-Options | `SAMEORIGIN` |
-| X-XSS-Protection | `1; mode=block` |
-| Referrer-Policy | `strict-origin-when-cross-origin` |
-| Permissions-Policy | `camera=(), microphone=(), geolocation=()` |
-| Content-Security-Policy | Baseline restrictif |
-
-**Verification** :
-- Scanner avec securityheaders.com
-- Pas d'avertissements mixed-content
-
-### 5. Trust Pages
-
-| Page | URL | Status |
-|------|-----|--------|
-| A Propos | `/a-propos` | Done |
-| Contact | `/contact` | Done |
-| Politique de Confidentialite | `/politique-de-confidentialite` | Done |
-| Mentions Legales | `/mentions-legales` | Done |
-
-### 6. Performance Optimization
-
-- [x] `next/image` pour les images optimisees
-- [x] Lazy loading des medias below-the-fold
-- [x] Fonts avec `display: swap`
-- [x] Cache-Control pour assets statiques (1 an)
-- [x] CSS animations avec transforms GPU-accelerees
-- [x] Intersection Observer pour animations au scroll
-
-**Verification** :
-- Lighthouse Performance > 90 sur mobile
-- Pas de gros layout shifts (CLS)
+- [ ] Domaine et `BASE_URL` à jour dans `apps/landing`
+- [ ] `og-image.png` (1200×630) et favicons en place
+- [ ] Logo et vidéo hero configurés
+- [ ] Vérification sitemap / Search Console et headers de sécurité
 
 ---
 
-## Structure du Projet
-
-```
-/app
-  /page.tsx                      # Page principale
-  /layout.tsx                    # Layout avec metadata et JSON-LD
-  /globals.css                   # Styles, themes, animations
-  /sitemap.ts                    # Sitemap auto-genere
-  /manifest.ts                   # Web App Manifest
-  /a-propos/page.tsx             # Page A Propos
-  /contact/page.tsx              # Page Contact
-  /politique-de-confidentialite/page.tsx
-  /mentions-legales/page.tsx
-
-/components
-  /hero-video.tsx           # Hero avec video et logo
-  /manifeste-section.tsx    # Vision et valeurs
-  /why-section.tsx          # Pourquoi nous choisir
-  /publications-section.tsx # Apercu des publications
-  /social-cta-section.tsx   # CTA reseaux sociaux
-  /footer.tsx               # Footer avec liens
-  /theme-toggle.tsx         # Bouton theme clair/sombre
-  /cursor-tracker.tsx       # Curseur personnalise (desktop)
-  /glitch-text.tsx          # Texte avec effet glitch
-  /marquee-band.tsx         # Bande defilante
-  /african-pattern.tsx      # Motif SVG africain
-
-/public
-  /robots.txt               # Regles de crawl
-```
-
----
-
-## Personnalisation
-
-### 1. Remplacer le Logo
-
-Le logo est en placeholder dans deux fichiers :
-
-**Dans `/components/hero-video.tsx`** (ligne ~170) :
-```tsx
-{/* Remplacez ce bloc par votre SVG */}
-<div className="logo-placeholder">
-  {/* VOTRE LOGO SVG ICI */}
-</div>
-```
-
-**Dans `/components/footer.tsx`** (ligne ~35) :
-```tsx
-{/* Remplacez ce bloc par votre SVG */}
-<div className="mb-4">
-  {/* VOTRE LOGO SVG ICI */}
-</div>
-```
-
-### 2. Configurer le Domaine
-
-Dans les fichiers suivants, remplacez `scoop-afrique.com` par votre domaine :
-
-- `/app/layout.tsx` : `BASE_URL`
-- `/app/sitemap.ts` : `BASE_URL`
-- `/public/robots.txt` : URL du sitemap
-
-### 3. Ajouter les Images SEO
-
-Creez dans `/public/` :
-- `og-image.png` (1200x630) - Image pour partage social
-- `logo.png` (512x512) - Logo pour schema.org
-- `icon-192x192.png` - Icon PWA
-- `icon-512x512.png` - Icon PWA large
-- `apple-touch-icon.png` (180x180) - Icon iOS
-- `favicon.ico` - Favicon classique
-- `icon.svg` - Favicon SVG
-
-### 4. Google Search Console & Bing
-
-1. Verifier le site dans Google Search Console
-2. Ajouter le code de verification dans `/app/layout.tsx` :
-```tsx
-verification: {
-  google: 'votre-code-google',
-  other: {
-    'msvalidate.01': 'votre-code-bing',
-  },
-}
-```
-3. Soumettre le sitemap (`/sitemap.xml`)
-
-### 5. Video Hero
-
-```tsx
-<HeroVideo
-  videoSrc="/videos/votre-video.mp4"
-  posterImage="/images/poster.jpg"
-  fallbackImage="/images/fallback.jpg"
-/>
-```
-
-### 6. Publications
-
-Creez `/public/publications/` avec vos images, puis editez `/components/publications-section.tsx`.
-
-### 7. Video YouTube
-
-Dans `/components/publications-section.tsx`, remplacez `YOUR_VIDEO_ID` :
-```tsx
-youtube: {
-  videoId: "votre_video_id",
-  title: "Titre de votre video",
-}
-```
-
-### 8. Modifier les Couleurs
-
-Dans `/app/globals.css` :
-```css
-/* Rouge Scoop #FF3131 en OKLCH */
---primary: oklch(0.59 0.24 25);
-```
-
----
-
-## Checklist Pre-Production
-
-### SEO
-- [ ] Configurer le domaine correct dans `BASE_URL`
-- [ ] Ajouter `og-image.png` (1200x630)
-- [ ] Ajouter tous les favicons
-- [ ] Verifier Google Search Console
-- [ ] Verifier Bing Webmaster Tools
-- [ ] Soumettre sitemap
-
-### Securite
-- [ ] Configurer SPF, DKIM, DMARC pour email
-- [ ] Tester headers sur securityheaders.com
-- [ ] Activer HTTPS force (Vercel le fait par defaut)
-
-### Contenu
-- [ ] Remplacer le logo placeholder
-- [ ] Ajouter la video hero
-- [ ] Ajouter les images de publications
-- [ ] Completer les mentions legales (forme juridique, directeur)
-- [ ] Verifier tous les liens sociaux
-
-### Performance
-- [ ] Tester Lighthouse sur mobile
-- [ ] Verifier Core Web Vitals
-- [ ] Optimiser les images
-
-### Monitoring
-- [ ] Configurer Sentry pour les erreurs
-- [ ] Activer Vercel Analytics (deja integre)
-- [ ] Configurer alertes uptime
-
----
-
-## Ameliorations Futures
-
-1. **Rate Limiting** - Ajouter sur les routes API si formulaires
-2. **Captcha** - Turnstile/reCAPTCHA si abus detecte
-3. **Newsletter** - Integrer Mailchimp/ConvertKit avec double opt-in
-4. **Articles** - Ajouter schema `NewsArticle` pour chaque article
-5. **Recherche** - Activer `SearchAction` dans schema.org
-6. **Breadcrumbs** - Ajouter pour les pages profondes
-7. **Push Notifications** - Web Push (optionnel)
-
----
-
-## Contact
-
-- **Email** : Contact@scoop-afrique.com
-- **TikTok** : @Scoop.Afrique
-- **Instagram** : @Scoop.Afrique
-- **Facebook** : @scoop.afrique
-- **YouTube** : @Scoop.Afrique
-- **Threads** : @Scoop.Afrique
-
----
-
-**Scoop.Afrique** - Le media digital qui decrypte l'Afrique autrement.
-
-*N'oubliez pas : c'est Scoop POINT Afrique*
+**Scoop.Afrique** — Le media digital qui décrypte l'Afrique autrement.
