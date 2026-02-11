@@ -13,6 +13,7 @@ export async function requestLog(c: Context, next: Next) {
   await next()
 
   const durationMs = Date.now() - start
-  const status = c.res.status
+  // Response.status exists in Fetch API; assert for TS environments where the type is narrow
+  const status = (c.res as { status: number }).status
   logger.request(method, path, status, durationMs)
 }
