@@ -13,6 +13,9 @@
  */
 import { config } from '../config/env.js'
 
+/** Fetch API Response shape (for TS envs where global Response type is narrow). */
+type FetchResponse = { ok: boolean; json(): Promise<unknown> }
+
 let cachedToken: { token: string; expiresAt: number } | null = null
 
 /** Get Management API access token (cached until ~5 min before expiry). */
@@ -25,7 +28,7 @@ export async function getManagementAccessToken(): Promise<string | null> {
   }
 
   const { domain, clientId, clientSecret, audience } = config.auth0Management
-  const res = await fetch(`https://${domain}/oauth/token`, {
+  const res = (await fetch(`https://${domain}/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -34,7 +37,7 @@ export async function getManagementAccessToken(): Promise<string | null> {
       client_secret: clientSecret,
       audience,
     }),
-  })
+  })) as FetchResponse
 
   if (!res.ok) return null
 
@@ -62,14 +65,14 @@ export async function patchAuth0User(
   const { domain } = config.auth0Management
   const url = `https://${domain}/api/v2/users/${encodeURIComponent(userId)}`
 
-  const res = await fetch(url, {
+  const res = (await fetch(url, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
-  })
+  })) as FetchResponse
 
   return res.ok
 }
@@ -108,9 +111,9 @@ export async function listAuth0Users(
   const { domain } = config.auth0Management
   const url = `https://${domain}/api/v2/users?page=${page}&per_page=${perPage}&include_totals=true&sort=email:1`
 
-  const res = await fetch(url, {
+  const res = (await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
-  })
+  })) as FetchResponse
   if (!res.ok) return { users: [], total: 0 }
 
   const data = (await res.json()) as {
