@@ -11,17 +11,6 @@
     "build:landing": "pnpm --filter @scoop-afrique/landing build",
     "build:frontend": "pnpm --filter @scoop-afrique/frontend build",
     "build:backend": "pnpm --filter @scoop-afrique/backend build",
-    "lint": "pnpm -r run lint"
-  },
-  "scripts": {
-    "dev": "pnpm run --parallel -r dev",
-    "dev:landing": "pnpm --filter @scoop-afrique/landing dev",
-    "dev:frontend": "pnpm --filter @scoop-afrique/frontend dev",
-    "dev:backend": "pnpm --filter @scoop-afrique/backend dev",
-    "build": "pnpm -r run build",
-    "build:landing": "pnpm --filter @scoop-afrique/landing build",
-    "build:frontend": "pnpm --filter @scoop-afrique/frontend build",
-    "build:backend": "pnpm --filter @scoop-afrique/backend build",
     "lint": "pnpm -r run lint",
     "supabase": "npx supabase"
   },
