@@ -19,7 +19,7 @@ const lineItemSchema = z.object({
 
 const createSchema = z.object({
   title: z.string().min(1, 'Titre requis'),
-  project_id: z.string().min(1, 'Sélectionnez un projet'),
+  project_id: z.string().optional().or(z.literal('')),
   contact_id: z.string().uuid().optional().or(z.literal('')),
   devis_request_id: z.string().uuid().optional().or(z.literal('')),
   service_slug: z.string().optional(),

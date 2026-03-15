@@ -472,8 +472,45 @@ Migrations live in `apps/backend/drizzle/` and run in order via `pnpm db:migrate
 | 12 | `0011_project_contacts.sql` | Project-contacts junction |
 | 13 | `0012_devis_project_id.sql` | project_id on devis |
 | 14 | `0013_invoice_discount.sql` | Invoice discount field |
+| 15–17 | `0015–0017` | CRM tables create-if-missing, devis project_id, discount_amount |
+| 18 | `0018_devis_requests_project_id.sql` | converted_to_project_id on devis_requests (project-centric traceability) |
 
 **New migrations:** Edit `apps/backend/src/db/schema.ts`, then run `pnpm db:generate --name=your_migration_name` to generate SQL.
+
+---
+
+## 11. CRM Project-Centric Workflow
+
+The **project** is the central entity. All related data (devis, invoices, receipts/payments) is retrievable from the project folder.
+
+### Data flow
+
+```
+devis_request → contact (optional)
+devis_request → devis (optional)
+devis (accepted) → project (devis_id, converted_to_project_id on devis_request)
+project → invoices (project_id)
+invoice → payments (receipts, receipt_pdf_url)
+```
+
+### Project folder API
+
+`GET /api/v1/crm/projects/:id/folder` returns in one call:
+
+- **project** — core project data
+- **devis** — linked devis (from project.devis_id or project_id)
+- **invoices** — with nested **payments** (receipts)
+- **contacts** — project contacts
+- **devis_request** — original request (if devis came from devis_request)
+- **expenses** — project expenses
+
+### Finance page
+
+The project Finance tab (`/projects/:id/finance`) uses the folder endpoint and displays:
+
+- Devis (with PDF link if generated)
+- Invoices (with payment receipts)
+- Expenses
 
 ---
 

@@ -16,10 +16,14 @@ export default async function DevisDetailPage({
   if (!devis) notFound()
 
   const contact = devis.crm_contacts as Record<string, unknown> | null
+  const project = devis.crm_projects as Record<string, unknown> | null
   const contactName = contact
     ? `${contact.first_name ?? ''} ${contact.last_name ?? ''}`.trim()
     : '—'
   const lineItems = (devis.line_items as Array<Record<string, unknown>>) ?? []
+
+  const formatDate = (d: unknown) =>
+    d ? new Date(d as string).toLocaleDateString('fr-FR') : '—'
 
   return (
     <div className="space-y-6">
@@ -36,11 +40,68 @@ export default async function DevisDetailPage({
         </Link>
       </div>
 
+      <div className="grid gap-6 md:grid-cols-2">
+        {contact && (
+          <div className="rounded-lg border border-border p-6">
+            <h2 className="font-semibold mb-4 text-base">Client</h2>
+            <div className="space-y-2 text-sm">
+              <p className="font-medium">{contactName}</p>
+              {(contact.company as string) && (
+                <p className="text-muted-foreground">{String(contact.company)}</p>
+              )}
+              {(contact.email as string) && (
+                <p>
+                  <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
+                    {String(contact.email)}
+                  </a>
+                </p>
+              )}
+              {(contact.phone as string) && (
+                <p>
+                  <a href={`tel:${contact.phone}`} className="text-primary hover:underline">
+                    {String(contact.phone)}
+                  </a>
+                </p>
+              )}
+              {(contact.whatsapp as string) && (
+                <p>
+                  <a
+                    href={`https://wa.me/${String(contact.whatsapp).replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    WhatsApp: {String(contact.whatsapp)}
+                  </a>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        {project && (
+          <div className="rounded-lg border border-border p-6">
+            <h2 className="font-semibold mb-4 text-base">Projet</h2>
+            <div className="space-y-2 text-sm">
+              {(project.reference as string) && (
+                <p className="font-medium">{String(project.reference)}</p>
+              )}
+              {(project.title as string) && (
+                <p>{String(project.title)}</p>
+              )}
+              {(project.description as string) && (
+                <p className="text-muted-foreground line-clamp-3">{String(project.description)}</p>
+              )}
+              {(project.start_date || project.end_date) && (
+                <p className="text-muted-foreground pt-1">
+                  {formatDate(project.start_date)} — {formatDate(project.end_date)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-lg border border-border p-6 space-y-4">
-        <div>
-          <span className="text-sm text-muted-foreground">Contact</span>
-          <p>{contactName}</p>
-        </div>
         <div>
           <span className="text-sm text-muted-foreground">Statut</span>
           <p className="capitalize">{String(devis.status ?? '—')}</p>

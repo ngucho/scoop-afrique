@@ -84,6 +84,64 @@ export async function getDevisWithContact(id: string): Promise<Record<string, un
   return out
 }
 
+export async function getDevisWithContactAndProject(id: string): Promise<Record<string, unknown> | null> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      devis: crmDevis,
+      contact: {
+        id: crmContacts.id,
+        firstName: crmContacts.firstName,
+        lastName: crmContacts.lastName,
+        email: crmContacts.email,
+        phone: crmContacts.phone,
+        whatsapp: crmContacts.whatsapp,
+        company: crmContacts.company,
+      },
+      project: {
+        id: crmProjects.id,
+        reference: crmProjects.reference,
+        title: crmProjects.title,
+        description: crmProjects.description,
+        startDate: crmProjects.startDate,
+        endDate: crmProjects.endDate,
+      },
+    })
+    .from(crmDevis)
+    .leftJoin(crmContacts, eq(crmDevis.contactId, crmContacts.id))
+    .leftJoin(crmProjects, eq(crmDevis.projectId, crmProjects.id))
+    .where(eq(crmDevis.id, id))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null
+  const out = toSnakeRecord(row.devis as Record<string, unknown>) as Record<string, unknown>
+  if (row.contact?.id) {
+    out.crm_contacts = toSnakeRecord(row.contact as Record<string, unknown>)
+  }
+  if (row.project?.id) {
+    out.crm_projects = toSnakeRecord(row.project as Record<string, unknown>)
+  } else {
+    const devisRow = row.devis as { id: string }
+    const projectByDevis = await db
+      .select({
+        id: crmProjects.id,
+        reference: crmProjects.reference,
+        title: crmProjects.title,
+        description: crmProjects.description,
+        startDate: crmProjects.startDate,
+        endDate: crmProjects.endDate,
+      })
+      .from(crmProjects)
+      .where(eq(crmProjects.devisId, devisRow.id))
+      .limit(1)
+    if (projectByDevis[0]) {
+      out.crm_projects = toSnakeRecord(projectByDevis[0] as Record<string, unknown>)
+    }
+  }
+  return out
+}
+
 function computeTotals(
   lineItems: Array<{ description: string; quantity: number; unit_price: number; unit?: string; tax_rate?: number }>,
   taxRate: number

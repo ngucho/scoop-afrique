@@ -35,7 +35,12 @@ async function proxyRequest(
   }
 
   const res = await fetch(url.toString(), init)
-  const body = await res.text()
+  const contentType = res.headers.get('content-type') ?? ''
+  const isBinary =
+    contentType.includes('application/pdf') ||
+    contentType.includes('application/octet-stream')
+
+  const body = isBinary ? await res.arrayBuffer() : await res.text()
   return new NextResponse(body, {
     status: res.status,
     statusText: res.statusText,

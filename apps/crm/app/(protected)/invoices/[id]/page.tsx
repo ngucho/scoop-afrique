@@ -20,10 +20,18 @@ export default async function InvoiceDetailPage({
 
   if (!invoice) notFound()
 
+  const contact = invoice.crm_contacts as Record<string, unknown> | null
+  const project = invoice.crm_projects as Record<string, unknown> | null
+  const contactName = contact
+    ? `${contact.first_name ?? ''} ${contact.last_name ?? ''}`.trim()
+    : '—'
   const lineItems = (invoice.line_items as Array<Record<string, unknown>>) ?? []
   const total = (invoice.total as number) ?? 0
   const amountPaid = (invoice.amount_paid as number) ?? 0
   const balance = total - amountPaid
+
+  const formatDate = (d: unknown) =>
+    d ? new Date(d as string).toLocaleDateString('fr-FR') : '—'
 
   return (
     <div className="space-y-6">
@@ -38,6 +46,67 @@ export default async function InvoiceDetailPage({
         <Link href={`/invoices/${id}/edit`}>
           <span className="text-sm text-primary hover:underline">Modifier</span>
         </Link>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        {contact && (
+          <div className="rounded-lg border border-border p-6">
+            <h2 className="font-semibold mb-4 text-base">Client</h2>
+            <div className="space-y-2 text-sm">
+              <p className="font-medium">{contactName}</p>
+              {(contact.company as string) && (
+                <p className="text-muted-foreground">{String(contact.company)}</p>
+              )}
+              {(contact.email as string) && (
+                <p>
+                  <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
+                    {String(contact.email)}
+                  </a>
+                </p>
+              )}
+              {(contact.phone as string) && (
+                <p>
+                  <a href={`tel:${contact.phone}`} className="text-primary hover:underline">
+                    {String(contact.phone)}
+                  </a>
+                </p>
+              )}
+              {(contact.whatsapp as string) && (
+                <p>
+                  <a
+                    href={`https://wa.me/${String(contact.whatsapp).replace(/\D/g, '')}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    WhatsApp: {String(contact.whatsapp)}
+                  </a>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        {project && (
+          <div className="rounded-lg border border-border p-6">
+            <h2 className="font-semibold mb-4 text-base">Projet</h2>
+            <div className="space-y-2 text-sm">
+              {(project.reference as string) && (
+                <p className="font-medium">{String(project.reference)}</p>
+              )}
+              {(project.title as string) && (
+                <p>{String(project.title)}</p>
+              )}
+              {(project.description as string) && (
+                <p className="text-muted-foreground line-clamp-3">{String(project.description)}</p>
+              )}
+              {(project.start_date || project.end_date) && (
+                <p className="text-muted-foreground pt-1">
+                  {formatDate(project.start_date)} — {formatDate(project.end_date)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg border border-border p-6 space-y-4">
@@ -143,7 +212,7 @@ export default async function InvoiceDetailPage({
           </div>
         )}
         {balance > 0 && (
-          <PaymentForm invoiceId={id} onSuccess={() => {}} />
+          <PaymentForm invoiceId={id} />
         )}
       </section>
     </div>

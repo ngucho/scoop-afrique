@@ -33,24 +33,49 @@ export async function createDevisRequest(body: DevisBody): Promise<{ id: string;
   }
 
   const db = getDb()
-  const [row] = await db
-    .insert(devisRequests)
-    .values({
-      firstName: body.first_name.trim(),
-      lastName: body.last_name.trim(),
-      email: body.email.trim().toLowerCase(),
-      phone: body.phone?.trim() || null,
-      company: body.company?.trim() || null,
-      serviceSlug: body.service_slug?.trim() || null,
-      budgetMin: body.budget_min ?? null,
-      budgetMax: body.budget_max ?? null,
-      budgetCurrency: body.budget_currency || 'FCFA',
-      preferredDate: body.preferred_date ?? null,
-      deadline: body.deadline?.trim() || null,
-      description: body.description.trim(),
-      sourceUrl: body.source_url || null,
-    })
-    .returning({ id: devisRequests.id })
+
+  // Normalize preferred_date to YYYY-MM-DD (PostgreSQL DATE)
+  let preferredDate: string | null = null
+  if (body.preferred_date?.trim()) {
+    const d = body.preferred_date.trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) preferredDate = d
+    else {
+      const parsed = new Date(d)
+      if (!Number.isNaN(parsed.getTime())) preferredDate = parsed.toISOString().slice(0, 10)
+    }
+  }
+
+  let row: { id: string } | undefined
+  try {
+    ;[row] = await db
+      .insert(devisRequests)
+      .values({
+        firstName: body.first_name.trim(),
+        lastName: body.last_name.trim(),
+        email: body.email.trim().toLowerCase(),
+        phone: body.phone?.trim() || null,
+        company: body.company?.trim() || null,
+        serviceSlug: body.service_slug?.trim() || null,
+        budgetMin: body.budget_min ?? null,
+        budgetMax: body.budget_max ?? null,
+        budgetCurrency: body.budget_currency || 'FCFA',
+        preferredDate,
+        deadline: body.deadline?.trim() || null,
+        description: body.description.trim(),
+        sourceUrl: body.source_url || null,
+      })
+      .returning({ id: devisRequests.id })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[devis] Insert failed:', msg, err)
+    return {
+      id: '',
+      success: false,
+      message: msg.includes('permission') || msg.includes('policy')
+        ? 'Configuration base de données. Vérifiez les migrations et RLS.'
+        : 'Erreur lors de l\'enregistrement. Réessayez.',
+    }
+  }
 
   if (!row) {
     return { id: '', success: false, message: 'Failed to create devis request' }
@@ -165,6 +190,30 @@ ${SITE_URL}`
       })
     } catch (err) {
       console.error('[devis] WhatsApp error:', err)
+    }
+  }
+
+  // SMS notification to team (Twilio if configured)
+  const tw = config.twilio as { accountSid?: string; authToken?: string; smsFrom?: string; smsTo?: string } | null
+  if (tw?.accountSid && tw?.authToken && tw?.smsFrom && tw?.smsTo) {
+    try {
+      const smsMsg = `[SCOOP] Nouvelle demande de devis: ${first_name} ${last_name} - ${email}`
+      const params = new URLSearchParams({
+        To: tw.smsTo.replace(/^whatsapp:/i, ''),
+        From: tw.smsFrom,
+        Body: smsMsg,
+      })
+      const auth = Buffer.from(`${tw.accountSid}:${tw.authToken}`).toString('base64')
+      await fetch(`https://api.twilio.com/2010-04-01/Accounts/${tw.accountSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: `Basic ${auth}`,
+        },
+        body: params.toString(),
+      })
+    } catch (err) {
+      console.error('[devis] SMS error:', err)
     }
   }
 }

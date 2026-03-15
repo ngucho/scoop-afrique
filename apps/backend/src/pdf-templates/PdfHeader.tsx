@@ -6,14 +6,16 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const LOGO_PATH = path.join(__dirname, '../../assets/logo.png')
 
+const BRAND = '#B91C1C'
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomWidth: 2,
+    borderBottomColor: BRAND,
     paddingBottom: 15,
   },
   headerLeft: {
@@ -28,13 +30,14 @@ const styles = StyleSheet.create({
     objectFit: 'contain',
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 4,
+    color: BRAND,
   },
   subtitle: {
     fontSize: 9,
-    color: '#666',
+    color: '#555',
   },
 })
 
@@ -47,7 +50,7 @@ export function PdfHeader({ docTitle, showLogo = true }: PdfHeaderProps) {
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <Text style={styles.title}>SCOOP AFRIQUE</Text>
+        <Text style={styles.title}>SCOOP</Text>
         <Text style={styles.subtitle}>SARL au capital de 1 000 000 FCFA</Text>
         <Text style={styles.subtitle}>Siège : Abidjan Cocody Riviera Faya — 01 BP 130 Abidjan 01</Text>
         {docTitle && <Text style={styles.subtitle}>{docTitle}</Text>}

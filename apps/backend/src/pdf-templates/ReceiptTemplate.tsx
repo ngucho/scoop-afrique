@@ -2,45 +2,54 @@ import React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { PdfHeader } from './PdfHeader.js'
 
+const BRAND = '#B91C1C'
+const MUTED = '#555'
+
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontSize: 10,
     fontFamily: 'Helvetica',
+    color: '#1a1a1a',
   },
   subtitle: {
     fontSize: 9,
-    color: '#666',
+    color: MUTED,
   },
   section: {
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: BRAND,
   },
   row: {
     flexDirection: 'row',
     marginBottom: 4,
   },
-  label: { width: 120, color: '#666' },
-  value: { flex: 1 },
+  label: { width: 120, color: MUTED },
+  value: { flex: 1, color: '#1a1a1a' },
   amountBox: {
     marginTop: 30,
     marginBottom: 30,
     padding: 20,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: BRAND,
     borderRadius: 4,
     alignItems: 'center',
   },
   amountLabel: {
     fontSize: 11,
     marginBottom: 8,
+    color: MUTED,
   },
   amountValue: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: BRAND,
   },
   footer: {
     position: 'absolute',
@@ -48,7 +57,7 @@ const styles = StyleSheet.create({
     left: 40,
     right: 40,
     fontSize: 8,
-    color: '#666',
+    color: MUTED,
     textAlign: 'center',
   },
 })
@@ -145,7 +154,7 @@ export function ReceiptTemplate({ receipt }: { receipt: ReceiptData }) {
         )}
 
         <Text style={styles.footer} fixed>
-          Scoop Afrique — Reçu de paiement — Document officiel
+          SCOOP — Reçu de paiement — Document officiel
         </Text>
       </Page>
     </Document>

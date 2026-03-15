@@ -45,7 +45,7 @@ app.post('/', async (c) => {
 
 app.get('/:id', async (c) => {
   const id = c.req.param('id')
-  const invoice = await invoiceService.getInvoiceById(id)
+  const invoice = await invoiceService.getInvoiceWithContactAndProject(id)
   if (!invoice) return c.json({ error: 'Not found' }, 404)
   return c.json({ data: invoice })
 })
@@ -74,29 +74,40 @@ app.patch('/:id', async (c) => {
 app.post('/:id/send', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
-  const invoice = await invoiceService.getInvoiceWithContact(id)
+  const invoice = await invoiceService.getInvoiceWithContactAndProject(id)
   if (!invoice) return c.json({ error: 'Not found' }, 404)
   const updated = await invoiceService.markInvoiceSent(id, user.id)
   const contact = invoice.crm_contacts as Record<string, unknown> | null
-  void import('../../services/crm/notification.crm.service.js').then(({ notifyInvoiceSent }) =>
-    notifyInvoiceSent({
-      reference: invoice.reference as string,
-      total: invoice.total as number,
-      currency: (invoice.currency as string) ?? 'FCFA',
-      dueDate: invoice.due_date as string,
-      contactEmail: contact?.email as string,
-      contactName: contact
-        ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
-        : undefined,
-      contactWhatsapp: contact?.whatsapp as string,
-    })
-  ).catch((e) => console.error('[crm] Invoice send notification:', e))
+  void (async () => {
+    try {
+      const { notifyInvoiceSent } = await import('../../services/crm/notification.crm.service.js')
+      const { renderInvoicePdf, uploadPdfToStorage } = await import('../../services/crm/pdf.service.js')
+      const buffer = await renderInvoicePdf(invoice)
+      const ref = (invoice.reference as string) || id
+      const pdfUrl = await uploadPdfToStorage(buffer, `invoices/${ref}.pdf`)
+      await notifyInvoiceSent({
+        reference: invoice.reference as string,
+        total: invoice.total as number,
+        currency: (invoice.currency as string) ?? 'FCFA',
+        dueDate: invoice.due_date as string,
+        contactEmail: contact?.email as string,
+        contactName: contact
+          ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+          : undefined,
+        contactWhatsapp: (contact?.whatsapp as string) || (contact?.phone as string),
+        invoicePdfBuffer: buffer,
+        invoicePdfUrl: pdfUrl ?? undefined,
+      })
+    } catch (e) {
+      console.error('[crm] Invoice send notification:', e)
+    }
+  })()
   return c.json({ data: updated })
 })
 
 app.get('/:id/pdf', async (c) => {
   const id = c.req.param('id')
-  const invoice = await invoiceService.getInvoiceWithContact(id)
+  const invoice = await invoiceService.getInvoiceWithContactAndProject(id)
   if (!invoice) return c.json({ error: 'Not found' }, 404)
   try {
     const { renderInvoicePdf } = await import('../../services/crm/pdf.service.js')
