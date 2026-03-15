@@ -25,7 +25,7 @@ app.patch('/:id', async (c) => {
   const req = await devisRequestsService.getDevisRequestById(id)
   if (!req) return c.json({ error: 'Not found' }, 404)
 
-  let body: { converted_to_contact_id?: string; converted_to_devis_id?: string }
+  let body: { converted_to_contact_id?: string; converted_to_devis_id?: string; archived?: boolean }
   try {
     body = await c.req.json()
   } catch {
@@ -34,6 +34,16 @@ app.patch('/:id', async (c) => {
 
   const updated = await devisRequestsService.updateDevisRequestConversion(id, body)
   return c.json({ data: updated, message: 'Updated' })
+})
+
+app.delete('/:id', async (c) => {
+  const id = c.req.param('id')
+  const req = await devisRequestsService.getDevisRequestById(id)
+  if (!req) return c.json({ error: 'Not found' }, 404)
+
+  const ok = await devisRequestsService.deleteDevisRequest(id)
+  if (!ok) return c.json({ error: 'Delete failed' }, 500)
+  return c.json({ message: 'Deleted' })
 })
 
 export default app

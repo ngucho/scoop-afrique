@@ -22,6 +22,7 @@
     { "idx": 17, "version": "7", "when": 1742432300000, "tag": "0017_crm_missing_tables_columns", "breakpoints": true },
     { "idx": 18, "version": "7", "when": 1742432400000, "tag": "0018_devis_requests_project_id", "breakpoints": true },
     { "idx": 19, "version": "7", "when": 1742432500000, "tag": "0019_crm_devis_project_id_ensure", "breakpoints": true },
-    { "idx": 20, "version": "7", "when": 1742519000000, "tag": "0020_crm_devis_discount", "breakpoints": true }
+    { "idx": 20, "version": "7", "when": 1742519000000, "tag": "0020_crm_devis_discount", "breakpoints": true },
+    { "idx": 21, "version": "7", "when": 1742605400000, "tag": "0021_devis_requests_archived", "breakpoints": true }
   ]
 }

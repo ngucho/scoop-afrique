@@ -277,6 +277,7 @@ export const devisRequests = pgTable('devis_requests', {
   convertedToContactId: uuid('converted_to_contact_id'),
   convertedToDevisId: uuid('converted_to_devis_id'),
   convertedToProjectId: uuid('converted_to_project_id'),
+  archived: boolean('archived').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
