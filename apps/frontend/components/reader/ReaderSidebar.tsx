@@ -165,7 +165,7 @@ export function ReaderSidebar({ categories = [] }: ReaderSidebarProps) {
           <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
             <ThemeToggle className="max-md:sr-only" />
             <a
-              href="https://www.scoop-afrique.com"
+              href="https://brands.scoop-afrique.com"
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

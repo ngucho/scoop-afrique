@@ -1,12 +1,35 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { Heading, Button, Badge, SectionHeader } from 'scoop'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { ArticleCard } from '@/components/reader/ArticleCard'
 import { FeaturedHero } from '@/components/reader/FeaturedHero'
 import { apiGet } from '@/lib/api/client'
+import { config } from '@/lib/config'
 import type { ArticlesResponse } from '@/lib/api/types'
 
 export const revalidate = 30 // ISR: refresh every 30 seconds
+
+const SITE_URL = config.siteUrl
+
+export const metadata: Metadata = {
+  title: 'Actualités panafricaines — Scoop.Afrique',
+  description:
+    "Le média digital qui décrypte l'Afrique autrement. Actualités, politique, culture, sport, société. Articles, newsletter, vidéos et podcasts.",
+  openGraph: {
+    title: 'Scoop.Afrique — Actualités & articles panafricains',
+    description: "Le média digital qui décrypte l'Afrique autrement.",
+    url: SITE_URL,
+    siteName: 'Scoop.Afrique',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Scoop.Afrique' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Scoop.Afrique — Actualités panafricaines',
+    images: ['/og-image.png'],
+  },
+  alternates: { canonical: SITE_URL },
+}
 
 async function getHomeArticles(): Promise<ArticlesResponse['data']> {
   try {
@@ -64,7 +87,7 @@ export default async function HomePage() {
               </p>
               <div className="flex flex-wrap items-center justify-center gap-4">
                 <Button asChild variant="outline">
-                  <Link href="https://www.scoop-afrique.com">Visiter scoop-afrique.com</Link>
+                  <Link href="https://brands.scoop-afrique.com">Visiter brands.scoop-afrique.com</Link>
                 </Button>
                 <Button asChild>
                   <Link href="/newsletter">S&apos;inscrire à la newsletter</Link>

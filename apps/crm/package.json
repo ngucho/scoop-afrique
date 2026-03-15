@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",
+    "prebuild": "pnpm --filter @scoop-afrique/api-logger run build",
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@scoop-afrique/api-logger": "workspace:*",
     "@auth0/nextjs-auth0": "^4.x",
     "@hookform/resolvers": "^3.9.1",
     "lucide-react": "^0.468.0",

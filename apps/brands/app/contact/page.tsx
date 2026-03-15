@@ -4,7 +4,7 @@ import { Footer } from '@/components/footer'
 import { Heading, Card } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'Contact',
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Contactez Scoop Afrique',
     description: "Contactez l'équipe Scoop Afrique. Partenariats, publicité, presse.",
+    images: ['/og-image.png'],
   },
 }
 

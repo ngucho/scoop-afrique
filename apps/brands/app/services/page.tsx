@@ -8,7 +8,7 @@ import { Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
 import { serviceOffers, couvertureFormules } from '@/lib/services-data'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'Services & Offres B2B',
@@ -23,7 +23,12 @@ export const metadata: Metadata = {
     siteName: 'Scoop Afrique',
     images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop Afrique Services' }],
   },
-  twitter: { card: 'summary_large_image', title: 'Services | Scoop Afrique' },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Services | Scoop Afrique',
+    description: 'Couverture événementielle, contenus sponsorisés, campagnes digitales pour annonceurs et partenaires.',
+    images: ['/og-image.png'],
+  },
 }
 
 const stats = [
