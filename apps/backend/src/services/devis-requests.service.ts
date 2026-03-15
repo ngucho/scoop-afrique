@@ -24,6 +24,7 @@ function toRecord(row: typeof devisRequests.$inferSelect): Record<string, unknow
     source_url: row.sourceUrl,
     converted_to_contact_id: row.convertedToContactId,
     converted_to_devis_id: row.convertedToDevisId,
+    archived: row.archived,
     created_at: row.createdAt?.toISOString(),
   }
 }
@@ -60,7 +61,7 @@ export async function getDevisRequestById(id: string): Promise<Record<string, un
 
 export async function updateDevisRequestConversion(
   id: string,
-  payload: { converted_to_contact_id?: string; converted_to_devis_id?: string }
+  payload: { converted_to_contact_id?: string; converted_to_devis_id?: string; archived?: boolean }
 ): Promise<Record<string, unknown> | null> {
   if (!config.database) return null
   const updates: Partial<typeof devisRequests.$inferInsert> = {}
@@ -69,6 +70,9 @@ export async function updateDevisRequestConversion(
   }
   if (payload.converted_to_devis_id !== undefined) {
     updates.convertedToDevisId = payload.converted_to_devis_id || null
+  }
+  if (payload.archived !== undefined) {
+    updates.archived = payload.archived
   }
   if (Object.keys(updates).length === 0) return getDevisRequestById(id)
 
@@ -79,4 +83,11 @@ export async function updateDevisRequestConversion(
     .where(eq(devisRequests.id, id))
     .returning()
   return row ? toRecord(row) : null
+}
+
+export async function deleteDevisRequest(id: string): Promise<boolean> {
+  if (!config.database) return false
+  const db = getDb()
+  const [row] = await db.delete(devisRequests).where(eq(devisRequests.id, id)).returning({ id: devisRequests.id })
+  return !!row
 }

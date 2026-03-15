@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { crmGetServer } from '@/lib/api-server'
 import { Inbox, ArrowRight, Clock, Mail, Package } from 'lucide-react'
+import { DevisRequestActions } from '@/components/devis-requests/DevisRequestActions'
 
 function timeAgo(dateStr: string): string {
   const d = new Date(dateStr)
@@ -17,8 +18,12 @@ export default async function DevisRequestsPage() {
   const result = await crmGetServer<Array<Record<string, unknown>>>('devis-requests?limit=100')
   const requests = result?.data ?? []
 
-  const pending = requests.filter((r) => !r.converted_to_devis_id && !r.converted_to_contact_id)
-  const converted = requests.filter((r) => r.converted_to_devis_id || r.converted_to_contact_id)
+  const pending = requests.filter(
+    (r) => !r.converted_to_devis_id && !r.converted_to_contact_id && !r.archived
+  )
+  const converted = requests.filter(
+    (r) => r.converted_to_devis_id || r.converted_to_contact_id || r.archived
+  )
 
   return (
     <div className="space-y-6 max-w-[1000px] crm-fade-in">
@@ -65,48 +70,52 @@ export default async function DevisRequestsPage() {
                     ? `${String(r.first_name ?? '').charAt(0)}${String(r.last_name ?? '').charAt(0)}`.toUpperCase()
                     : '?'
                   return (
-                    <Link
+                    <div
                       key={r.id as string}
-                      href={`/devis-requests/${r.id}`}
-                      className={`crm-card crm-card-interactive flex items-center gap-4 p-4 block group crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1 | 2 | 3 | 4}`}
+                      className={`crm-card crm-card-interactive flex items-center gap-4 p-4 group crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1 | 2 | 3 | 4}`}
                     >
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 font-bold text-sm text-white"
-                        style={{ background: 'var(--gradient-primary)' }}
-                      >
-                        {initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="font-semibold text-sm">{name}</span>
-                          <span
-                            className="crm-pill text-[10px]"
-                            style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}
-                          >
-                            Nouveau
-                          </span>
+                      <Link href={`/devis-requests/${r.id}`} className="flex items-center gap-4 flex-1 min-w-0">
+                        <div
+                          className="flex h-10 w-10 items-center justify-center rounded-full shrink-0 font-bold text-sm text-white"
+                          style={{ background: 'var(--gradient-primary)' }}
+                        >
+                          {initials}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {String(r.email ?? '—')}
-                          </span>
-                          {r.service_slug != null && String(r.service_slug) !== '' ? (
-                            <span className="flex items-center gap-1">
-                              <Package className="h-3 w-3" />
-                              {String(r.service_slug)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="font-semibold text-sm">{name}</span>
+                            <span
+                              className="crm-pill text-[10px]"
+                              style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}
+                            >
+                              Nouveau
                             </span>
-                          ) : null}
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {String(r.email ?? '—')}
+                            </span>
+                            {r.service_slug != null && String(r.service_slug) !== '' ? (
+                              <span className="flex items-center gap-1">
+                                <Package className="h-3 w-3" />
+                                {String(r.service_slug)}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {r.created_at ? timeAgo(String(r.created_at)) : '—'}
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </Link>
+                      <div className="shrink-0">
+                        <DevisRequestActions id={r.id as string} variant="card" />
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {r.created_at ? timeAgo(String(r.created_at)) : '—'}
-                        </span>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    </Link>
+                    </div>
                   )
                 })}
               </div>
@@ -145,7 +154,13 @@ export default async function DevisRequestsPage() {
                         </td>
                         <td>
                           <span className="crm-pill crm-pill-accepted">
-                            {r.converted_to_devis_id ? 'Devis créé' : 'Contact créé'}
+                            {r.converted_to_devis_id
+                              ? 'Devis créé'
+                              : r.converted_to_contact_id
+                                ? 'Contact créé'
+                                : r.archived
+                                  ? 'Archivé'
+                                  : '—'}
                           </span>
                         </td>
                         <td>

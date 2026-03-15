@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Heading, Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
+import { DevisRequestActions } from '@/components/devis-requests/DevisRequestActions'
 
 export default async function DevisRequestDetailPage({
   params,
@@ -53,13 +54,18 @@ export default async function DevisRequestDetailPage({
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <Link href={`/contacts/new?devis_request_id=${id}`}>
-          <Button>Créer un contact</Button>
-        </Link>
-        <Link href={`/devis/new?devis_request_id=${id}`}>
-          <Button variant="outline">Créer un devis</Button>
-        </Link>
+      <div className="flex flex-wrap items-center gap-4">
+        {!req.converted_to_devis_id && !req.converted_to_contact_id && !req.archived && (
+          <>
+            <Link href={`/contacts/new?devis_request_id=${id}`}>
+              <Button>Créer un contact</Button>
+            </Link>
+            <Link href={`/devis/new?devis_request_id=${id}`}>
+              <Button variant="outline">Créer un devis</Button>
+            </Link>
+            <DevisRequestActions id={id} variant="detail" />
+          </>
+        )}
       </div>
     </div>
   )
