@@ -2,6 +2,7 @@
  * CRM notification service — email (Resend) + WhatsApp (Twilio)
  */
 import { config } from '../../config/env.js'
+import type { FetchResponse } from '../../lib/http.js'
 
 const TEAM_EMAIL = 'contact@scoop-afrique.com'
 const SITE_URL = 'https://www.scoop-afrique.com'
@@ -32,14 +33,14 @@ async function sendEmail(params: {
       content: a.content.toString('base64'),
     }))
   }
-  const res = await fetch('https://api.resend.com/emails', {
+  const res = (await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${config.resend.apiKey}`,
     },
     body: JSON.stringify(body),
-  })
+  })) as FetchResponse
   if (!res.ok) throw new Error(`Resend: ${await res.text()}`)
 }
 
@@ -53,7 +54,7 @@ async function sendWhatsApp(message: string): Promise<void> {
   const auth = Buffer.from(
     `${config.twilio.accountSid}:${config.twilio.authToken}`
   ).toString('base64')
-  const res = await fetch(
+  const res = (await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${config.twilio.accountSid}/Messages.json`,
     {
       method: 'POST',
@@ -63,7 +64,7 @@ async function sendWhatsApp(message: string): Promise<void> {
       },
       body: params.toString(),
     }
-  )
+  )) as FetchResponse
   if (!res.ok) throw new Error(`Twilio: ${await res.text()}`)
 }
 
@@ -78,7 +79,7 @@ async function sendWhatsAppTo(to: string, message: string): Promise<void> {
   const auth = Buffer.from(
     `${config.twilio.accountSid}:${config.twilio.authToken}`
   ).toString('base64')
-  const res = await fetch(
+  const res = (await fetch(
     `https://api.twilio.com/2010-04-01/Accounts/${config.twilio.accountSid}/Messages.json`,
     {
       method: 'POST',
@@ -88,7 +89,7 @@ async function sendWhatsAppTo(to: string, message: string): Promise<void> {
       },
       body: params.toString(),
     }
-  )
+  )) as FetchResponse
   if (!res.ok) throw new Error(`Twilio: ${await res.text()}`)
 }
 
