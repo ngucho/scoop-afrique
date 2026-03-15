@@ -2,27 +2,33 @@ import React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { PdfHeader } from './PdfHeader.js'
 
+const BRAND = '#B91C1C'
+const MUTED = '#555'
+
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontSize: 10,
     fontFamily: 'Helvetica',
+    color: '#1a1a1a',
   },
   subtitle: {
     fontSize: 9,
-    color: '#666',
+    color: MUTED,
   },
   section: {
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: BRAND,
   },
   paragraph: {
     marginBottom: 10,
     textAlign: 'justify',
+    color: '#1a1a1a',
   },
   footer: {
     position: 'absolute',
@@ -30,7 +36,7 @@ const styles = StyleSheet.create({
     left: 40,
     right: 40,
     fontSize: 8,
-    color: '#666',
+    color: MUTED,
     textAlign: 'center',
   },
 })
@@ -131,7 +137,7 @@ export function ContractTemplate({ contract }: { contract: ContractData }) {
         )}
 
         <Text style={styles.footer} fixed>
-          Scoop Afrique — Contrat {contract.reference} — Document confidentiel
+          SCOOP — Contrat {contract.reference} — Document confidentiel
         </Text>
       </Page>
     </Document>

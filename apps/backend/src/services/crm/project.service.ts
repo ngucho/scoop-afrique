@@ -3,11 +3,15 @@
  */
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
-import { crmProjects, crmProjectContacts, crmContacts } from '../../db/schema.js'
+import { crmProjects, crmProjectContacts, crmContacts, devisRequests } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { toSnakeRecord } from './crm-util.js'
 import type { CreateProjectInput, UpdateProjectInput } from '../../schemas/crm/project.schema.js'
+import * as devisService from './devis.service.js'
+import * as invoiceService from './invoice.service.js'
+import * as paymentService from './payment.service.js'
+import * as expenseService from './expense.service.js'
 
 export async function listProjects(params?: {
   contactId?: string
@@ -83,6 +87,62 @@ export async function getProjectById(id: string): Promise<Record<string, unknown
   return toSnakeRecord(row as Record<string, unknown>)
 }
 
+/**
+ * Get full project folder: project + devis + invoices (with payments) + contacts + devis_request + expenses.
+ * All necessary information for the project view in one call.
+ */
+export async function getProjectFolder(id: string): Promise<Record<string, unknown> | null> {
+  const project = await getProjectById(id)
+  if (!project) return null
+
+  const [devisRes, invoicesRes, contacts, expenses] = await Promise.all([
+    project.devis_id
+      ? devisService.getDevisById(project.devis_id as string)
+      : Promise.resolve(null),
+    invoiceService.listInvoices({ projectId: id, limit: 100 }),
+    getProjectContacts(id),
+    expenseService.listExpensesByProject(id),
+  ])
+
+  let devis = devisRes
+  if (!devis && !project.devis_id) {
+    try {
+      const byProject = await devisService.listDevis({ projectId: id, limit: 1 })
+      devis = byProject.data[0] ?? null
+    } catch {
+      devis = null
+    }
+  }
+
+  const invoices = invoicesRes.data ?? []
+  const invoicesWithPayments = await Promise.all(
+    invoices.map(async (inv) => {
+      const payments = await paymentService.listPaymentsByInvoice(inv.id as string)
+      return { ...inv, payments }
+    })
+  )
+
+  let devisRequest: Record<string, unknown> | null = null
+  if (devis?.devis_request_id) {
+    const db = getDb()
+    const rows = await db
+      .select()
+      .from(devisRequests)
+      .where(eq(devisRequests.id, devis.devis_request_id as string))
+      .limit(1)
+    devisRequest = rows[0] ? toSnakeRecord(rows[0] as Record<string, unknown>) : null
+  }
+
+  return {
+    project,
+    devis,
+    invoices: invoicesWithPayments,
+    contacts,
+    devis_request: devisRequest,
+    expenses,
+  }
+}
+
 export async function createProject(
   input: CreateProjectInput,
   createdBy?: string
@@ -114,6 +174,18 @@ export async function createProject(
     .returning()
 
   if (!project) throw new Error('Failed to create project')
+
+  if (input.devis_id) {
+    const devis = await devisService.getDevisById(input.devis_id)
+    if (devis?.devis_request_id) {
+      const db = getDb()
+      await db
+        .update(devisRequests)
+        .set({ convertedToProjectId: project.id })
+        .where(eq(devisRequests.id, devis.devis_request_id as string))
+    }
+  }
+
   await logActivity({
     entityType: 'project',
     entityId: project.id,

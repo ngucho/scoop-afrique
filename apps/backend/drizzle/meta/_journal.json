@@ -15,6 +15,13 @@
     { "idx": 10, "version": "7", "when": 1742083200000, "tag": "0010_crm_services", "breakpoints": true },
     { "idx": 11, "version": "7", "when": 1742169600000, "tag": "0011_project_contacts", "breakpoints": true },
     { "idx": 12, "version": "7", "when": 1742256000000, "tag": "0012_devis_project_id", "breakpoints": true },
-    { "idx": 13, "version": "7", "when": 1742342400000, "tag": "0013_invoice_discount", "breakpoints": true }
+    { "idx": 13, "version": "7", "when": 1742342400000, "tag": "0013_invoice_discount", "breakpoints": true },
+    { "idx": 14, "version": "7", "when": 1742432000000, "tag": "0014_devis_requests_rls_postgres", "breakpoints": true },
+    { "idx": 15, "version": "7", "when": 1742432100000, "tag": "0015_devis_requests_create_if_missing", "breakpoints": true },
+    { "idx": 16, "version": "7", "when": 1742432200000, "tag": "0016_crm_schema_create_if_missing", "breakpoints": true },
+    { "idx": 17, "version": "7", "when": 1742432300000, "tag": "0017_crm_missing_tables_columns", "breakpoints": true },
+    { "idx": 18, "version": "7", "when": 1742432400000, "tag": "0018_devis_requests_project_id", "breakpoints": true },
+    { "idx": 19, "version": "7", "when": 1742432500000, "tag": "0019_crm_devis_project_id_ensure", "breakpoints": true },
+    { "idx": 20, "version": "7", "when": 1742519000000, "tag": "0020_crm_devis_discount", "breakpoints": true }
   ]
 }

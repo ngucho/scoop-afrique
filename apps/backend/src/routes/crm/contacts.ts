@@ -43,6 +43,14 @@ app.post('/', async (c) => {
   return c.json({ data: contact }, 201)
 })
 
+app.get('/by-email', async (c) => {
+  const email = c.req.query('email')
+  if (!email?.trim()) return c.json({ error: 'email query required' }, 400)
+  const contact = await contactService.getContactByEmail(email.trim())
+  if (!contact) return c.json({ data: null }, 200)
+  return c.json({ data: contact })
+})
+
 app.get('/:id/organizations', async (c) => {
   const id = c.req.param('id')
   const contact = await contactService.getContactById(id)

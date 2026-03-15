@@ -33,7 +33,7 @@ export function PaymentForm({
   onSuccess,
 }: {
   invoiceId: string
-  onSuccess: () => void
+  onSuccess?: () => void
 }) {
   const router = useRouter()
   const {
@@ -65,7 +65,7 @@ export function PaymentForm({
       return
     }
     toast.success('Paiement enregistré')
-    onSuccess()
+    onSuccess?.()
     router.refresh()
   }
 

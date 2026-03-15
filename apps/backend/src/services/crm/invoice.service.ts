@@ -3,7 +3,7 @@
  */
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
-import { crmInvoices, crmContacts } from '../../db/schema.js'
+import { crmInvoices, crmContacts, crmProjects } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { computeLineItems } from './line-items.util.js'
@@ -80,6 +80,47 @@ export async function getInvoiceWithContact(id: string): Promise<Record<string, 
   const out = toSnakeRecord(row.invoice as Record<string, unknown>) as Record<string, unknown>
   if (row.contact?.id) {
     out.crm_contacts = toSnakeRecord(row.contact as Record<string, unknown>)
+  }
+  return out
+}
+
+export async function getInvoiceWithContactAndProject(id: string): Promise<Record<string, unknown> | null> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      invoice: crmInvoices,
+      contact: {
+        id: crmContacts.id,
+        firstName: crmContacts.firstName,
+        lastName: crmContacts.lastName,
+        email: crmContacts.email,
+        phone: crmContacts.phone,
+        whatsapp: crmContacts.whatsapp,
+        company: crmContacts.company,
+      },
+      project: {
+        id: crmProjects.id,
+        reference: crmProjects.reference,
+        title: crmProjects.title,
+        description: crmProjects.description,
+        startDate: crmProjects.startDate,
+        endDate: crmProjects.endDate,
+      },
+    })
+    .from(crmInvoices)
+    .leftJoin(crmContacts, eq(crmInvoices.contactId, crmContacts.id))
+    .leftJoin(crmProjects, eq(crmInvoices.projectId, crmProjects.id))
+    .where(eq(crmInvoices.id, id))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null
+  const out = toSnakeRecord(row.invoice as Record<string, unknown>) as Record<string, unknown>
+  if (row.contact?.id) {
+    out.crm_contacts = toSnakeRecord(row.contact as Record<string, unknown>)
+  }
+  if (row.project?.id) {
+    out.crm_projects = toSnakeRecord(row.project as Record<string, unknown>)
   }
   return out
 }
