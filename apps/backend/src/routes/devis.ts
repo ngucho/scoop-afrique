@@ -1,10 +1,12 @@
 import { Hono } from 'hono'
 import { devisBodySchema } from '../schemas/devis.js'
 import * as devisService from '../services/devis.service.js'
+import { logApiError } from '@scoop-afrique/api-logger'
 
 const app = new Hono()
 
 app.post('/', async (c) => {
+  const requestId = c.req.header('x-request-id')
   const body = await c.req.json().catch(() => ({}))
   const parsed = devisBodySchema.safeParse(body)
 
@@ -19,6 +21,13 @@ app.post('/', async (c) => {
   const result = await devisService.createDevisRequest(parsed.data)
 
   if (!result.success) {
+    logApiError({
+      requestId,
+      method: 'POST',
+      path: '/api/v1/devis',
+      msg: 'devis_create_failed',
+      err: new Error(result.message),
+    })
     return c.json({ error: result.message ?? 'Erreur serveur' }, 500)
   }
 
