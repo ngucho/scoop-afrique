@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button } from 'scoop'
 
 export function ContractActions({
@@ -24,10 +25,12 @@ export function ContractActions({
       credentials: 'include',
     })
     setSigning(false)
-    if (res.ok) router.refresh()
-    else {
+    if (res.ok) {
+      toast.success('Contrat marqué comme signé')
+      router.refresh()
+    } else {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
     }
   }
 

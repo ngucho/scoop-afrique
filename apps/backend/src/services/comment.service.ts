@@ -3,7 +3,9 @@
  * Comments are created in "pending" status and must be approved by staff.
  * Supports nested replies via parent_id.
  */
-import { getSupabase } from '../lib/supabase.js'
+import { eq, and, desc, asc, count } from 'drizzle-orm'
+import { getDb } from '../db/index.js'
+import { comments, profiles } from '../db/schema.js'
 import { config } from '../config/env.js'
 
 export type CommentStatus = 'pending' | 'approved' | 'rejected'
@@ -23,10 +25,25 @@ export interface CommentWithAuthor extends Comment {
   author?: { email: string | null } | null
 }
 
-const COMMENT_SELECT = `
-  *,
-  author:profiles!comments_user_id_fkey(email)
-`
+function toComment(row: typeof comments.$inferSelect): Comment {
+  return {
+    id: row.id,
+    article_id: row.articleId,
+    user_id: row.userId ?? '',
+    parent_id: row.parentId,
+    body: row.body,
+    status: row.status as CommentStatus,
+    created_at: row.createdAt.toISOString(),
+    updated_at: row.updatedAt.toISOString(),
+  }
+}
+
+function toCommentWithAuthor(row: typeof comments.$inferSelect & { authorEmail?: string | null }): CommentWithAuthor {
+  return {
+    ...toComment(row),
+    author: row.authorEmail != null ? { email: row.authorEmail } : null,
+  }
+}
 
 /* ---------- List approved comments for an article ---------- */
 
@@ -34,21 +51,43 @@ export async function listArticleComments(
   articleId: string,
   options: { page?: number; limit?: number } = {}
 ): Promise<{ data: CommentWithAuthor[]; total: number }> {
-  if (!config.supabase) return { data: [], total: 0 }
-  const supabase = getSupabase()
+  if (!config.database) return { data: [], total: 0 }
+  const db = getDb()
   const limit = Math.min(options.limit ?? 50, 100)
   const offset = ((options.page ?? 1) - 1) * limit
 
-  const { data, error, count } = await supabase
-    .from('comments')
-    .select(COMMENT_SELECT, { count: 'exact' })
-    .eq('article_id', articleId)
-    .eq('status', 'approved')
-    .order('created_at', { ascending: true })
-    .range(offset, offset + limit - 1)
+  const [countRow] = await db
+    .select({ count: count() })
+    .from(comments)
+    .where(and(eq(comments.articleId, articleId), eq(comments.status, 'approved')))
+  const total = countRow?.count ?? 0
 
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as CommentWithAuthor[], total: count ?? 0 }
+  const rows = await db
+    .select({
+      id: comments.id,
+      articleId: comments.articleId,
+      userId: comments.userId,
+      parentId: comments.parentId,
+      body: comments.body,
+      status: comments.status,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      authorEmail: profiles.email,
+    })
+    .from(comments)
+    .leftJoin(profiles, eq(comments.userId, profiles.id))
+    .where(and(eq(comments.articleId, articleId), eq(comments.status, 'approved')))
+    .orderBy(asc(comments.createdAt))
+    .limit(limit)
+    .offset(offset)
+
+  const data = rows.map((r) =>
+    toCommentWithAuthor({
+      ...r,
+      authorEmail: r.authorEmail,
+    })
+  )
+  return { data, total }
 }
 
 /* ---------- Create comment (pending) ---------- */
@@ -59,23 +98,20 @@ export async function createComment(
   body: string,
   parentId: string | null = null
 ): Promise<Comment> {
-  if (!config.supabase) throw new Error('Supabase not configured')
-  const supabase = getSupabase()
-
-  const { data, error } = await supabase
-    .from('comments')
-    .insert({
-      article_id: articleId,
-      user_id: userId,
+  if (!config.database) throw new Error('Database not configured')
+  const db = getDb()
+  const [row] = await db
+    .insert(comments)
+    .values({
+      articleId,
+      userId,
       body,
-      parent_id: parentId ?? null,
+      parentId: parentId ?? null,
       status: 'pending',
     })
-    .select()
-    .single()
-
-  if (error) throw new Error(error.message)
-  return data as Comment
+    .returning()
+  if (!row) throw new Error('Failed to create comment')
+  return toComment(row)
 }
 
 /* ---------- Edit own comment ---------- */
@@ -85,25 +121,17 @@ export async function updateComment(
   userId: string,
   body: string
 ): Promise<Comment | null> {
-  if (!config.supabase) return null
-  const supabase = getSupabase()
+  if (!config.database) return null
+  const db = getDb()
+  const [existing] = await db.select({ userId: comments.userId }).from(comments).where(eq(comments.id, commentId)).limit(1)
+  if (!existing || existing.userId !== userId) return null
 
-  const { data: existing } = await supabase
-    .from('comments')
-    .select('user_id')
-    .eq('id', commentId)
-    .single()
-  if (!existing || existing.user_id !== userId) return null
-
-  const { data, error } = await supabase
-    .from('comments')
-    .update({ body, status: 'pending' }) // Re-moderate after edit
-    .eq('id', commentId)
-    .select()
-    .single()
-
-  if (error) throw new Error(error.message)
-  return data as Comment
+  const [row] = await db
+    .update(comments)
+    .set({ body, status: 'pending' })
+    .where(eq(comments.id, commentId))
+    .returning()
+  return row ? toComment(row) : null
 }
 
 /* ---------- Delete own comment ---------- */
@@ -113,24 +141,19 @@ export async function deleteComment(
   userId: string,
   userRole: string
 ): Promise<boolean> {
-  if (!config.supabase) return false
-  const supabase = getSupabase()
+  if (!config.database) return false
+  const db = getDb()
 
-  // Admin/manager can delete any; author can delete own
   if (['admin', 'manager'].includes(userRole)) {
-    const { error } = await supabase.from('comments').delete().eq('id', commentId)
-    return !error
+    const [deleted] = await db.delete(comments).where(eq(comments.id, commentId)).returning({ id: comments.id })
+    return !!deleted
   }
 
-  const { data: existing } = await supabase
-    .from('comments')
-    .select('user_id')
-    .eq('id', commentId)
-    .single()
-  if (!existing || existing.user_id !== userId) return false
+  const [existing] = await db.select({ userId: comments.userId }).from(comments).where(eq(comments.id, commentId)).limit(1)
+  if (!existing || existing.userId !== userId) return false
 
-  const { error } = await supabase.from('comments').delete().eq('id', commentId)
-  return !error
+  const [deleted] = await db.delete(comments).where(eq(comments.id, commentId)).returning({ id: comments.id })
+  return !!deleted
 }
 
 /* ---------- Admin: list all comments (any status) ---------- */
@@ -140,24 +163,46 @@ export async function listAllComments(options: {
   page?: number
   limit?: number
 }): Promise<{ data: CommentWithAuthor[]; total: number }> {
-  if (!config.supabase) return { data: [], total: 0 }
-  const supabase = getSupabase()
+  if (!config.database) return { data: [], total: 0 }
+  const db = getDb()
   const limit = Math.min(options.limit ?? 50, 100)
   const offset = ((options.page ?? 1) - 1) * limit
 
-  let query = supabase
-    .from('comments')
-    .select(COMMENT_SELECT, { count: 'exact' })
+  const countQuery = db.select({ count: count() }).from(comments)
+  const [countRow] = options.status
+    ? await countQuery.where(eq(comments.status, options.status))
+    : await countQuery
+  const total = countRow?.count ?? 0
 
-  if (options.status) query = query.eq('status', options.status)
+  const baseQuery = db
+    .select({
+      id: comments.id,
+      articleId: comments.articleId,
+      userId: comments.userId,
+      parentId: comments.parentId,
+      body: comments.body,
+      status: comments.status,
+      createdAt: comments.createdAt,
+      updatedAt: comments.updatedAt,
+      authorEmail: profiles.email,
+    })
+    .from(comments)
+    .leftJoin(profiles, eq(comments.userId, profiles.id))
+    .orderBy(desc(comments.createdAt))
+    .limit(limit)
+    .offset(offset)
 
-  query = query
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+  const rows = options.status
+    ? await baseQuery.where(eq(comments.status, options.status))
+    : await baseQuery
 
-  const { data, error, count } = await query
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as CommentWithAuthor[], total: count ?? 0 }
+  const data = rows.map((r) =>
+    toCommentWithAuthor({
+      ...r,
+      authorEmail: r.authorEmail,
+    })
+  )
+  return { data, total }
 }
 
 /* ---------- Admin: moderate comment ---------- */
@@ -166,16 +211,12 @@ export async function moderateComment(
   commentId: string,
   status: CommentStatus
 ): Promise<Comment | null> {
-  if (!config.supabase) return null
-  const supabase = getSupabase()
-
-  const { data, error } = await supabase
-    .from('comments')
-    .update({ status })
-    .eq('id', commentId)
-    .select()
-    .single()
-
-  if (error) return null
-  return data as Comment
+  if (!config.database) return null
+  const db = getDb()
+  const [row] = await db
+    .update(comments)
+    .set({ status })
+    .where(eq(comments.id, commentId))
+    .returning()
+  return row ? toComment(row) : null
 }

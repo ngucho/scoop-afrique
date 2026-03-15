@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Logo } from 'scoop'
 import {
   LayoutDashboard,
   Users,
@@ -73,12 +74,12 @@ export function CrmSidebar({
     <aside className="flex h-full w-60 flex-col bg-sidebar border-r border-sidebar-border">
       {/* Logo / Brand */}
       <div className="flex h-[60px] items-center gap-3 px-5 border-b border-sidebar-border shrink-0">
-        <div
-          className="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
-          style={{ background: 'var(--gradient-primary)' }}
-        >
-          <span className="text-white font-bold text-sm" style={{ fontFamily: 'var(--font-scoop)' }}>S</span>
-        </div>
+        <Logo
+          href="/dashboard"
+          src="/icon.svg"
+          size="sm"
+          className="h-8 w-auto"
+        />
         <div className="min-w-0">
           <p className="font-bold text-sm text-foreground leading-none tracking-tight">Scoop CRM</p>
           <p className="text-[10px] text-muted-foreground mt-0.5">Scoop Afrique</p>

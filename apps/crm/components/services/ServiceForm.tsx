@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label, Textarea, Select } from 'scoop'
 
 const schema = z.object({
@@ -75,9 +76,10 @@ export function ServiceForm({
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur lors de l\'enregistrement')
       return
     }
+    toast.success(serviceId ? 'Prestation mise à jour' : 'Prestation créée')
     router.push('/services')
   }
 

@@ -1,7 +1,15 @@
 /**
  * CRM reports — analytics and aggregates for dashboards
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, gte, lte, and } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import {
+  crmInvoices,
+  crmDevis,
+  crmProjects,
+  crmExpenses,
+  crmContacts,
+} from '../../db/schema.js'
 
 export type RevenueByMonth = { month: string; revenue: number; count: number }
 export type DevisByStatus = { status: string; count: number; total: number }
@@ -14,25 +22,27 @@ export type PipelineFunnel = {
 }
 
 export async function getRevenueByMonth(months = 12): Promise<RevenueByMonth[]> {
-  const supabase = getSupabase()
+  const db = getDb()
   const cutoff = new Date()
   cutoff.setMonth(cutoff.getMonth() - months)
   const from = cutoff.toISOString().slice(0, 10)
 
-  const { data, error } = await supabase
-    .from('crm_invoices')
-    .select('paid_at, amount_paid')
-    .eq('status', 'paid')
-    .gte('paid_at', `${from}T00:00:00Z`)
-    .not('paid_at', 'is', null)
-
-  if (error) throw new Error(error.message)
+  const rows = await db
+    .select({ paidAt: crmInvoices.paidAt, amountPaid: crmInvoices.amountPaid })
+    .from(crmInvoices)
+    .where(
+      and(
+        eq(crmInvoices.status, 'paid'),
+        gte(crmInvoices.paidAt, new Date(`${from}T00:00:00Z`))
+      )
+    )
 
   const byMonth = new Map<string, { revenue: number; count: number }>()
-  for (const row of data ?? []) {
-    const d = row.paid_at as string
+  for (const row of rows) {
+    if (!row.paidAt) continue
+    const d = row.paidAt instanceof Date ? row.paidAt.toISOString() : String(row.paidAt)
     const month = d.slice(0, 7)
-    const amount = (row.amount_paid as number) ?? 0
+    const amount = Number(row.amountPaid) ?? 0
     const cur = byMonth.get(month) ?? { revenue: 0, count: 0 }
     cur.revenue += amount
     cur.count += 1
@@ -51,19 +61,15 @@ export async function getRevenueByMonth(months = 12): Promise<RevenueByMonth[]> 
 }
 
 export async function getDevisByStatus(): Promise<DevisByStatus[]> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_devis')
-    .select('status, total')
-
-  if (error) throw new Error(error.message)
+  const db = getDb()
+  const rows = await db.select({ status: crmDevis.status, total: crmDevis.total }).from(crmDevis)
 
   const byStatus = new Map<string, { count: number; total: number }>()
-  for (const row of data ?? []) {
+  for (const row of rows) {
     const status = (row.status as string) ?? 'draft'
     const cur = byStatus.get(status) ?? { count: 0, total: 0 }
     cur.count += 1
-    cur.total += (row.total as number) ?? 0
+    cur.total += Number(row.total) ?? 0
     byStatus.set(status, cur)
   }
 
@@ -91,19 +97,21 @@ export async function getConversionRates(): Promise<{
   devisAcceptedToProject: number
   invoiceSentToPaid: number
 }> {
-  const supabase = getSupabase()
+  const db = getDb()
 
-  const [devis, projects, invoices] = await Promise.all([
-    supabase.from('crm_devis').select('status'),
-    supabase.from('crm_projects').select('id'),
-    supabase.from('crm_invoices').select('status'),
+  const [devisRows, projectRows, invoiceRows] = await Promise.all([
+    db.select({ status: crmDevis.status }).from(crmDevis),
+    db.select({ id: crmProjects.id }).from(crmProjects),
+    db.select({ status: crmInvoices.status }).from(crmInvoices),
   ])
 
-  const sent = (devis.data ?? []).filter((d) => d.status === 'sent').length
-  const accepted = (devis.data ?? []).filter((d) => d.status === 'accepted').length
-  const projectCount = (projects.data ?? []).length
-  const invSent = (invoices.data ?? []).filter((i) => i.status === 'sent' || i.status === 'partial' || i.status === 'overdue').length
-  const invPaid = (invoices.data ?? []).filter((i) => i.status === 'paid').length
+  const sent = devisRows.filter((d) => d.status === 'sent').length
+  const accepted = devisRows.filter((d) => d.status === 'accepted').length
+  const projectCount = projectRows.length
+  const invSent = invoiceRows.filter(
+    (i) => i.status === 'sent' || i.status === 'partial' || i.status === 'overdue'
+  ).length
+  const invPaid = invoiceRows.filter((i) => i.status === 'paid').length
 
   return {
     devisSentToAccepted: sent > 0 ? Math.round((accepted / sent) * 100) : 0,
@@ -148,49 +156,75 @@ export async function getFinancialSummary(
   endDate?: string,
   months = 12
 ): Promise<FinancialSummary> {
-  const supabase = getSupabase()
+  const db = getDb()
 
   const end = endDate ? new Date(endDate) : new Date()
   const start = startDate
     ? new Date(startDate)
-    : (() => { const d = new Date(); d.setMonth(d.getMonth() - months); return d })()
+    : (() => {
+        const d = new Date()
+        d.setMonth(d.getMonth() - months)
+        return d
+      })()
 
   const startStr = start.toISOString().slice(0, 10)
   const endStr = end.toISOString().slice(0, 10)
 
-  const [invoicesRes, expensesRes, contactsRes] = await Promise.all([
-    supabase
-      .from('crm_invoices')
-      .select('id, status, total, amount_paid, due_date, paid_at, contact_id, created_at')
-      .gte('created_at', `${startStr}T00:00:00Z`)
-      .lte('created_at', `${endStr}T23:59:59Z`),
-    supabase
-      .from('crm_expenses')
-      .select('amount, category, incurred_at')
-      .gte('incurred_at', `${startStr}T00:00:00`)
-      .lte('incurred_at', `${endStr}T23:59:59`),
-    supabase.from('crm_contacts').select('id, first_name, last_name, company'),
+  const [invoices, expenses, contacts] = await Promise.all([
+    db
+      .select({
+        id: crmInvoices.id,
+        status: crmInvoices.status,
+        total: crmInvoices.total,
+        amountPaid: crmInvoices.amountPaid,
+        dueDate: crmInvoices.dueDate,
+        paidAt: crmInvoices.paidAt,
+        contactId: crmInvoices.contactId,
+        createdAt: crmInvoices.createdAt,
+      })
+      .from(crmInvoices)
+      .where(
+        and(
+          gte(crmInvoices.createdAt, new Date(`${startStr}T00:00:00Z`)),
+          lte(crmInvoices.createdAt, new Date(`${endStr}T23:59:59Z`))
+        )
+      ),
+    db
+      .select({
+        amount: crmExpenses.amount,
+        category: crmExpenses.category,
+        incurredAt: crmExpenses.incurredAt,
+      })
+      .from(crmExpenses)
+      .where(
+        and(
+          gte(crmExpenses.incurredAt, startStr),
+          lte(crmExpenses.incurredAt, endStr)
+        )
+      ),
+    db.select({
+      id: crmContacts.id,
+      firstName: crmContacts.firstName,
+      lastName: crmContacts.lastName,
+      company: crmContacts.company,
+    }).from(crmContacts),
   ])
-
-  const invoices = invoicesRes.data ?? []
-  const expenses = expensesRes.data ?? []
-  const contacts = contactsRes.data ?? []
 
   // Revenue = sum of amount_paid on paid/partial invoices in period
   const revenue = invoices
     .filter((i) => i.status === 'paid' || i.status === 'partial')
-    .reduce((sum, i) => sum + ((i.amount_paid as number) ?? 0), 0)
+    .reduce((sum, i) => sum + (Number(i.amountPaid) ?? 0), 0)
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + ((e.amount as number) ?? 0), 0)
+  const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) ?? 0), 0)
 
   // Invoices summary
   const now = new Date()
   const invoicesPaid = invoices.filter((i) => i.status === 'paid').length
   const invoicesOverdue = invoices.filter(
-    (i) => i.status !== 'paid' && i.due_date && new Date(i.due_date as string) < now
+    (i) => i.status !== 'paid' && i.dueDate && new Date(i.dueDate) < now
   ).length
   const invoicesUnpaid = invoices.filter(
-    (i) => i.status !== 'paid' && (!i.due_date || new Date(i.due_date as string) >= now)
+    (i) => i.status !== 'paid' && (!i.dueDate || new Date(i.dueDate) >= now)
   ).length
 
   // Expenses by category
@@ -198,7 +232,7 @@ export async function getFinancialSummary(
   for (const e of expenses) {
     const cat = (e.category as string) || 'Autre'
     const cur = expCatMap.get(cat) ?? { amount: 0, count: 0 }
-    cur.amount += (e.amount as number) ?? 0
+    cur.amount += Number(e.amount) ?? 0
     cur.count += 1
     expCatMap.set(cat, cur)
   }
@@ -216,17 +250,18 @@ export async function getFinancialSummary(
     cashFlowMap.set(key, { revenue: 0, expenses: 0 })
   }
   for (const inv of invoices) {
-    if ((inv.status === 'paid' || inv.status === 'partial') && inv.paid_at) {
-      const key = (inv.paid_at as string).slice(0, 7)
+    if ((inv.status === 'paid' || inv.status === 'partial') && inv.paidAt) {
+      const key =
+        inv.paidAt instanceof Date ? inv.paidAt.toISOString().slice(0, 7) : String(inv.paidAt).slice(0, 7)
       const cur = cashFlowMap.get(key)
-      if (cur) cur.revenue += (inv.amount_paid as number) ?? 0
+      if (cur) cur.revenue += Number(inv.amountPaid) ?? 0
     }
   }
   for (const exp of expenses) {
-    const dateStr = (exp.incurred_at as string) ?? ''
+    const dateStr = exp.incurredAt ? String(exp.incurredAt) : ''
     const key = dateStr.slice(0, 7)
     const cur = cashFlowMap.get(key)
-    if (cur) cur.expenses += (exp.amount as number) ?? 0
+    if (cur) cur.expenses += Number(exp.amount) ?? 0
   }
   const cashFlow = Array.from(cashFlowMap.entries())
     .sort(([a], [b]) => a.localeCompare(b))
@@ -237,7 +272,9 @@ export async function getFinancialSummary(
     month: cf.month,
     revenue: cf.revenue,
     count: invoices.filter((i) => {
-      const m = i.paid_at ? (i.paid_at as string).slice(0, 7) : null
+      const m = i.paidAt
+        ? (i.paidAt instanceof Date ? i.paidAt.toISOString() : String(i.paidAt)).slice(0, 7)
+        : null
       return m === cf.month && (i.status === 'paid' || i.status === 'partial')
     }).length,
   }))
@@ -245,18 +282,18 @@ export async function getFinancialSummary(
   // Top clients
   const clientRevMap = new Map<string, { revenue: number; invoiceCount: number }>()
   for (const inv of invoices) {
-    if (!inv.contact_id) continue
-    const cur = clientRevMap.get(inv.contact_id as string) ?? { revenue: 0, invoiceCount: 0 }
-    cur.revenue += (inv.amount_paid as number) ?? 0
+    if (!inv.contactId) continue
+    const cur = clientRevMap.get(inv.contactId) ?? { revenue: 0, invoiceCount: 0 }
+    cur.revenue += Number(inv.amountPaid) ?? 0
     cur.invoiceCount += 1
-    clientRevMap.set(inv.contact_id as string, cur)
+    clientRevMap.set(inv.contactId, cur)
   }
   const contactMap = new Map(contacts.map((c) => [c.id, c]))
   const topClients = Array.from(clientRevMap.entries())
     .map(([contact_id, v]) => {
       const c = contactMap.get(contact_id)
       const name = c
-        ? `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || (c.company as string) || 'Client'
+        ? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || (c.company as string) || 'Client'
         : 'Client'
       return { contact_id, name, ...v }
     })

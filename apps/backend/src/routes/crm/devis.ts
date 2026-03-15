@@ -9,12 +9,14 @@ app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const contactId = c.req.query('contact_id')
+  const projectId = c.req.query('project_id')
   const status = c.req.query('status')
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
 
   const { data, total } = await devisService.listDevis({
     contactId: contactId || undefined,
+    projectId: projectId || undefined,
     status: status || undefined,
     limit,
     offset,

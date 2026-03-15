@@ -364,3 +364,20 @@
 .scoop-overline { font-size: var(--text-xs); font-weight: var(--font-weight-semibold); letter-spacing: var(--tracking-wider); text-transform: uppercase; color: var(--muted-foreground); }
 .scoop-label { font-size: var(--text-sm); font-weight: var(--font-weight-medium); }
 .scoop-quote { font-family: var(--font-scoop); font-size: var(--text-xl); line-height: var(--leading-relaxed); color: var(--foreground); }
+
+/* ── DatePicker (react-day-picker dropdown layout) ── */
+.scoop-datepicker-root {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: var(--primary-subtle);
+}
+.scoop-datepicker-root select {
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  background-size: 12px;
+}
+.scoop-datepicker-month-grid {
+  margin-top: 0.5rem;
+}

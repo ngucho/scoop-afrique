@@ -24,6 +24,7 @@ export default async function DevisEditPage({
 
   const defaultValues = {
     title: devis.title as string,
+    project_id: (devis.project_id as string) ?? '',
     contact_id: devis.contact_id as string,
     service_slug: devis.service_slug as string,
     line_items: lineItems.length > 0 ? lineItems : [{ description: '', quantity: 1, unit_price: 0, unit: 'unité', tax_rate: 0 }],
@@ -32,10 +33,22 @@ export default async function DevisEditPage({
     notes: devis.notes as string,
   }
 
-  const [contactsResult, servicesResult] = await Promise.all([
+  const [projectsResult, contactsResult, servicesResult] = await Promise.all([
+    crmGetServer<Array<Record<string, unknown>>>('projects?with_contact=true&limit=100'),
     crmGetServer<Array<Record<string, unknown>>>('contacts?limit=100'),
     crmGetServer<Array<Record<string, unknown>>>('services?active=true&limit=50'),
   ])
+  const projects = (projectsResult?.data ?? []).map((p) => {
+    const contact = p.crm_contacts as Record<string, unknown> | null
+    return {
+      id: p.id as string,
+      reference: p.reference as string,
+      title: p.title as string,
+      contact: contact
+        ? { first_name: contact.first_name as string, last_name: contact.last_name as string }
+        : undefined,
+    }
+  })
   const contacts = (contactsResult?.data ?? []).map((c) => ({
     id: c.id as string,
     first_name: c.first_name as string,
@@ -55,7 +68,7 @@ export default async function DevisEditPage({
       <Heading as="h1" level="h1">
         Modifier le devis {devis.reference as string}
       </Heading>
-      <DevisBuilder devisId={id} defaultValues={defaultValues} contacts={contacts} services={services} />
+      <DevisBuilder devisId={id} defaultValues={defaultValues} projects={projects} contacts={contacts} services={services} />
     </div>
   )
 }

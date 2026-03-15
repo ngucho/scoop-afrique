@@ -1,29 +1,12 @@
 import React from 'react'
-import {
-  Document,
-  Page,
-  View,
-  Text,
-  StyleSheet,
-  Font,
-} from '@react-pdf/renderer'
+import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { PdfHeader } from './PdfHeader.js'
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontSize: 10,
     fontFamily: 'Helvetica',
-  },
-  header: {
-    marginBottom: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    paddingBottom: 15,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
   },
   subtitle: {
     fontSize: 9,
@@ -136,12 +119,7 @@ export function DevisTemplate({ devis }: { devis: DevisData }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.title}>SCOOP AFRIQUE</Text>
-          <Text style={styles.subtitle}>SARL au capital de 1 000 000 FCFA</Text>
-          <Text style={styles.subtitle}>Siège : Abidjan Cocody Riviera Faya — 01 BP 130 Abidjan 01</Text>
-          <Text style={styles.subtitle}>Devis {devis.reference}</Text>
-        </View>
+        <PdfHeader docTitle={`Devis ${devis.reference}`} />
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Devis</Text>

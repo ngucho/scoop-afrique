@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
 
 interface Reminder {
@@ -49,16 +50,18 @@ export function RemindersClient({
       credentials: 'include',
     })
     setSending(null)
-    if (res.ok) router.refresh()
-    else {
+    if (res.ok) {
+      toast.success('Relance envoyée')
+      router.refresh()
+    } else {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
     }
   }
 
   async function handleCreate() {
     if (!form.contact_id || !form.message.trim()) {
-      alert('Contact et message requis')
+      toast.error('Contact et message requis')
       return
     }
     setSubmitting(true)
@@ -77,9 +80,10 @@ export function RemindersClient({
     setSubmitting(false)
     if (!res.ok) {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
       return
     }
+    toast.success('Relance créée')
     setForm({ contact_id: '', type: 'invoice_overdue', channel: 'both', message: '', scheduled_at: '' })
     setShowForm(false)
     router.refresh()

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label, Textarea } from 'scoop'
 
 const schema = z.object({
@@ -54,9 +55,10 @@ export function OrganizationForm({
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur lors de l\'enregistrement')
       return
     }
+    toast.success(orgId ? 'Organisation mise à jour' : 'Organisation créée')
     router.push(`/organizations/${json.data.id}`)
   }
 

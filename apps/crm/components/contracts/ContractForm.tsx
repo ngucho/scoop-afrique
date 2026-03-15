@@ -4,18 +4,24 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label, Select, Textarea } from 'scoop'
 import { CONTRACT_MODELS } from '@/lib/contract-models'
 
-const schema = z.object({
-  title: z.string().min(1, 'Titre requis'),
-  type: z.string().optional().default('service'),
-  contact_id: z.string().uuid().optional().or(z.literal('')),
-  project_id: z.string().uuid().optional().or(z.literal('')),
-  devis_id: z.string().uuid().optional().or(z.literal('')),
-  expires_at: z.string().optional(),
-  content: z.string().optional(),
-})
+const schema = z
+  .object({
+    title: z.string().min(1, 'Titre requis'),
+    type: z.string().optional().default('service'),
+    contact_id: z.string().uuid().optional().or(z.literal('')),
+    project_id: z.string().uuid().optional().or(z.literal('')),
+    devis_id: z.string().uuid().optional().or(z.literal('')),
+    expires_at: z.string().optional(),
+    content: z.string().optional(),
+  })
+  .refine((d) => d.contact_id, {
+    message: 'Contact requis pour un contrat',
+    path: ['contact_id'],
+  })
 
 type FormData = z.infer<typeof schema>
 
@@ -81,9 +87,10 @@ export function ContractForm({
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur lors de l\'enregistrement')
       return
     }
+    toast.success(contractId ? 'Contrat mis à jour' : 'Contrat créé')
     router.push(`/contracts/${json.data.id}`)
   }
 
@@ -128,7 +135,7 @@ export function ContractForm({
           <select
             id="contact_id"
             {...register('contact_id')}
-            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className={`flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${errors.contact_id ? 'border-destructive' : ''}`}
           >
             <option value="">— Sélectionner —</option>
             {contacts.map((c) => (
@@ -137,6 +144,18 @@ export function ContractForm({
               </option>
             ))}
           </select>
+          {errors.contact_id && (
+            <p className="text-sm text-destructive mt-1">{errors.contact_id.message}</p>
+          )}
+        </div>
+      )}
+      {contacts.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm">
+          <p className="font-medium text-amber-800 dark:text-amber-200">Aucun contact disponible</p>
+          <p className="text-amber-700 dark:text-amber-300 mt-1">
+            Créez d&apos;abord un contact (client/organisation) avant de créer un contrat.
+          </p>
+          <a href="/contacts/new" className="text-primary underline mt-2 inline-block">Créer un contact</a>
         </div>
       )}
       {projects.length > 0 && (

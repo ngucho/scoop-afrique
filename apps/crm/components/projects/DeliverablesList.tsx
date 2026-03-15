@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
 import { MetricsForm } from './MetricsForm'
 
@@ -73,9 +74,10 @@ export function DeliverablesList({
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error((json as { error?: string }).error ?? 'Erreur')
       return
     }
+    toast.success('Livrable créé')
     setDeliverables((prev) => [
       ...prev,
       {

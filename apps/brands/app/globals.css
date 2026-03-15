@@ -2,6 +2,9 @@
 @import 'tw-animate-css';
 @import 'scoop/theme.css';
 
+/* Include scoop package so Tailwind generates classes used by its components */
+@source "../../../packages/scoop/src/**/*.{ts,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 /* App-specific: hero effects */

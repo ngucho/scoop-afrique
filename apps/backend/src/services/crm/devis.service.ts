@@ -1,62 +1,87 @@
 /**
  * CRM devis (quote) service
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, and, desc, sql } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmDevis, crmContacts, crmProjects } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { computeLineItems } from './line-items.util.js'
+import { toSnakeRecord } from './crm-util.js'
 import type { CreateDevisInput, UpdateDevisInput } from '../../schemas/crm/devis.schema.js'
 
 export async function listDevis(params?: {
   contactId?: string
+  projectId?: string
   status?: string
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
-  const supabase = getSupabase()
-  let q = supabase.from('crm_devis').select('*', { count: 'exact' })
+  const db = getDb()
+  const conditions = []
+  if (params?.contactId) conditions.push(eq(crmDevis.contactId, params.contactId))
+  if (params?.projectId) conditions.push(eq(crmDevis.projectId, params.projectId))
+  if (params?.status) conditions.push(eq(crmDevis.status, params.status as typeof crmDevis.status.enumValues[number]))
 
-  if (params?.contactId) q = q.eq('contact_id', params.contactId)
-  if (params?.status) q = q.eq('status', params.status)
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const limit = params?.limit ?? 50
+  const offset = params?.offset ?? 0
 
-  q = q.order('created_at', { ascending: false })
-  if (params?.limit) q = q.limit(params.limit)
-  if (params?.offset) q = q.range(params.offset, params.offset + (params.limit ?? 50) - 1)
+  const [rows, [{ count }]] = await Promise.all([
+    db
+      .select()
+      .from(crmDevis)
+      .where(whereClause)
+      .orderBy(desc(crmDevis.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(crmDevis)
+      .where(whereClause),
+  ])
 
-  const { data, error, count } = await q
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as Array<Record<string, unknown>>, total: count ?? 0 }
+  return {
+    data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)),
+    total: count ?? 0,
+  }
 }
 
 export async function getDevisById(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase.from('crm_devis').select('*').eq('id', id).single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
-  }
-  return data as Record<string, unknown>
+  const db = getDb()
+  const rows = await db.select().from(crmDevis).where(eq(crmDevis.id, id)).limit(1)
+  const row = rows[0]
+  if (!row) return null
+  return toSnakeRecord(row as Record<string, unknown>)
 }
 
 export async function getDevisWithContact(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_devis')
-    .select(
-      `
-      *,
-      crm_contacts (
-        id, first_name, last_name, email, phone, whatsapp, company
-      )
-    `
-    )
-    .eq('id', id)
-    .single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
+  const db = getDb()
+  const rows = await db
+    .select({
+      devis: crmDevis,
+      contact: {
+        id: crmContacts.id,
+        firstName: crmContacts.firstName,
+        lastName: crmContacts.lastName,
+        email: crmContacts.email,
+        phone: crmContacts.phone,
+        whatsapp: crmContacts.whatsapp,
+        company: crmContacts.company,
+      },
+    })
+    .from(crmDevis)
+    .leftJoin(crmContacts, eq(crmDevis.contactId, crmContacts.id))
+    .where(eq(crmDevis.id, id))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null
+  const out = toSnakeRecord(row.devis as Record<string, unknown>) as Record<string, unknown>
+  if (row.contact?.id) {
+    out.crm_contacts = toSnakeRecord(row.contact as Record<string, unknown>)
   }
-  return data as Record<string, unknown>
+  return out
 }
 
 function computeTotals(
@@ -82,42 +107,54 @@ export async function createDevis(
   const reference = await nextReference('DV')
   const { lineItems, subtotal, taxAmount, total } = computeTotals(input.line_items, input.tax_rate ?? 0)
 
-  const supabase = getSupabase()
+  const db = getDb()
+  let contactId = input.contact_id || null
+  if (input.project_id && !contactId) {
+    const projectRows = await db
+      .select({ contactId: crmProjects.contactId })
+      .from(crmProjects)
+      .where(eq(crmProjects.id, input.project_id))
+      .limit(1)
+    if (projectRows[0]?.contactId) contactId = projectRows[0].contactId
+  }
+
   const lineItemsWithDesc = lineItems.map((i, idx) => ({
     ...i,
     description: input.line_items[idx].description,
     unit: input.line_items[idx].unit ?? 'unité',
   }))
 
-  const insert: Record<string, unknown> = {
-    reference,
-    contact_id: input.contact_id || null,
-    devis_request_id: input.devis_request_id || null,
-    service_slug: input.service_slug?.trim() || null,
-    title: input.title.trim(),
-    line_items: lineItemsWithDesc,
-    subtotal,
-    tax_rate: input.tax_rate ?? 0,
-    tax_amount: taxAmount,
-    total,
-    currency: input.currency ?? 'FCFA',
-    valid_until: input.valid_until || null,
-    notes: input.notes?.trim() || null,
-    internal_notes: input.internal_notes?.trim() || null,
-    created_by: createdBy ?? null,
-  }
+  const [devis] = await db
+    .insert(crmDevis)
+    .values({
+      reference,
+      projectId: input.project_id || null,
+      contactId,
+      devisRequestId: input.devis_request_id || null,
+      serviceSlug: input.service_slug?.trim() || null,
+      title: input.title.trim(),
+      lineItems: lineItemsWithDesc,
+      subtotal,
+      taxRate: input.tax_rate ?? 0,
+      taxAmount,
+      total,
+      currency: input.currency ?? 'FCFA',
+      validUntil: input.valid_until || null,
+      notes: input.notes?.trim() || null,
+      internalNotes: input.internal_notes?.trim() || null,
+      createdBy: createdBy ?? null,
+    })
+    .returning()
 
-  const { data, error } = await supabase.from('crm_devis').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  const devis = data as Record<string, unknown>
+  if (!devis) throw new Error('Failed to create devis')
   await logActivity({
     entityType: 'devis',
-    entityId: devis.id as string,
+    entityId: devis.id,
     action: 'created',
     description: `Devis ${reference} créé`,
     createdBy: createdBy ?? undefined,
   })
-  return devis
+  return toSnakeRecord(devis as Record<string, unknown>)
 }
 
 export async function updateDevis(
@@ -125,19 +162,20 @@ export async function updateDevis(
   input: UpdateDevisInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
+  const db = getDb()
   const existing = await getDevisById(id)
   if (!existing) throw new Error('Devis non trouvé')
 
-  const update: Record<string, unknown> = {}
-  if (input.status !== undefined) update.status = input.status
-  if (input.contact_id !== undefined) update.contact_id = input.contact_id || null
-  if (input.devis_request_id !== undefined) update.devis_request_id = input.devis_request_id || null
-  if (input.service_slug !== undefined) update.service_slug = input.service_slug?.trim() || null
+  const update: Partial<typeof crmDevis.$inferInsert> = {}
+  if (input.status !== undefined) update.status = input.status as typeof crmDevis.status.enumValues[number]
+  if (input.project_id !== undefined) update.projectId = input.project_id || null
+  if (input.contact_id !== undefined) update.contactId = input.contact_id || null
+  if (input.devis_request_id !== undefined) update.devisRequestId = input.devis_request_id || null
+  if (input.service_slug !== undefined) update.serviceSlug = input.service_slug?.trim() || null
   if (input.title !== undefined) update.title = input.title.trim()
   if (input.notes !== undefined) update.notes = input.notes?.trim() || null
-  if (input.internal_notes !== undefined) update.internal_notes = input.internal_notes?.trim() || null
-  if (input.valid_until !== undefined) update.valid_until = input.valid_until || null
+  if (input.internal_notes !== undefined) update.internalNotes = input.internal_notes?.trim() || null
+  if (input.valid_until !== undefined) update.validUntil = input.valid_until || null
   if (input.currency !== undefined) update.currency = input.currency
 
   if (input.line_items && input.line_items.length > 0) {
@@ -145,66 +183,63 @@ export async function updateDevis(
       input.line_items,
       input.tax_rate ?? (existing.tax_rate as number) ?? 0
     )
-    update.line_items = lineItems.map((i, idx) => ({
+    update.lineItems = lineItems.map((i, idx) => ({
       ...i,
       description: input.line_items![idx].description,
       unit: input.line_items![idx].unit ?? 'unité',
     }))
     update.subtotal = subtotal
-    update.tax_rate = input.tax_rate ?? (existing.tax_rate as number)
-    update.tax_amount = taxAmount
+    update.taxRate = input.tax_rate ?? (existing.tax_rate as number)
+    update.taxAmount = taxAmount
     update.total = total
   }
 
-  const { data, error } = await supabase.from('crm_devis').update(update).eq('id', id).select().single()
-  if (error) throw new Error(error.message)
-  const devis = data as Record<string, unknown>
+  const [devis] = await db.update(crmDevis).set(update).where(eq(crmDevis.id, id)).returning()
+  if (!devis) throw new Error('Failed to update devis')
   await logActivity({
     entityType: 'devis',
     entityId: id,
     action: 'updated',
     createdBy: updatedBy ?? undefined,
   })
-  return devis
+  return toSnakeRecord(devis as Record<string, unknown>)
 }
 
 export async function markDevisSent(id: string, updatedBy?: string): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_devis')
-    .update({ status: 'sent', sent_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
+  const db = getDb()
+  const [devis] = await db
+    .update(crmDevis)
+    .set({ status: 'sent', sentAt: new Date() })
+    .where(eq(crmDevis.id, id))
+    .returning()
+  if (!devis) throw new Error('Failed to update devis')
   await logActivity({
     entityType: 'devis',
     entityId: id,
     action: 'sent',
     createdBy: updatedBy ?? undefined,
   })
-  return data as Record<string, unknown>
+  return toSnakeRecord(devis as Record<string, unknown>)
 }
 
 export async function markDevisAccepted(id: string, updatedBy?: string): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_devis')
-    .update({ status: 'accepted', accepted_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
+  const db = getDb()
+  const [devis] = await db
+    .update(crmDevis)
+    .set({ status: 'accepted', acceptedAt: new Date() })
+    .where(eq(crmDevis.id, id))
+    .returning()
+  if (!devis) throw new Error('Failed to update devis')
   await logActivity({
     entityType: 'devis',
     entityId: id,
     action: 'accepted',
     createdBy: updatedBy ?? undefined,
   })
-  return data as Record<string, unknown>
+  return toSnakeRecord(devis as Record<string, unknown>)
 }
 
 export async function setDevisPdfUrl(id: string, pdfUrl: string): Promise<void> {
-  const supabase = getSupabase()
-  await supabase.from('crm_devis').update({ pdf_url: pdfUrl }).eq('id', id)
+  const db = getDb()
+  await db.update(crmDevis).set({ pdfUrl }).where(eq(crmDevis.id, id))
 }

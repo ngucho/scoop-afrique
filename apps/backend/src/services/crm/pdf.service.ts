@@ -71,6 +71,7 @@ export async function renderInvoicePdf(invoice: Record<string, unknown>): Promis
           total: (i.total as number) ?? 0,
         })) as Array<{ description: string; quantity: number; unit_price: number; total: number }>,
         subtotal: (invoice.subtotal as number) ?? 0,
+        discount_amount: (invoice.discount_amount as number) ?? 0,
         tax_rate: (invoice.tax_rate as number) ?? 0,
         tax_amount: (invoice.tax_amount as number) ?? 0,
         total: (invoice.total as number) ?? 0,

@@ -1,10 +1,13 @@
 /**
  * CRM invoice service
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, and, desc, sql } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmInvoices, crmContacts } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { computeLineItems } from './line-items.util.js'
+import { toSnakeRecord } from './crm-util.js'
 import type { CreateInvoiceInput, UpdateInvoiceInput } from '../../schemas/crm/invoice.schema.js'
 
 export async function listInvoices(params?: {
@@ -14,51 +17,71 @@ export async function listInvoices(params?: {
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
-  const supabase = getSupabase()
-  let q = supabase.from('crm_invoices').select('*', { count: 'exact' })
+  const db = getDb()
+  const conditions = []
+  if (params?.contactId) conditions.push(eq(crmInvoices.contactId, params.contactId))
+  if (params?.projectId) conditions.push(eq(crmInvoices.projectId, params.projectId))
+  if (params?.status) conditions.push(eq(crmInvoices.status, params.status as typeof crmInvoices.status.enumValues[number]))
 
-  if (params?.contactId) q = q.eq('contact_id', params.contactId)
-  if (params?.projectId) q = q.eq('project_id', params.projectId)
-  if (params?.status) q = q.eq('status', params.status)
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const limit = params?.limit ?? 50
+  const offset = params?.offset ?? 0
 
-  q = q.order('created_at', { ascending: false })
-  if (params?.limit) q = q.limit(params.limit)
-  if (params?.offset) q = q.range(params.offset, params.offset + (params.limit ?? 50) - 1)
+  const [rows, [{ count }]] = await Promise.all([
+    db
+      .select()
+      .from(crmInvoices)
+      .where(whereClause)
+      .orderBy(desc(crmInvoices.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(crmInvoices)
+      .where(whereClause),
+  ])
 
-  const { data, error, count } = await q
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as Array<Record<string, unknown>>, total: count ?? 0 }
+  return {
+    data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)),
+    total: count ?? 0,
+  }
 }
 
 export async function getInvoiceById(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase.from('crm_invoices').select('*').eq('id', id).single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
-  }
-  return data as Record<string, unknown>
+  const db = getDb()
+  const rows = await db.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1)
+  const row = rows[0]
+  if (!row) return null
+  return toSnakeRecord(row as Record<string, unknown>)
 }
 
 export async function getInvoiceWithContact(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_invoices')
-    .select(
-      `
-      *,
-      crm_contacts (
-        id, first_name, last_name, email, phone, whatsapp, company
-      )
-    `
-    )
-    .eq('id', id)
-    .single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
+  const db = getDb()
+  const rows = await db
+    .select({
+      invoice: crmInvoices,
+      contact: {
+        id: crmContacts.id,
+        firstName: crmContacts.firstName,
+        lastName: crmContacts.lastName,
+        email: crmContacts.email,
+        phone: crmContacts.phone,
+        whatsapp: crmContacts.whatsapp,
+        company: crmContacts.company,
+      },
+    })
+    .from(crmInvoices)
+    .leftJoin(crmContacts, eq(crmInvoices.contactId, crmContacts.id))
+    .where(eq(crmInvoices.id, id))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null
+  const out = toSnakeRecord(row.invoice as Record<string, unknown>) as Record<string, unknown>
+  if (row.contact?.id) {
+    out.crm_contacts = toSnakeRecord(row.contact as Record<string, unknown>)
   }
-  return data as Record<string, unknown>
+  return out
 }
 
 function computeTotals(
@@ -83,6 +106,10 @@ export async function createInvoice(
 ): Promise<Record<string, unknown>> {
   const reference = await nextReference('FAC')
   const { lineItems, subtotal, taxAmount, total } = computeTotals(input.line_items, input.tax_rate ?? 0)
+  const discount = Math.max(0, input.discount_amount ?? 0)
+  const taxable = Math.max(0, subtotal - discount)
+  const taxAmountWithDiscount = Math.round(taxable * ((input.tax_rate ?? 0) / 100))
+  const totalWithDiscount = taxable + taxAmountWithDiscount
 
   const lineItemsWithDesc = lineItems.map((i, idx) => ({
     ...i,
@@ -90,36 +117,38 @@ export async function createInvoice(
     unit: input.line_items[idx].unit ?? 'unité',
   }))
 
-  const supabase = getSupabase()
-  const insert: Record<string, unknown> = {
-    reference,
-    contact_id: input.contact_id || null,
-    project_id: input.project_id || null,
-    devis_id: input.devis_id || null,
-    line_items: lineItemsWithDesc,
-    subtotal,
-    tax_rate: input.tax_rate ?? 0,
-    tax_amount: taxAmount,
-    total,
-    amount_paid: 0,
-    currency: input.currency ?? 'FCFA',
-    due_date: input.due_date || null,
-    notes: input.notes?.trim() || null,
-    internal_notes: input.internal_notes?.trim() || null,
-    created_by: createdBy ?? null,
-  }
+  const db = getDb()
+  const [invoice] = await db
+    .insert(crmInvoices)
+    .values({
+      reference,
+      contactId: input.contact_id || null,
+      projectId: input.project_id || null,
+      devisId: input.devis_id || null,
+      lineItems: lineItemsWithDesc,
+      subtotal,
+      taxRate: input.tax_rate ?? 0,
+      taxAmount: taxAmountWithDiscount,
+      total: totalWithDiscount,
+      discountAmount: discount,
+      amountPaid: 0,
+      currency: input.currency ?? 'FCFA',
+      dueDate: input.due_date || null,
+      notes: input.notes?.trim() || null,
+      internalNotes: input.internal_notes?.trim() || null,
+      createdBy: createdBy ?? null,
+    })
+    .returning()
 
-  const { data, error } = await supabase.from('crm_invoices').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  const invoice = data as Record<string, unknown>
+  if (!invoice) throw new Error('Failed to create invoice')
   await logActivity({
     entityType: 'invoice',
-    entityId: invoice.id as string,
+    entityId: invoice.id,
     action: 'created',
     description: `Facture ${reference} créée`,
     createdBy: createdBy ?? undefined,
   })
-  return invoice
+  return toSnakeRecord(invoice as Record<string, unknown>)
 }
 
 export async function updateInvoice(
@@ -127,64 +156,69 @@ export async function updateInvoice(
   input: UpdateInvoiceInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
+  const db = getDb()
   const existing = await getInvoiceById(id)
   if (!existing) throw new Error('Facture non trouvée')
 
-  const update: Record<string, unknown> = {}
-  if (input.status !== undefined) update.status = input.status
-  if (input.contact_id !== undefined) update.contact_id = input.contact_id || null
-  if (input.project_id !== undefined) update.project_id = input.project_id || null
-  if (input.devis_id !== undefined) update.devis_id = input.devis_id || null
+  const update: Partial<typeof crmInvoices.$inferInsert> = {}
+  if (input.status !== undefined) update.status = input.status as typeof crmInvoices.status.enumValues[number]
+  if (input.contact_id !== undefined) update.contactId = input.contact_id || null
+  if (input.project_id !== undefined) update.projectId = input.project_id || null
+  if (input.devis_id !== undefined) update.devisId = input.devis_id || null
   if (input.notes !== undefined) update.notes = input.notes?.trim() || null
-  if (input.internal_notes !== undefined) update.internal_notes = input.internal_notes?.trim() || null
-  if (input.due_date !== undefined) update.due_date = input.due_date || null
+  if (input.internal_notes !== undefined) update.internalNotes = input.internal_notes?.trim() || null
+  if (input.due_date !== undefined) update.dueDate = input.due_date || null
   if (input.currency !== undefined) update.currency = input.currency
 
+  if (input.discount_amount !== undefined) update.discountAmount = Math.max(0, input.discount_amount)
   if (input.line_items && input.line_items.length > 0) {
-    const { lineItems, subtotal, taxAmount, total } = computeTotals(
+    const { lineItems, subtotal } = computeTotals(
       input.line_items,
       input.tax_rate ?? (existing.tax_rate as number) ?? 0
     )
-    update.line_items = lineItems.map((i, idx) => ({
+    const discount = Math.max(0, input.discount_amount ?? (existing.discount_amount as number) ?? 0)
+    const taxable = Math.max(0, subtotal - discount)
+    const taxRate = input.tax_rate ?? (existing.tax_rate as number) ?? 0
+    const taxAmountWithDiscount = Math.round(taxable * (taxRate / 100))
+    const totalWithDiscount = taxable + taxAmountWithDiscount
+    update.lineItems = lineItems.map((i, idx) => ({
       ...i,
       description: input.line_items![idx].description,
       unit: input.line_items![idx].unit ?? 'unité',
     }))
     update.subtotal = subtotal
-    update.tax_rate = input.tax_rate ?? (existing.tax_rate as number)
-    update.tax_amount = taxAmount
-    update.total = total
+    update.taxRate = taxRate
+    update.taxAmount = taxAmountWithDiscount
+    update.total = totalWithDiscount
+    update.discountAmount = discount
   }
 
-  const { data, error } = await supabase.from('crm_invoices').update(update).eq('id', id).select().single()
-  if (error) throw new Error(error.message)
-  const invoice = data as Record<string, unknown>
+  const [invoice] = await db.update(crmInvoices).set(update).where(eq(crmInvoices.id, id)).returning()
+  if (!invoice) throw new Error('Failed to update invoice')
   await logActivity({
     entityType: 'invoice',
     entityId: id,
     action: 'updated',
     createdBy: updatedBy ?? undefined,
   })
-  return invoice
+  return toSnakeRecord(invoice as Record<string, unknown>)
 }
 
 export async function markInvoiceSent(id: string, updatedBy?: string): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_invoices')
-    .update({ status: 'sent', sent_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
+  const db = getDb()
+  const [invoice] = await db
+    .update(crmInvoices)
+    .set({ status: 'sent', sentAt: new Date() })
+    .where(eq(crmInvoices.id, id))
+    .returning()
+  if (!invoice) throw new Error('Failed to update invoice')
   await logActivity({
     entityType: 'invoice',
     entityId: id,
     action: 'sent',
     createdBy: updatedBy ?? undefined,
   })
-  return data as Record<string, unknown>
+  return toSnakeRecord(invoice as Record<string, unknown>)
 }
 
 export async function updateInvoiceAmountPaid(
@@ -192,22 +226,22 @@ export async function updateInvoiceAmountPaid(
   amountPaid: number,
   paidAt?: string
 ): Promise<void> {
-  const supabase = getSupabase()
+  const db = getDb()
   const inv = await getInvoiceById(id)
   if (!inv) throw new Error('Facture non trouvée')
   const total = inv.total as number
   const status = amountPaid >= total ? 'paid' : amountPaid > 0 ? 'partial' : (inv.status as string)
-  await supabase
-    .from('crm_invoices')
-    .update({
-      amount_paid: amountPaid,
-      status,
-      paid_at: amountPaid >= total ? (paidAt ?? new Date().toISOString()) : null,
+  await db
+    .update(crmInvoices)
+    .set({
+      amountPaid,
+      status: status as typeof crmInvoices.status.enumValues[number],
+      paidAt: amountPaid >= total ? (paidAt ? new Date(paidAt) : new Date()) : null,
     })
-    .eq('id', id)
+    .where(eq(crmInvoices.id, id))
 }
 
 export async function setInvoicePdfUrl(id: string, pdfUrl: string): Promise<void> {
-  const supabase = getSupabase()
-  await supabase.from('crm_invoices').update({ pdf_url: pdfUrl }).eq('id', id)
+  const db = getDb()
+  await db.update(crmInvoices).set({ pdfUrl }).where(eq(crmInvoices.id, id))
 }

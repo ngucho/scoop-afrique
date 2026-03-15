@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button } from 'scoop'
 
 export function DevisActions({
@@ -22,10 +23,12 @@ export function DevisActions({
       credentials: 'include',
     })
     setSending(false)
-    if (res.ok) router.refresh()
-    else {
+    if (res.ok) {
+      toast.success('Devis envoyé')
+      router.refresh()
+    } else {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
     }
   }
 
@@ -36,10 +39,12 @@ export function DevisActions({
       credentials: 'include',
     })
     setConverting(false)
-    if (res.ok) router.refresh()
-    else {
+    if (res.ok) {
+      toast.success('Devis converti en projet')
+      router.refresh()
+    } else {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
     }
   }
 

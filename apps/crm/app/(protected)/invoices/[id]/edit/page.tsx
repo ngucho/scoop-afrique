@@ -27,6 +27,7 @@ export default async function InvoiceEditPage({
     project_id: invoice.project_id as string,
     line_items: lineItems.length > 0 ? lineItems : [{ description: '', quantity: 1, unit_price: 0, unit: 'unité', tax_rate: 0 }],
     tax_rate: (invoice.tax_rate as number) ?? 0,
+    discount_amount: (invoice.discount_amount as number) ?? 0,
     due_date: invoice.due_date ? (invoice.due_date as string).slice(0, 10) : undefined,
     notes: invoice.notes as string,
   }

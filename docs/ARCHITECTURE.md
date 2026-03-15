@@ -162,6 +162,7 @@ Routes → Middleware → Services → Supabase
 
 | File | Content |
 |------|---------|
+| `PROJECT_GUIDE.md` | **Complete setup guide** — Supabase, Auth0, Twilio, Resend, migrations troubleshooting |
 | `API.md` | Full API endpoint reference |
 | `RBAC.md` | Roles, permissions, mapping |
 | `editorial-workflow.md` | Article lifecycle and workflow |

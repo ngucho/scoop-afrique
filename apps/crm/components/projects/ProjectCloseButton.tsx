@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { Button } from 'scoop'
 
 export function ProjectCloseButton({ projectId }: { projectId: string }) {

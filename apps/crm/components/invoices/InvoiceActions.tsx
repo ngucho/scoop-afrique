@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button } from 'scoop'
 
 export function InvoiceActions({
@@ -21,10 +22,12 @@ export function InvoiceActions({
       credentials: 'include',
     })
     setSending(false)
-    if (res.ok) router.refresh()
-    else {
+    if (res.ok) {
+      toast.success('Facture envoyée')
+      router.refresh()
+    } else {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
     }
   }
 

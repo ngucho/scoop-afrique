@@ -1,8 +1,12 @@
 /**
  * CRM contact service
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, and, desc, or, ilike, count } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmContacts } from '../../db/schema.js'
+import { config } from '../../config/env.js'
 import { logActivity } from './activity.service.js'
+import { toSnakeRecord } from './crm-util.js'
 import type { CreateContactInput, UpdateContactInput } from '../../schemas/crm/contact.schema.js'
 
 export async function listContacts(params: {
@@ -12,66 +16,78 @@ export async function listContacts(params: {
   offset?: number
   archived?: boolean
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
-  const supabase = getSupabase()
-  let q = supabase.from('crm_contacts').select('*', { count: 'exact' })
+  if (!config.database) return { data: [], total: 0 }
+  const db = getDb()
+  const limit = params.limit ?? 50
+  const offset = params.offset ?? 0
 
-  if (params.type) q = q.eq('type', params.type)
-  if (params.archived !== undefined) q = q.eq('is_archived', params.archived)
+  const conditions: ReturnType<typeof eq>[] = []
+  if (params.type) conditions.push(eq(crmContacts.type, params.type as any))
+  if (params.archived !== undefined) conditions.push(eq(crmContacts.isArchived, params.archived))
   if (params.search) {
-    q = q.or(
-      `first_name.ilike.%${params.search}%,last_name.ilike.%${params.search}%,email.ilike.%${params.search}%,company.ilike.%${params.search}%`
-    )
+    const s = `%${params.search}%`
+    conditions.push(or(
+      ilike(crmContacts.firstName, s),
+      ilike(crmContacts.lastName, s),
+      ilike(crmContacts.email ?? '', s),
+      ilike(crmContacts.company ?? '', s)
+    )!)
   }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-  q = q.order('created_at', { ascending: false })
-  if (params.limit) q = q.limit(params.limit)
-  if (params.offset) q = q.range(params.offset, params.offset + (params.limit ?? 50) - 1)
+  const [countRow] = await db.select({ count: count() }).from(crmContacts).where(whereClause)
+  const total = countRow?.count ?? 0
 
-  const { data, error, count } = await q
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as Array<Record<string, unknown>>, total: count ?? 0 }
+  const rows = await db
+    .select()
+    .from(crmContacts)
+    .where(whereClause)
+    .orderBy(desc(crmContacts.createdAt))
+    .limit(limit)
+    .offset(offset)
+
+  return { data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)), total }
 }
 
 export async function getContactById(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase.from('crm_contacts').select('*').eq('id', id).single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
-  }
-  return data as Record<string, unknown>
+  if (!config.database) return null
+  const db = getDb()
+  const [row] = await db.select().from(crmContacts).where(eq(crmContacts.id, id)).limit(1)
+  return row ? toSnakeRecord(row as Record<string, unknown>) : null
 }
 
 export async function createContact(
   input: CreateContactInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const insert: Record<string, unknown> = {
-    type: input.type ?? 'prospect',
-    first_name: input.first_name.trim(),
-    last_name: input.last_name.trim(),
-    email: input.email?.trim() || null,
-    phone: input.phone?.trim() || null,
-    whatsapp: input.whatsapp?.trim() || null,
-    company: input.company?.trim() || null,
-    position: input.position?.trim() || null,
-    country: input.country ?? 'CI',
-    city: input.city?.trim() || null,
-    source: input.source?.trim() || null,
-    devis_request_id: input.devis_request_id || null,
-    tags: input.tags ?? [],
-    notes: input.notes?.trim() || null,
-    assigned_to: input.assigned_to || null,
-    created_by: createdBy ?? null,
-  }
-
-  const { data, error } = await supabase.from('crm_contacts').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  const contact = data as Record<string, unknown>
+  if (!config.database) throw new Error('Database not configured')
+  const db = getDb()
+  const [row] = await db
+    .insert(crmContacts)
+    .values({
+      type: (input.type ?? 'prospect') as any,
+      firstName: input.first_name.trim(),
+      lastName: input.last_name.trim(),
+      email: input.email?.trim() || null,
+      phone: input.phone?.trim() || null,
+      whatsapp: input.whatsapp?.trim() || null,
+      company: input.company?.trim() || null,
+      position: input.position?.trim() || null,
+      country: input.country ?? 'CI',
+      city: input.city?.trim() || null,
+      source: input.source?.trim() || null,
+      devisRequestId: input.devis_request_id || null,
+      tags: input.tags ?? [],
+      notes: input.notes?.trim() || null,
+      assignedTo: input.assigned_to || null,
+      createdBy: createdBy ?? null,
+    })
+    .returning()
+  if (!row) throw new Error('Failed to create contact')
+  const contact = toSnakeRecord(row as Record<string, unknown>)
   await logActivity({
     entityType: 'contact',
-    entityId: contact.id as string,
+    entityId: row.id,
     action: 'created',
     description: `Contact ${input.first_name} ${input.last_name} créé`,
     createdBy: createdBy ?? undefined,
@@ -84,11 +100,12 @@ export async function updateContact(
   input: UpdateContactInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const update: Record<string, unknown> = {}
-  if (input.type !== undefined) update.type = input.type
-  if (input.first_name !== undefined) update.first_name = input.first_name.trim()
-  if (input.last_name !== undefined) update.last_name = input.last_name.trim()
+  if (!config.database) throw new Error('Database not configured')
+  const db = getDb()
+  const update: Partial<typeof crmContacts.$inferInsert> = {}
+  if (input.type !== undefined) update.type = input.type as any
+  if (input.first_name !== undefined) update.firstName = input.first_name.trim()
+  if (input.last_name !== undefined) update.lastName = input.last_name.trim()
   if (input.email !== undefined) update.email = input.email?.trim() || null
   if (input.phone !== undefined) update.phone = input.phone?.trim() || null
   if (input.whatsapp !== undefined) update.whatsapp = input.whatsapp?.trim() || null
@@ -97,22 +114,21 @@ export async function updateContact(
   if (input.country !== undefined) update.country = input.country
   if (input.city !== undefined) update.city = input.city?.trim() || null
   if (input.source !== undefined) update.source = input.source?.trim() || null
-  if (input.devis_request_id !== undefined) update.devis_request_id = input.devis_request_id || null
+  if (input.devis_request_id !== undefined) update.devisRequestId = input.devis_request_id || null
   if (input.tags !== undefined) update.tags = input.tags
   if (input.notes !== undefined) update.notes = input.notes?.trim() || null
-  if (input.assigned_to !== undefined) update.assigned_to = input.assigned_to || null
-  if (input.is_archived !== undefined) update.is_archived = input.is_archived
+  if (input.assigned_to !== undefined) update.assignedTo = input.assigned_to || null
+  if (input.is_archived !== undefined) update.isArchived = input.is_archived
 
-  const { data, error } = await supabase.from('crm_contacts').update(update).eq('id', id).select().single()
-  if (error) throw new Error(error.message)
-  const contact = data as Record<string, unknown>
+  const [row] = await db.update(crmContacts).set(update).where(eq(crmContacts.id, id)).returning()
+  if (!row) throw new Error('Contact not found')
   await logActivity({
     entityType: 'contact',
     entityId: id,
     action: 'updated',
     createdBy: updatedBy ?? undefined,
   })
-  return contact
+  return toSnakeRecord(row as Record<string, unknown>)
 }
 
 export async function archiveContact(id: string, archivedBy?: string): Promise<void> {

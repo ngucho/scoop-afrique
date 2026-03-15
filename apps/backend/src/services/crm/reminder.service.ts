@@ -1,7 +1,10 @@
 /**
  * CRM reminder service
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, and, desc, sql, isNull, isNotNull } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmReminders } from '../../db/schema.js'
+import { toSnakeRecord } from './crm-util.js'
 import type { CreateReminderInput } from '../../schemas/crm/reminder.schema.js'
 
 export async function listReminders(params?: {
@@ -11,65 +14,79 @@ export async function listReminders(params?: {
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
-  const supabase = getSupabase()
-  let q = supabase.from('crm_reminders').select('*', { count: 'exact' })
-
-  if (params?.contactId) q = q.eq('contact_id', params.contactId)
-  if (params?.invoiceId) q = q.eq('invoice_id', params.invoiceId)
+  const db = getDb()
+  const conditions = []
+  if (params?.contactId) conditions.push(eq(crmReminders.contactId, params.contactId))
+  if (params?.invoiceId) conditions.push(eq(crmReminders.invoiceId, params.invoiceId))
   if (params?.status === 'pending') {
-    q = q.is('sent_at', null).not('scheduled_at', 'is', null)
+    conditions.push(isNull(crmReminders.sentAt))
+    conditions.push(isNotNull(crmReminders.scheduledAt))
   } else if (params?.status === 'sent') {
-    q = q.not('sent_at', 'is', null)
+    conditions.push(isNotNull(crmReminders.sentAt))
   }
 
-  q = q.order('created_at', { ascending: false })
-  if (params?.limit) q = q.limit(params.limit)
-  if (params?.offset) q = q.range(params.offset, params.offset + (params.limit ?? 50) - 1)
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const limit = params?.limit ?? 50
+  const offset = params?.offset ?? 0
 
-  const { data, error, count } = await q
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as Array<Record<string, unknown>>, total: count ?? 0 }
+  const [rows, [{ count }]] = await Promise.all([
+    db
+      .select()
+      .from(crmReminders)
+      .where(whereClause)
+      .orderBy(desc(crmReminders.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(crmReminders)
+      .where(whereClause),
+  ])
+
+  return {
+    data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)),
+    total: count ?? 0,
+  }
 }
 
 export async function getReminderById(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase.from('crm_reminders').select('*').eq('id', id).single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
-  }
-  return data as Record<string, unknown>
+  const db = getDb()
+  const rows = await db.select().from(crmReminders).where(eq(crmReminders.id, id)).limit(1)
+  const row = rows[0]
+  if (!row) return null
+  return toSnakeRecord(row as Record<string, unknown>)
 }
 
 export async function createReminder(
   input: CreateReminderInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const insert: Record<string, unknown> = {
-    contact_id: input.contact_id,
-    invoice_id: input.invoice_id || null,
-    project_id: input.project_id || null,
-    type: input.type.trim(),
-    channel: input.channel ?? 'both',
-    message: input.message.trim(),
-    scheduled_at: input.scheduled_at || null,
-    created_by: createdBy ?? null,
-  }
+  const db = getDb()
+  const [reminder] = await db
+    .insert(crmReminders)
+    .values({
+      contactId: input.contact_id,
+      invoiceId: input.invoice_id || null,
+      projectId: input.project_id || null,
+      type: input.type.trim(),
+      channel: (input.channel ?? 'both') as typeof crmReminders.channel.enumValues[number],
+      message: input.message.trim(),
+      scheduledAt: input.scheduled_at ? new Date(input.scheduled_at) : null,
+      createdBy: createdBy ?? null,
+    })
+    .returning()
 
-  const { data, error } = await supabase.from('crm_reminders').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  if (!reminder) throw new Error('Failed to create reminder')
+  return toSnakeRecord(reminder as Record<string, unknown>)
 }
 
 export async function markReminderSent(id: string): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_reminders')
-    .update({ sent_at: new Date().toISOString() })
-    .eq('id', id)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  const db = getDb()
+  const [reminder] = await db
+    .update(crmReminders)
+    .set({ sentAt: new Date() })
+    .where(eq(crmReminders.id, id))
+    .returning()
+  if (!reminder) throw new Error('Failed to update reminder')
+  return toSnakeRecord(reminder as Record<string, unknown>)
 }

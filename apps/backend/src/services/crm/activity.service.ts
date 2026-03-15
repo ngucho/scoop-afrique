@@ -1,7 +1,23 @@
 /**
  * CRM activity log — record actions for audit trail
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, and, desc } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmActivityLog } from '../../db/schema.js'
+import { config } from '../../config/env.js'
+
+function toRecord(row: typeof crmActivityLog.$inferSelect): Record<string, unknown> {
+  return {
+    id: row.id,
+    entity_type: row.entityType,
+    entity_id: row.entityId,
+    action: row.action,
+    description: row.description,
+    metadata: row.metadata,
+    created_by: row.createdBy,
+    created_at: row.createdAt?.toISOString(),
+  }
+}
 
 export async function logActivity(params: {
   entityType: string
@@ -11,14 +27,15 @@ export async function logActivity(params: {
   metadata?: Record<string, unknown>
   createdBy?: string
 }): Promise<void> {
-  const supabase = getSupabase()
-  await supabase.from('crm_activity_log').insert({
-    entity_type: params.entityType,
-    entity_id: params.entityId,
+  if (!config.database) return
+  const db = getDb()
+  await db.insert(crmActivityLog).values({
+    entityType: params.entityType,
+    entityId: params.entityId,
     action: params.action,
     description: params.description ?? null,
     metadata: params.metadata ?? {},
-    created_by: params.createdBy ?? null,
+    createdBy: params.createdBy ?? null,
   })
 }
 
@@ -27,27 +44,24 @@ export async function getActivityLog(
   entityId: string,
   limit = 50
 ): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_activity_log')
-    .select('*')
-    .eq('entity_type', entityType)
-    .eq('entity_id', entityId)
-    .order('created_at', { ascending: false })
+  if (!config.database) return []
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(crmActivityLog)
+    .where(and(eq(crmActivityLog.entityType, entityType), eq(crmActivityLog.entityId, entityId)))
+    .orderBy(desc(crmActivityLog.createdAt))
     .limit(limit)
-
-  if (error) throw new Error(error.message)
-  return (data ?? []) as Array<Record<string, unknown>>
+  return rows.map(toRecord)
 }
 
 export async function getGlobalActivity(limit = 100): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_activity_log')
-    .select('*')
-    .order('created_at', { ascending: false })
+  if (!config.database) return []
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(crmActivityLog)
+    .orderBy(desc(crmActivityLog.createdAt))
     .limit(limit)
-
-  if (error) throw new Error(error.message)
-  return (data ?? []) as Array<Record<string, unknown>>
+  return rows.map(toRecord)
 }

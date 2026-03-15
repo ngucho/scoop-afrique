@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { DayPicker } from 'react-day-picker'
-import { format } from 'date-fns'
+import { format, subYears, addYears } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Calendar } from 'lucide-react'
 import { cn } from '../utils/cn'
@@ -16,35 +16,82 @@ export interface DatePickerProps {
   className?: string
   /** Show calendar popover (default) or inline */
   mode?: 'popover' | 'inline'
+  /** Year range for dropdown: years back from today (default 10) */
+  yearsBack?: number
+  /** Year range for dropdown: years forward from today (default 2) */
+  yearsForward?: number
 }
 
-const dayPickerClassNames = {
-  root: 'scoop-datepicker-root',
-  month: 'scoop-datepicker-month',
-  month_caption: 'flex justify-center font-semibold text-foreground',
-  nav: 'flex gap-2',
-  button_previous:
-    'h-9 w-9 rounded-[var(--radius-sm)] border border-border bg-background text-foreground hover:bg-muted transition-colors',
-  button_next:
-    'h-9 w-9 rounded-[var(--radius-sm)] border border-border bg-background text-foreground hover:bg-muted transition-colors',
-  weekdays: 'flex gap-1',
-  weekday: 'w-9 text-center text-xs font-medium text-muted-foreground',
-  week: 'flex gap-1',
-  day: 'h-9 w-9 rounded-[var(--radius-sm)] text-center text-sm text-foreground',
-  day_button:
-    'h-9 w-9 rounded-[var(--radius-sm)] hover:bg-primary hover:text-primary-foreground transition-colors',
-  selected: 'bg-primary text-primary-foreground',
-  today: 'font-bold',
-  disabled: 'text-muted-foreground opacity-50',
-  outside: 'text-muted-foreground opacity-50',
-  hidden: 'invisible',
+function buildDayPickerClassNames() {
+  return {
+    root: 'scoop-datepicker-root',
+    month: 'scoop-datepicker-month',
+    month_caption: 'flex justify-center gap-2 font-semibold text-foreground',
+    month_caption_layout: 'flex items-center justify-center gap-2',
+    month_grid: 'scoop-datepicker-month-grid',
+    nav: 'flex gap-2',
+    button_previous:
+      'h-9 w-9 rounded-[var(--radius-sm)] border border-border bg-background text-foreground hover:bg-muted transition-colors',
+    button_next:
+      'h-9 w-9 rounded-[var(--radius-sm)] border border-border bg-background text-foreground hover:bg-muted transition-colors',
+    weekdays: 'flex gap-1',
+    weekday: 'w-9 text-center text-xs font-medium text-muted-foreground',
+    week: 'flex gap-1',
+    day: 'h-9 w-9 rounded-[var(--radius-sm)] text-center text-sm text-foreground',
+    day_button:
+      'h-9 w-9 rounded-[var(--radius-sm)] hover:bg-primary hover:text-primary-foreground transition-colors',
+    selected: 'bg-primary text-primary-foreground',
+    today: 'font-bold',
+    disabled: 'text-muted-foreground opacity-50',
+    outside: 'text-muted-foreground opacity-50',
+    hidden: 'invisible',
+    dropdowns: 'flex items-center justify-center gap-2 mb-3',
+    dropdown_root: 'scoop-datepicker-dropdown-root',
+    dropdown: 'scoop-datepicker-dropdown',
+    months_dropdown:
+      'min-w-[120px] rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer appearance-none',
+    years_dropdown:
+      'min-w-[80px] rounded-[var(--radius-sm)] border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer appearance-none',
+    chevron: 'hidden',
+  }
 }
 
 const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
-  ({ value, onChange, placeholder = 'Sélectionner une date', disabled, error, className, mode = 'popover' }, ref) => {
+  (
+    {
+      value,
+      onChange,
+      placeholder = 'Sélectionner une date',
+      disabled,
+      error,
+      className,
+      mode = 'popover',
+      yearsBack = 10,
+      yearsForward = 2,
+    },
+    ref
+  ) => {
     const [open, setOpen] = React.useState(false)
     const buttonRef = React.useRef<HTMLButtonElement>(null)
     const popoverRef = React.useRef<HTMLDivElement>(null)
+
+    const today = React.useMemo(() => new Date(), [])
+    const startMonth = React.useMemo(() => subYears(today, yearsBack), [today, yearsBack])
+    const endMonth = React.useMemo(() => addYears(today, yearsForward), [today, yearsForward])
+    const defaultMonth = value ?? today
+    const dayPickerClassNames = React.useMemo(() => buildDayPickerClassNames(), [])
+
+    const dayPickerProps = {
+      mode: 'single' as const,
+      selected: value,
+      locale: fr,
+      classNames: dayPickerClassNames,
+      captionLayout: 'dropdown' as const,
+      hideNavigation: true,
+      startMonth,
+      endMonth,
+      defaultMonth,
+    }
 
     React.useEffect(() => {
       if (!open) return
@@ -70,12 +117,9 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
     if (mode === 'inline') {
       return (
         <DayPicker
-          mode="single"
-          selected={value}
+          {...dayPickerProps}
           onSelect={onChange}
-          locale={fr}
           className={cn('rounded-[var(--radius)] border border-border bg-popover p-4', className)}
-          classNames={dayPickerClassNames}
         />
       )
     }
@@ -108,14 +152,11 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
             className="absolute left-0 top-full z-50 mt-2 rounded-[var(--radius-xl)] border border-[var(--surface-border)] bg-popover p-4 shadow-[var(--shadow-lg)]"
           >
             <DayPicker
-              mode="single"
-              selected={value}
-              onSelect={(date) => {
+              {...dayPickerProps}
+              onSelect={(date: Date | undefined) => {
                 onChange?.(date)
                 setOpen(false)
               }}
-              locale={fr}
-              classNames={dayPickerClassNames}
             />
           </div>
         )}

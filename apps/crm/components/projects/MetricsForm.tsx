@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
 
 const schema = z.object({
@@ -52,9 +53,10 @@ export function MetricsForm({
     setSubmitting(false)
     if (!res.ok) {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
       return
     }
+    toast.success('Métriques enregistrées')
     onSaved()
     onClose()
   }
