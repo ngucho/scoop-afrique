@@ -4,8 +4,12 @@
 import { config } from '../../config/env.js'
 import type { FetchResponse } from '../../lib/http.js'
 
-const TEAM_EMAIL = 'contact@scoop-afrique.com'
 const SITE_URL = 'https://www.scoop-afrique.com'
+
+function getTeamEmails(): string[] {
+  const emails = (config.resend as { notificationEmails?: string[] } | undefined)?.notificationEmails
+  return emails?.length ? emails : ['contact@scoop-afrique.com']
+}
 
 function getFromEmail(): string {
   return config.resend?.fromEmail ?? 'Scoop Afrique <onboarding@resend.dev>'
@@ -68,7 +72,7 @@ async function sendWhatsApp(message: string): Promise<void> {
   if (!res.ok) throw new Error(`Twilio: ${await res.text()}`)
 }
 
-async function sendWhatsAppTo(to: string, message: string): Promise<void> {
+async function sendWhatsAppTo(to: string, message: string, mediaUrl?: string): Promise<void> {
   if (!config.twilio?.accountSid || !config.twilio?.authToken) return
   const from = config.twilio.whatsappFrom
   const params = new URLSearchParams({
@@ -76,6 +80,7 @@ async function sendWhatsAppTo(to: string, message: string): Promise<void> {
     From: from,
     Body: message,
   })
+  if (mediaUrl) params.set('MediaUrl', mediaUrl)
   const auth = Buffer.from(
     `${config.twilio.accountSid}:${config.twilio.authToken}`
   ).toString('base64')
@@ -93,6 +98,29 @@ async function sendWhatsAppTo(to: string, message: string): Promise<void> {
   if (!res.ok) throw new Error(`Twilio: ${await res.text()}`)
 }
 
+async function sendSms(to: string, message: string): Promise<void> {
+  const tw = config.twilio as { accountSid: string; authToken: string; smsFrom?: string; smsTo?: string } | null
+  if (!tw?.accountSid || !tw?.authToken || !tw?.smsFrom) return
+  const params = new URLSearchParams({
+    To: to.replace(/^whatsapp:/i, ''),
+    From: tw.smsFrom,
+    Body: message,
+  })
+  const auth = Buffer.from(`${tw.accountSid}:${tw.authToken}`).toString('base64')
+  const res = (await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${tw.accountSid}/Messages.json`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${auth}`,
+      },
+      body: params.toString(),
+    }
+  )) as FetchResponse
+  if (!res.ok) throw new Error(`Twilio SMS: ${await res.text()}`)
+}
+
 export async function notifyDevisSent(params: {
   reference: string
   total: number
@@ -100,30 +128,44 @@ export async function notifyDevisSent(params: {
   contactEmail?: string
   contactName?: string
   contactWhatsapp?: string
+  devisPdfBuffer?: Buffer
+  devisPdfUrl?: string
 }): Promise<void> {
-  const { reference, total, currency, contactEmail, contactName, contactWhatsapp } = params
+  const { reference, total, currency, contactEmail, contactName, contactWhatsapp, devisPdfBuffer, devisPdfUrl } = params
   const totalStr = `${total.toLocaleString('fr-FR')} ${currency}`
 
   // Email to team
   await sendEmail({
-    to: TEAM_EMAIL,
+    to: getTeamEmails(),
     subject: `[CRM] Devis ${reference} envoyé`,
     text: `Devis ${reference} (${totalStr}) envoyé à ${contactName || '—'}`,
+    attachments: devisPdfBuffer ? [{ filename: `devis-${reference}.pdf`, content: devisPdfBuffer }] : undefined,
   }).catch((e) => console.error('[crm-notif] Devis sent team email:', e))
 
-  // Email to client
+  // Email to client with PDF attachment
   if (contactEmail) {
     await sendEmail({
       to: contactEmail,
-      subject: `Votre devis ${reference} — Scoop Afrique`,
-      text: `Bonjour ${contactName || ''},\n\nVotre devis ${reference} d'un montant de ${totalStr} vous a été envoyé.\n\nPour toute question : ${TEAM_EMAIL}\n\n— L'équipe Scoop Afrique`,
+      subject: `Votre devis ${reference} — SCOOP`,
+      text: `Bonjour ${contactName || ''},\n\nVotre devis ${reference} d'un montant de ${totalStr} vous est joint en pièce jointe.\n\nPour toute question : ${getTeamEmails()[0] ?? 'contact@scoop-afrique.com'}\n\n— L'équipe SCOOP`,
+      attachments: devisPdfBuffer ? [{ filename: `devis-${reference}.pdf`, content: devisPdfBuffer }] : undefined,
     }).catch((e) => console.error('[crm-notif] Devis sent client email:', e))
+  }
+
+  // WhatsApp to client with PDF link
+  if (contactWhatsapp) {
+    const msg = devisPdfUrl
+      ? `Bonjour ${contactName || ''},\n\nVotre devis ${reference} (${totalStr}) est prêt.\nTéléchargez-le ici : ${devisPdfUrl}\n\n— SCOOP`
+      : `Bonjour ${contactName || ''},\n\nVotre devis ${reference} (${totalStr}) vous a été envoyé par email.\n\n— SCOOP`
+    await sendWhatsAppTo(contactWhatsapp, msg).catch((e) =>
+      console.error('[crm-notif] Devis sent client WhatsApp:', e)
+    )
   }
 
   // WhatsApp to team
   await sendWhatsApp(
     `📤 Devis ${reference} envoyé\n${totalStr}\nClient: ${contactName || '—'}`
-  ).catch((e) => console.error('[crm-notif] Devis sent WhatsApp:', e))
+  ).catch((e) => console.error('[crm-notif] Devis sent team WhatsApp:', e))
 }
 
 export async function notifyDevisAccepted(params: {
@@ -131,7 +173,7 @@ export async function notifyDevisAccepted(params: {
   contactName?: string
 }): Promise<void> {
   await sendEmail({
-    to: TEAM_EMAIL,
+    to: getTeamEmails(),
     subject: `[CRM] Devis ${params.reference} accepté`,
     text: `Le devis ${params.reference} a été accepté par ${params.contactName || '—'}.`,
   }).catch((e) => console.error('[crm-notif] Devis accepted:', e))
@@ -149,33 +191,39 @@ export async function notifyInvoiceSent(params: {
   contactEmail?: string
   contactName?: string
   contactWhatsapp?: string
+  invoicePdfBuffer?: Buffer
+  invoicePdfUrl?: string
 }): Promise<void> {
-  const { reference, total, currency, dueDate, contactEmail, contactName, contactWhatsapp } = params
+  const { reference, total, currency, dueDate, contactEmail, contactName, contactWhatsapp, invoicePdfBuffer, invoicePdfUrl } = params
   const totalStr = `${total.toLocaleString('fr-FR')} ${currency}`
 
   await sendEmail({
-    to: TEAM_EMAIL,
+    to: getTeamEmails(),
     subject: `[CRM] Facture ${reference} envoyée`,
     text: `Facture ${reference} (${totalStr}) envoyée à ${contactName || '—'}`,
+    attachments: invoicePdfBuffer ? [{ filename: `facture-${reference}.pdf`, content: invoicePdfBuffer }] : undefined,
   }).catch((e) => console.error('[crm-notif] Invoice sent team:', e))
 
   if (contactEmail) {
     await sendEmail({
       to: contactEmail,
-      subject: `Facture ${reference} — Scoop Afrique`,
-      text: `Bonjour ${contactName || ''},\n\nVotre facture ${reference} d'un montant de ${totalStr}${dueDate ? `, à régler avant le ${dueDate}` : ''}.\n\nPour toute question : ${TEAM_EMAIL}\n\n— L'équipe Scoop Afrique`,
+      subject: `Facture ${reference} — SCOOP`,
+      text: `Bonjour ${contactName || ''},\n\nVotre facture ${reference} d'un montant de ${totalStr}${dueDate ? `, à régler avant le ${dueDate}` : ''}.\n\nLe document est joint en pièce jointe.\n\nPour toute question : ${getTeamEmails()[0] ?? 'contact@scoop-afrique.com'}\n\n— L'équipe SCOOP`,
+      attachments: invoicePdfBuffer ? [{ filename: `facture-${reference}.pdf`, content: invoicePdfBuffer }] : undefined,
     }).catch((e) => console.error('[crm-notif] Invoice sent client:', e))
   }
 
   await sendWhatsApp(
     `📄 Facture ${reference} envoyée\n${totalStr}\nClient: ${contactName || '—'}`
-  ).catch((e) => console.error('[crm-notif] Invoice sent WhatsApp:', e))
+  ).catch((e) => console.error('[crm-notif] Invoice sent team WhatsApp:', e))
 
   if (contactWhatsapp) {
-    await sendWhatsAppTo(
-      contactWhatsapp,
-      `Facture ${reference} : ${totalStr} à régler${dueDate ? ` avant le ${dueDate}` : ''}.`
-    ).catch((e) => console.error('[crm-notif] Invoice sent client WhatsApp:', e))
+    const msg = invoicePdfUrl
+      ? `Bonjour ${contactName || ''},\n\nVotre facture ${reference} (${totalStr})${dueDate ? `, à régler avant le ${dueDate}` : ''}.\nTéléchargez-la ici : ${invoicePdfUrl}\n\n— SCOOP`
+      : `Facture ${reference} : ${totalStr} à régler${dueDate ? ` avant le ${dueDate}` : ''}.\n\n— SCOOP`
+    await sendWhatsAppTo(contactWhatsapp, msg).catch((e) =>
+      console.error('[crm-notif] Invoice sent client WhatsApp:', e)
+    )
   }
 }
 

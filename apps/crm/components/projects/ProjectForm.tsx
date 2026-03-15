@@ -39,6 +39,8 @@ export function ProjectForm({
   defaultValues,
   contacts = [],
   organizations = [],
+  devis = [],
+  services = [],
 }: ProjectFormProps) {
   const router = useRouter()
   const {
@@ -117,6 +119,43 @@ export function ProjectForm({
             {organizations.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {devis.length > 0 && (
+        <div>
+          <Label htmlFor="devis_id">Devis (optionnel)</Label>
+          <select
+            id="devis_id"
+            {...register('devis_id')}
+            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">— Déduit du projet —</option>
+            {devis.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.reference} — {d.title}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Liez le devis accepté pour récupérer les lignes dans les factures.
+          </p>
+        </div>
+      )}
+      {services.length > 0 && (
+        <div>
+          <Label htmlFor="service_slug">Service</Label>
+          <select
+            id="service_slug"
+            {...register('service_slug')}
+            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">— Sélectionner —</option>
+            {services.map((s) => (
+              <option key={s.slug} value={s.slug}>
+                {s.name}
               </option>
             ))}
           </select>

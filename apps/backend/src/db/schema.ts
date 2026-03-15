@@ -276,6 +276,7 @@ export const devisRequests = pgTable('devis_requests', {
   sourceUrl: text('source_url'),
   convertedToContactId: uuid('converted_to_contact_id'),
   convertedToDevisId: uuid('converted_to_devis_id'),
+  convertedToProjectId: uuid('converted_to_project_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

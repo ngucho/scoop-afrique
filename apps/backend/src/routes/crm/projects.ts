@@ -58,6 +58,13 @@ app.get('/:id', async (c) => {
   return c.json({ data: project })
 })
 
+app.get('/:id/folder', async (c) => {
+  const id = c.req.param('id')
+  const folder = await projectService.getProjectFolder(id)
+  if (!folder) return c.json({ error: 'Not found' }, 404)
+  return c.json({ data: folder })
+})
+
 app.patch('/:id', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
