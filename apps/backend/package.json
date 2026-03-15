@@ -16,6 +16,7 @@
     "db:bootstrap": "tsx scripts/bootstrap-drizzle-migrations.ts"
   },
   "dependencies": {
+    "@scoop-afrique/api-logger": "workspace:*",
     "@hono/node-server": "^1.13.0",
     "@react-pdf/renderer": "^4.3.2",
     "@supabase/supabase-js": "^2.47.0",

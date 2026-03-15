@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@scoop-afrique/api-logger": "workspace:*",
     "@vercel/analytics": "^1.4.1",
     "lucide-react": "^0.468.0",
     "next": "^16.1.6",
