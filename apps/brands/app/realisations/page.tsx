@@ -6,7 +6,7 @@ import { Footer } from '@/components/footer'
 import { Heading, Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'Réalisations & Portfolio',
@@ -21,7 +21,12 @@ export const metadata: Metadata = {
     siteName: 'Scoop Afrique',
     images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop Afrique Réalisations' }],
   },
-  twitter: { card: 'summary_large_image', title: 'Réalisations | Scoop Afrique' },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Réalisations | Scoop Afrique',
+    description: 'Nos réalisations : couvertures, campagnes, partenariats.',
+    images: ['/og-image.png'],
+  },
 }
 
 const realisations = [

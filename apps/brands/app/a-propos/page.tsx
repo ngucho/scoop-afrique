@@ -6,7 +6,7 @@ import { Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
 import { AnimatedBroadcastSvg } from '@/components/animated-broadcast-svg'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'À propos de Scoop Afrique',
@@ -25,6 +25,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'À propos de Scoop Afrique',
     description: "Découvrez Scoop Afrique, le média digital africain nouvelle génération.",
+    images: ['/og-image.png'],
   },
 }
 

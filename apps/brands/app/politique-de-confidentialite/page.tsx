@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Footer } from '@/components/footer'
 import { Heading } from 'scoop'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'Politique de Confidentialité',

@@ -3,7 +3,7 @@ import { Footer } from '@/components/footer'
 import { Heading, Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'FAQ',
@@ -18,7 +18,12 @@ export const metadata: Metadata = {
     siteName: 'Scoop Afrique',
     images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop Afrique FAQ' }],
   },
-  twitter: { card: 'summary_large_image', title: 'FAQ | Scoop Afrique' },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FAQ | Scoop Afrique',
+    description: 'Questions fréquentes sur nos services B2B.',
+    images: ['/og-image.png'],
+  },
 }
 
 const faqs = [

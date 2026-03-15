@@ -45,7 +45,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = article.meta_title ?? article.title
   const description = article.meta_description ?? article.excerpt ?? undefined
   const url = `${config.siteUrl}/articles/${article.slug}`
+  // Use absolute URLs for OG images (API returns full Supabase/external URLs)
   const image = article.og_image_url ?? article.cover_image_url ?? undefined
+  const imageUrl = image?.startsWith('http') ? image : (image ? `${config.siteUrl}${image.startsWith('/') ? '' : '/'}${image}` : undefined)
 
   return {
     title,
@@ -55,19 +57,51 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url,
       siteName: 'Scoop.Afrique',
-      images: image ? [{ url: image, width: 1200, height: 630, alt: title }] : undefined,
+      images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630, alt: title }] : undefined,
       locale: 'fr_FR',
       type: 'article',
       publishedTime: article.published_at ?? undefined,
+      authors: (article as { author_display_name?: string }).author_display_name
+        ? [(article as { author_display_name?: string }).author_display_name!]
+        : undefined,
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: image ? [image] : undefined,
+      images: imageUrl ? [imageUrl] : undefined,
     },
     alternates: { canonical: url },
   }
+}
+
+function ArticleJsonLd({
+  article,
+  shareUrl,
+}: {
+  article: { id: string; title: string; excerpt: string | null; slug: string; published_at: string | null; updated_at: string; cover_image_url: string | null; author_display_name?: string | null; author?: { email: string | null } | null }
+  shareUrl: string
+}) {
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.excerpt ?? undefined,
+    url: shareUrl,
+    image: article.cover_image_url ?? undefined,
+    datePublished: article.published_at ?? undefined,
+    dateModified: article.updated_at,
+    author: {
+      '@type': 'Person',
+      name: article.author_display_name ?? article.author?.email ?? 'Scoop Afrique',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Scoop.Afrique',
+      logo: { '@type': 'ImageObject', url: `${config.siteUrl}/og-image.png` },
+    },
+  }
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 }
 
 export default async function ArticleDetailPage({ params }: PageProps) {
@@ -93,6 +127,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
   return (
     <ReaderLayout>
+      <ArticleJsonLd article={article} shareUrl={shareUrl} />
       <article className="mx-auto max-w-3xl px-4 py-8 lg:px-8 page-enter">
         <Link
           href="/articles"

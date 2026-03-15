@@ -7,7 +7,7 @@ import { Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
 import { getServiceBySlug, getAllServiceSlugs, couvertureFormules } from '@/lib/services-data'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -15,15 +15,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const service = getServiceBySlug(slug)
   if (!service) return { title: 'Service non trouvé' }
+  const title = `${service.title} | Scoop Afrique`
+  const description = `${service.tagline} — ${service.summary} Tarifs : ${service.price}.`
+  const url = `${BASE_URL}/services/${slug}`
+  // Service image for OG (absolute URL for social sharing)
+  const imageUrl = service.image.startsWith('http') ? service.image : `${BASE_URL}${service.image}`
   return {
-    title: `${service.title} | Scoop Afrique`,
-    description: `${service.tagline} — ${service.summary} Tarifs : ${service.price}.`,
-    alternates: { canonical: `${BASE_URL}/services/${slug}` },
+    title,
+    description,
+    alternates: { canonical: url },
     openGraph: {
-      url: `${BASE_URL}/services/${slug}`,
-      title: `${service.title} | Scoop Afrique`,
-      description: service.tagline,
+      url,
+      title,
+      description,
       siteName: 'Scoop Afrique',
+      type: 'website',
+      locale: 'fr_FR',
+      images: [{ url: imageUrl, width: 1200, height: 630, alt: service.title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
     },
   }
 }
