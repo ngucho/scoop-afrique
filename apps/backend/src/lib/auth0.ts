@@ -13,8 +13,13 @@ import type { AppRole, Auth0UserInfo } from '../services/profile.service.js'
 /** Map Auth0 permissions array to an AppRole (same as frontend). */
 function roleFromPermissions(permissions: string[]): AppRole {
   if (permissions.includes('manage:users')) return 'admin'
-  if (permissions.includes('delete:articles')) return 'manager'
-  if (permissions.includes('publish:articles')) return 'editor'
+  if (permissions.includes('delete:articles') || permissions.includes('manage:crm')) return 'manager'
+  if (
+    permissions.includes('publish:articles') ||
+    permissions.includes('write:crm') ||
+    permissions.includes('read:crm')
+  )
+    return 'editor'
   if (
     permissions.includes('create:articles') ||
     permissions.includes('read:articles')

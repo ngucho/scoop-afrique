@@ -11,8 +11,9 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "declaration": true,
-    "noEmit": false
+    "noEmit": false,
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }

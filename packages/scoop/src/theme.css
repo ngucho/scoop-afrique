@@ -1,7 +1,7 @@
 /**
  * Scoop Design System — Theme
- * Méthodologie: Atomic Design. Default: light. Use .dark on html for dark mode.
- * Primary: Scoop Red (signal/breaking). Font: Brasika (Scoop word), Helvetica (body).
+ * Apple HIG–aligned + Monday.com–inspired. Translucent, gradients, full-rounded.
+ * Primary: Scoop Red. Font: Brasika (Scoop), SF-like (body).
  */
 
 @custom-variant dark (&:is(.dark *));
@@ -10,64 +10,98 @@
 /* 1.1 Couleurs — Light */
 :root {
   /* Primary background, text, signal/breaking (CTA) */
-  --background: oklch(0.98 0 0);
-  --foreground: oklch(0.1 0 0);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.12 0 0);
   --signal: oklch(0.55 0.26 25);
   --signal-foreground: oklch(0.98 0 0);
-  /* Gray scale (6 niveaux) */
+  /* Gray scale */
   --gray-50: oklch(0.98 0 0);
-  --gray-100: oklch(0.94 0 0);
-  --gray-200: oklch(0.88 0 0);
-  --gray-300: oklch(0.75 0 0);
+  --gray-100: oklch(0.95 0 0);
+  --gray-200: oklch(0.9 0 0);
+  --gray-300: oklch(0.78 0 0);
   --gray-400: oklch(0.55 0 0);
   --gray-500: oklch(0.45 0 0);
   --gray-600: oklch(0.25 0 0);
-  /* Overlay / scrim (vidéo, modales) */
-  --overlay: oklch(0 0 0 / 0.5);
-  --scrim: oklch(0 0 0 / 0.7);
-  /* États */
+  --overlay: oklch(0 0 0 / 0.45);
+  --scrim: oklch(0 0 0 / 0.65);
   --state-hover: oklch(0.55 0.24 25 / 0.9);
   --state-active: oklch(0.5 0.24 25);
-  --state-disabled: oklch(0.7 0 0);
+  --state-disabled: oklch(0.72 0 0);
   --state-error: oklch(0.55 0.22 25);
   --state-success: oklch(0.55 0.18 145);
   --state-warning: oklch(0.75 0.18 85);
 
-  --card: oklch(0.96 0 0);
-  --card-foreground: oklch(0.1 0 0);
-  --popover: oklch(0.98 0 0);
-  --popover-foreground: oklch(0.1 0 0);
+  --card: oklch(0.98 0 0);
+  --card-foreground: oklch(0.12 0 0);
+  --popover: oklch(0.99 0 0);
+  --popover-foreground: oklch(0.12 0 0);
   --primary: oklch(0.59 0.24 25);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.92 0 0);
-  --secondary-foreground: oklch(0.1 0 0);
-  --muted: oklch(0.94 0 0);
-  --muted-foreground: oklch(0.45 0 0);
+  --secondary: oklch(0.94 0 0);
+  --secondary-foreground: oklch(0.12 0 0);
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.48 0 0);
   --accent: oklch(0.59 0.24 25);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.88 0 0);
-  --input: oklch(0.92 0 0);
+  --border: oklch(0.9 0 0 / 0.8);
+  --input: oklch(0.94 0 0);
   --ring: oklch(0.59 0.24 25);
   --chart-1: oklch(0.59 0.24 25);
   --chart-2: oklch(0.65 0.2 280);
   --chart-3: oklch(0.7 0.18 200);
   --chart-4: oklch(0.75 0.15 130);
   --chart-5: oklch(0.8 0.1 60);
-  --radius: 0rem;
-  --sidebar: oklch(0.96 0 0);
-  --sidebar-foreground: oklch(0.1 0 0);
+  --sidebar: oklch(0.97 0 0);
+  --sidebar-foreground: oklch(0.12 0 0);
   --sidebar-primary: oklch(0.59 0.24 25);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.92 0 0);
-  --sidebar-accent-foreground: oklch(0.1 0 0);
-  --sidebar-border: oklch(0.88 0 0);
+  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent-foreground: oklch(0.12 0 0);
+  --sidebar-border: oklch(0.9 0 0 / 0.6);
   --sidebar-ring: oklch(0.59 0.24 25);
 
-  /* 1.2 Typographie — Brasika (Scoop), Helvetica (body) */
+  /* Radius — Apple/Monday: full-rounded for buttons, soft for cards */
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+  --radius-button: 9999px;
+
+  /* Translucent / Glass — Monday-style */
+  --glass-bg: oklch(0.99 0 0 / 0.72);
+  --glass-border: oklch(0.9 0 0 / 0.55);
+  --glass-blur: 16px;
+  --surface: oklch(0.99 0 0 / 0.88);
+  --surface-border: oklch(0.9 0 0 / 0.6);
+  --primary-subtle: oklch(0.59 0.24 25 / 0.06);
+
+  /* Gradients — semantic, theme-adaptive */
+  --gradient-hero-overlay: linear-gradient(
+    135deg,
+    oklch(0.985 0 0 / 0.92) 0%,
+    oklch(0.985 0 0 / 0.6) 40%,
+    oklch(0.985 0 0 / 0.4) 70%,
+    oklch(0.985 0 0 / 0.15) 100%
+  );
+  --gradient-primary: linear-gradient(
+    135deg,
+    oklch(0.62 0.24 25) 0%,
+    oklch(0.56 0.24 25) 100%
+  );
+  --gradient-surface: linear-gradient(
+    180deg,
+    oklch(0.99 0 0 / 0.95) 0%,
+    oklch(0.97 0 0 / 0.9) 100%
+  );
+
+  /* 1.2 Typographie — Apple-aligned (SF-like) */
   --font-scoop: 'Brasika', 'Brasika Fallback', serif;
-  --font-body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -83,92 +117,128 @@
   --text-4xl: 2.25rem;
   --text-5xl: 3rem;
   --text-6xl: 3.75rem;
-  --leading-tight: 1.25;
-  --leading-snug: 1.375;
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
   --leading-normal: 1.5;
-  --leading-relaxed: 1.625;
-  --tracking-tight: -0.025em;
+  --leading-relaxed: 1.6;
+  --tracking-tight: -0.02em;
   --tracking-normal: 0;
-  --tracking-wide: 0.05em;
-  --tracking-wider: 0.1em;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
 
-  /* 1.3 Grille & Layout */
+  /* 1.3 Layout — Apple 8pt grid, 44pt touch target */
   --grid-cols-desktop: 12;
   --grid-cols-tablet: 8;
   --grid-cols-mobile: 4;
   --gutter: 24px;
-  --margin-page: 16px;
+  --margin-page: 20px;
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
   --content-max-width: 1280px;
   --safe-area-inset: env(safe-area-inset-bottom, 0px);
+  --touch-target: 44px;
 
-  /* 1.4 Espacements (scale 4/8/16/24/32/64) */
+  /* 1.4 Espacements — Apple-aligned (8pt base, generous) */
   --space-1: 4px;
   --space-2: 8px;
-  --space-3: 16px;
-  --space-4: 24px;
-  --space-5: 32px;
-  --space-6: 64px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
 
   /* 1.5 Iconographie */
   --icon-size-sm: 16px;
   --icon-size-md: 24px;
   --icon-size-lg: 32px;
   --icon-stroke: 1.5;
+
+  /* Shadows — subtle, Apple-like */
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.04);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.06);
+  --shadow-lg: 0 8px 24px oklch(0 0 0 / 0.08);
+  --shadow-xl: 0 16px 48px oklch(0 0 0 / 0.1);
 }
 
-/* Dark Theme — color overrides only; typo/grid/space inherit */
+/* Dark Theme */
 .dark {
-  --background: oklch(0.08 0 0);
+  --background: oklch(0.07 0 0);
   --foreground: oklch(0.96 0 0);
   --signal: oklch(0.6 0.24 25);
   --gray-50: oklch(0.12 0 0);
   --gray-100: oklch(0.18 0 0);
-  --gray-200: oklch(0.22 0 0);
-  --gray-300: oklch(0.35 0 0);
+  --gray-200: oklch(0.24 0 0);
+  --gray-300: oklch(0.38 0 0);
   --gray-400: oklch(0.55 0 0);
   --gray-500: oklch(0.65 0 0);
   --gray-600: oklch(0.88 0 0);
-  --overlay: oklch(0 0 0 / 0.6);
-  --scrim: oklch(0 0 0 / 0.85);
+  --overlay: oklch(0 0 0 / 0.55);
+  --scrim: oklch(0 0 0 / 0.8);
   --state-disabled: oklch(0.35 0 0);
 
-  --card: oklch(0.12 0 0);
+  --card: oklch(0.11 0 0);
   --card-foreground: oklch(0.96 0 0);
-  --popover: oklch(0.12 0 0);
+  --popover: oklch(0.11 0 0);
   --popover-foreground: oklch(0.96 0 0);
   --primary: oklch(0.59 0.24 25);
   --primary-foreground: oklch(0.98 0 0);
   --secondary: oklch(0.18 0 0);
   --secondary-foreground: oklch(0.96 0 0);
   --muted: oklch(0.2 0 0);
-  --muted-foreground: oklch(0.6 0 0);
+  --muted-foreground: oklch(0.62 0 0);
   --accent: oklch(0.59 0.24 25);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.22 0 0);
+  --border: oklch(0.24 0 0 / 0.7);
   --input: oklch(0.18 0 0);
   --ring: oklch(0.59 0.24 25);
-  --chart-1: oklch(0.59 0.24 25);
-  --chart-2: oklch(0.65 0.2 280);
-  --chart-3: oklch(0.7 0.18 200);
-  --chart-4: oklch(0.75 0.15 130);
-  --chart-5: oklch(0.8 0.1 60);
-  --sidebar: oklch(0.1 0 0);
+  --sidebar: oklch(0.09 0 0);
   --sidebar-foreground: oklch(0.96 0 0);
   --sidebar-primary: oklch(0.59 0.24 25);
   --sidebar-primary-foreground: oklch(0.98 0 0);
   --sidebar-accent: oklch(0.18 0 0);
   --sidebar-accent-foreground: oklch(0.96 0 0);
-  --sidebar-border: oklch(0.22 0 0);
-  --sidebar-ring: oklch(0.59 0.24 25);
+  --sidebar-border: oklch(0.24 0 0 / 0.5);
+
+  --glass-bg: oklch(0.12 0 0 / 0.65);
+  --glass-border: oklch(0.24 0 0 / 0.5);
+  --surface: oklch(0.12 0 0 / 0.9);
+  --surface-border: oklch(0.24 0 0 / 0.6);
+  --primary-subtle: oklch(0.59 0.24 25 / 0.08);
+
+  --gradient-hero-overlay: linear-gradient(
+    135deg,
+    oklch(0.07 0 0 / 0.9) 0%,
+    oklch(0.07 0 0 / 0.5) 40%,
+    oklch(0.07 0 0 / 0.25) 70%,
+    oklch(0.07 0 0 / 0.08) 100%
+  );
+  --gradient-primary: linear-gradient(
+    135deg,
+    oklch(0.62 0.24 25) 0%,
+    oklch(0.56 0.24 25) 100%
+  );
+  --gradient-surface: linear-gradient(
+    180deg,
+    oklch(0.12 0 0 / 0.95) 0%,
+    oklch(0.1 0 0 / 0.9) 100%
+  );
+
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
+  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.25);
+  --shadow-lg: 0 8px 24px oklch(0 0 0 / 0.3);
+  --shadow-xl: 0 16px 48px oklch(0 0 0 / 0.35);
 }
 
-/* Animations — minimal, non-distracting */
+/* Animations */
 @keyframes scoop-glitch-skew {
   0% { transform: skew(0deg); }
   20% { transform: skew(-2deg); }
@@ -198,43 +268,23 @@
   100% { stroke-dashoffset: 0; }
 }
 
-/* Utility classes for design system */
-.scoop-glitch-skew {
-  animation: scoop-glitch-skew 0.5s ease-in-out;
-}
+.scoop-glitch-skew { animation: scoop-glitch-skew 0.5s ease-in-out; }
+.scoop-marquee { animation: scoop-marquee 20s linear infinite; }
+.scoop-float { animation: scoop-float 6s ease-in-out infinite; }
 
-.scoop-marquee {
-  animation: scoop-marquee 20s linear infinite;
-}
-
-.scoop-float {
-  animation: scoop-float 6s ease-in-out infinite;
-}
-
-/* African pattern background */
+/* African pattern */
 .scoop-african-pattern {
   background-image:
-    linear-gradient(45deg, transparent 45%, oklch(0.59 0.24 25 / 0.03) 45%, oklch(0.59 0.24 25 / 0.03) 55%, transparent 55%),
-    linear-gradient(-45deg, transparent 45%, oklch(0.59 0.24 25 / 0.03) 45%, oklch(0.59 0.24 25 / 0.03) 55%, transparent 55%);
+    linear-gradient(45deg, transparent 45%, var(--primary-subtle) 45%, var(--primary-subtle) 55%, transparent 55%),
+    linear-gradient(-45deg, transparent 45%, var(--primary-subtle) 45%, var(--primary-subtle) 55%, transparent 55%);
   background-size: 60px 60px;
 }
 
 /* Scrollbar */
-.scoop-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.scoop-scrollbar::-webkit-scrollbar-track {
-  background: var(--background);
-}
-
-.scoop-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--primary);
-}
-
-.scoop-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: oklch(0.65 0.24 25);
-}
+.scoop-scrollbar::-webkit-scrollbar { width: 8px; }
+.scoop-scrollbar::-webkit-scrollbar-track { background: var(--background); }
+.scoop-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); }
+.scoop-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--state-hover); }
 
 /* Selection */
 .scoop-selection::selection {
@@ -242,7 +292,7 @@
   color: var(--primary-foreground);
 }
 
-/* Tailwind v4 theme — import after tailwindcss in your app */
+/* Tailwind v4 theme */
 @theme inline {
   --font-scoop: var(--font-scoop);
   --font-sans: var(--font-body);
@@ -274,10 +324,15 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) + 2px);
-  --radius-md: calc(var(--radius) + 4px);
-  --radius-lg: calc(var(--radius) + 8px);
-  --radius-xl: calc(var(--radius) + 12px);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-surface: var(--surface);
+  --color-surface-border: var(--surface-border);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -292,9 +347,15 @@
   --spacing-4: var(--space-4);
   --spacing-5: var(--space-5);
   --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
+  --spacing-10: var(--space-10);
+  --spacing-12: var(--space-12);
+  --spacing-16: var(--space-16);
+  --spacing-20: var(--space-20);
+  --spacing-24: var(--space-24);
 }
 
-/* 1.2 Typography — semantic & truncation */
+/* Typography utilities */
 .scoop-font-scoop { font-family: var(--font-scoop); }
 .scoop-line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .scoop-line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

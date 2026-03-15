@@ -1,6 +1,6 @@
 # Déploiement sur Vercel — Landing, Frontend et Backend
 
-Ce guide explique comment mettre en production les trois applications du monorepo Scoop Afrique sur **Vercel** (landing et frontend en priorité), et comment déployer le **backend** soit sur Vercel (Serverless/Edge avec Hono), soit sur un hébergeur Node externe (Railway, Render, etc.).
+Ce guide explique comment mettre en production les trois applications du monorepo Scoop Afrique sur **Vercel** (brands et frontend en priorité), et comment déployer le **backend** soit sur Vercel (Serverless/Edge avec Hono), soit sur un hébergeur Node externe (Railway, Render, etc.).
 
 ---
 
@@ -15,41 +15,41 @@ Ce guide explique comment mettre en production les trois applications du monorep
 
 ## 1. Configuration du monorepo pour Vercel
 
-À la racine du repo, chaque application est dans un sous-dossier (`apps/landing`, `apps/frontend`, `apps/backend`). Sur Vercel, on crée **un projet par application** et on indique le **Root Directory** et le **Framework Preset**.
+À la racine du repo, chaque application est dans un sous-dossier (`apps/brands`, `apps/frontend`, `apps/backend`). Sur Vercel, on crée **un projet par application** et on indique le **Root Directory** et le **Framework Preset**.
 
 ---
 
-## 2. Déployer la Landing (`apps/landing`)
+## 2. Déployer la Landing (`apps/brands`)
 
 1. **Vercel** → New Project → importer le repo.
-2. **Root Directory** : `apps/landing`.
+2. **Root Directory** : `apps/brands`.
 3. **Framework Preset** : Next.js (détecté automatiquement).
-4. **Build Command** : `pnpm build` (ou `cd ../.. && pnpm build:landing` si vous buildez depuis la racine).
-5. **Install Command** : `pnpm install` (exécuté à la racine si Root Directory est `apps/landing`, selon la config Vercel ; pour un monorepo, souvent on définit **Root Directory** = racine du repo et **Root Directory** pour la build = `apps/landing` — en pratique, configurer **Root Directory** = `apps/landing` et dans les Settings du projet, **Build & Development** → **Override** : Build Command = `pnpm run build` en étant sûr que le `package.json` de `apps/landing` a un script `build`).
+4. **Build Command** : `pnpm build` (ou `cd ../.. && pnpm build:brands` si vous buildez depuis la racine).
+5. **Install Command** : `pnpm install` (exécuté à la racine si Root Directory est `apps/brands`, selon la config Vercel ; pour un monorepo, souvent on définit **Root Directory** = racine du repo et **Root Directory** pour la build = `apps/brands` — en pratique, configurer **Root Directory** = `apps/brands` et dans les Settings du projet, **Build & Development** → **Override** : Build Command = `pnpm run build` en étant sûr que le `package.json` de `apps/brands` a un script `build`).
 
-   Recommandation : **Root Directory** = `apps/landing`. Dans ce cas, Vercel peut ne pas voir le workspace. Alternative : **Root Directory** laissé vide (racine), puis dans **Build and Output Settings** :
-   - **Root Directory** : `apps/landing`
-   - **Build Command** : `pnpm install && pnpm run build` (depuis la racine : `pnpm --filter landing build` ou depuis `apps/landing` après install à la racine).
+   Recommandation : **Root Directory** = `apps/brands`. Dans ce cas, Vercel peut ne pas voir le workspace. Alternative : **Root Directory** laissé vide (racine), puis dans **Build and Output Settings** :
+   - **Root Directory** : `apps/brands`
+   - **Build Command** : `pnpm install && pnpm run build` (depuis la racine : `pnpm --filter brands build` ou depuis `apps/brands` après install à la racine).
 
    Pour un monorepo pnpm, la méthode la plus fiable est :
    - **Root Directory** : (vide = racine du repo)
-   - **Build Command** : `pnpm install && pnpm --filter landing build`
-   - **Output Directory** : `apps/landing/.next` (Next.js)
+   - **Build Command** : `pnpm install && pnpm --filter brands build`
+   - **Output Directory** : `apps/brands/.next` (Next.js)
    - **Install Command** : `pnpm install`
 
-6. **Variables d’environnement** : ajouter toutes les variables nécessaires à la landing (pas de secret backend ; éventuellement `NEXT_PUBLIC_*` si utilisé).
+6. **Variables d’environnement** : ajouter toutes les variables nécessaires à la brands (pas de secret backend ; éventuellement `NEXT_PUBLIC_*` si utilisé).
 7. **Domaine** : attribuer un domaine (ex. `www.scoop-afrique.com` ou sous-domaine dédié).
 
-Résumé recommandé pour **landing** avec monorepo :
+Résumé recommandé pour **brands** avec monorepo :
 
 | Paramètre        | Valeur                                      |
 |------------------|---------------------------------------------|
-| Root Directory   | `apps/landing`                              |
+| Root Directory   | `apps/brands`                              |
 | Framework        | Next.js                                     |
-| Build Command   | `cd ../.. && pnpm install && pnpm --filter landing build` (si Root = `apps/landing`, alors juste `pnpm run build` depuis ce dossier) |
+| Build Command   | `cd ../.. && pnpm install && pnpm --filter brands build` (si Root = `apps/brands`, alors juste `pnpm run build` depuis ce dossier) |
 | Output Directory | `.next` (par défaut Next.js)                 |
 
-Si vous laissez la racine comme root : **Root Directory** vide, **Build Command** : `pnpm install && pnpm --filter landing build`, **Output Directory** : `apps/landing/.next`.
+Si vous laissez la racine comme root : **Root Directory** vide, **Build Command** : `pnpm install && pnpm --filter brands build`, **Output Directory** : `apps/brands/.next`.
 
 ---
 
@@ -94,7 +94,7 @@ Le backend est configuré pour Vercel en **zero-config** : l’app Hono est expo
 
 4. **vercel.json** (à la racine de `apps/backend`) : optionnel ; peut contenir `buildCommand` et `framework: "hono"` pour le build.
 
-5. **Variables d’environnement** : toutes celles du backend (Supabase, Auth0, CORS, etc.). **CORS** : mettre `CORS_ORIGINS` avec les URLs de production (landing, frontend).
+5. **Variables d’environnement** : toutes celles du backend (Supabase, Auth0, CORS, etc.). **CORS** : mettre `CORS_ORIGINS` avec les URLs de production (brands, frontend).
 
 ### 4.2 Limites et alternatives
 
@@ -108,7 +108,7 @@ Le backend est configuré pour Vercel en **zero-config** : l’app Hono est expo
 1. **Railway** : New Project → Deploy from GitHub → sélectionner le repo, **Root Directory** : `apps/backend`. Build : `pnpm install && pnpm run build`. Start : `pnpm start` (ou `node dist/index.js`). Ajouter les variables d’environnement. Railway expose une URL publique (ex. `https://xxx.railway.app`).
 2. **Render** : Web Service → connecter le repo, **Root Directory** : `apps/backend`, Build : `pnpm install && pnpm run build`, Start : `pnpm start`. Variables d’environnement idem. Renseigner l’URL du service dans `NEXT_PUBLIC_API_URL`.
 
-Dans les deux cas, configurer **CORS** côté backend (`CORS_ORIGINS`) avec les origines autorisées (URL de la landing, du frontend, et éventuellement un domaine API personnalisé).
+Dans les deux cas, configurer **CORS** côté backend (`CORS_ORIGINS`) avec les origines autorisées (URL de la brands, du frontend, et éventuellement un domaine API personnalisé).
 
 ---
 
@@ -118,7 +118,7 @@ Dans les deux cas, configurer **CORS** côté backend (`CORS_ORIGINS`) avec les 
 |----------|----------------------------|----------------------|
 | Landing  | `https://www.scoop-afrique.com` | (optionnel) `NEXT_PUBLIC_SITE_URL` |
 | Frontend | `https://app.scoop-afrique.com` | `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SITE_URL`, Auth0 |
-| Backend  | `https://api.scoop-afrique.com` | Supabase, Auth0, `CORS_ORIGINS` (inclure landing + frontend) |
+| Backend  | `https://api.scoop-afrique.com` | Supabase, Auth0, `CORS_ORIGINS` (inclure brands + frontend) |
 
 Après déploiement :
 

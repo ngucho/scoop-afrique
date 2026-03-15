@@ -32,14 +32,11 @@ export function ThemeToggle({ className, ...props }: ThemeToggleProps) {
     return (
       <button
         type="button"
-        className={cn(
-          'relative flex h-12 w-12 items-center justify-center border border-border bg-background/80 backdrop-blur-sm transition-all duration-300',
-          className
-        )}
+        className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground', className)}
         aria-label="Toggle theme"
         {...props}
       >
-        <div className="h-5 w-5" />
+        <div className="h-4 w-4" />
       </button>
     )
   }
@@ -49,30 +46,13 @@ export function ThemeToggle({ className, ...props }: ThemeToggleProps) {
       type="button"
       onClick={toggleTheme}
       className={cn(
-        'group relative flex h-12 w-12 items-center justify-center border border-border bg-background/80 backdrop-blur-sm transition-all duration-300 hover:border-primary hover:bg-primary',
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-primary',
         className
       )}
       aria-label={isDark ? 'Activer le mode clair' : 'Activer le mode sombre'}
-      data-hover
       {...props}
     >
-      <div className="relative h-5 w-5">
-        <Sun
-          className={`absolute inset-0 h-5 w-5 transition-all duration-300 ${
-            isDark
-              ? 'rotate-90 scale-0 opacity-0'
-              : 'rotate-0 scale-100 opacity-100 text-foreground group-hover:text-primary-foreground'
-          }`}
-        />
-        <Moon
-          className={`absolute inset-0 h-5 w-5 transition-all duration-300 ${
-            isDark
-              ? 'rotate-0 scale-100 opacity-100 text-foreground group-hover:text-primary-foreground'
-              : '-rotate-90 scale-0 opacity-0'
-          }`}
-        />
-      </div>
-      <span className="absolute inset-0 -translate-y-full bg-primary transition-transform duration-300 group-hover:translate-y-0" aria-hidden />
+      {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
     </button>
   )
 }

@@ -33,7 +33,7 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 ```
 /
 ├── apps/
-│   ├── landing/     # Site vitrine (Next.js)
+│   ├── brands/     # Site vitrine (Next.js)
 │   ├── frontend/    # Webapp lecteur + admin (Next.js)
 │   └── backend/     # API REST (Hono/Node)
 ├── packages/
@@ -49,7 +49,7 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 
 ## 2. Applications
 
-### 2.1 Landing (`apps/landing`)
+### 2.1 Landing (`apps/brands`)
 
 - **Rôle** : site vitrine pour partenariats, publicité et couverture médiatique.
 - **Pages** : accueil, à propos, contact, vidéo, podcast, mentions légales, politique de confidentialité.
@@ -80,7 +80,7 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 - **Méthodologie** : Atomic Design (atoms, molecules, organisms, patterns).
 - **Styles** : Tailwind v4, variables CSS dans `theme.css` (couleurs, typo, espacements). Thème clair par défaut ; mode sombre via `.dark` sur `<html>`.
 - **Couleur primaire** : rouge Scoop (signal, CTA). Police logo : Brasika (variable `--font-scoop`).
-- **Composants** : Button, Dot, Text, Heading, Card, GlitchText, ThemeToggle, etc. Exportés depuis le package et utilisés par landing et frontend.
+- **Composants** : Button, Dot, Text, Heading, Card, GlitchText, ThemeToggle, etc. Exportés depuis le package et utilisés par brands et frontend.
 - **Storybook** : `pnpm --filter scoop storybook` pour développer et visualiser les composants.
 
 ---
@@ -111,14 +111,14 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 - **Migrations** : `npx supabase db push` (ou exécuter les SQL à la main dans Supabase).
 - **Lancement** :
   - `pnpm dev` : toutes les apps en parallèle.
-  - `pnpm dev:landing`, `pnpm dev:frontend`, `pnpm dev:backend` : une seule app.
+  - `pnpm dev:brands`, `pnpm dev:frontend`, `pnpm dev:backend` : une seule app.
 - **Build** : `pnpm build` à la racine pour tout compiler.
 
 ---
 
 ## 7. Déploiement
 
-Le déploiement sur **Vercel** (landing, frontend, backend) est décrit en détail dans **`docs/DEPLOYMENT_VERCEL.md`**. Résumé :
+Le déploiement sur **Vercel** (brands, frontend, backend) est décrit en détail dans **`docs/DEPLOYMENT_VERCEL.md`**. Résumé :
 
 - **Landing** et **Frontend** : déploiement Next.js standard (projet Vercel par app, variables d’environnement, domaines).
 - **Backend** : déployable sur Vercel en tant que backend Hono (Serverless/Edge) ou sur un hébergeur Node (Railway, Render, etc.) selon les contraintes (Supabase, durée des requêtes, etc.).
@@ -130,7 +130,7 @@ Le déploiement sur **Vercel** (landing, frontend, backend) est décrit en déta
 | Document | Description |
 |----------|-------------|
 | **DOCUMENTATION_COMPLETE.md** | Ce fichier — vue d’ensemble et explications en français. |
-| **DEPLOYMENT_VERCEL.md** | Guide pas à pas : déployer landing, frontend et backend (Vercel et alternatives). |
+| **DEPLOYMENT_VERCEL.md** | Guide pas à pas : déployer brands, frontend et backend (Vercel et alternatives). |
 | **ARCHITECTURE.md** | Schémas et description technique de l’architecture. |
 | **API.md** | Référence de l’API REST (endpoints, auth, formats). |
 | **AUTH0_SETUP.md** | Configuration Auth0 (tenant, API, rôles, Action Post-Login). |
