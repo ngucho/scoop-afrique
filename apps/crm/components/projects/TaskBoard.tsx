@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
 
 const COLUMNS = [
@@ -51,9 +52,10 @@ export function TaskBoard({
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
       return
     }
+    toast.success('Tâche créée')
     setTasks((prev) => [
       ...prev,
       {
@@ -77,9 +79,10 @@ export function TaskBoard({
     })
     if (!res.ok) {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
       return
     }
+    toast.success('Statut mis à jour')
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, status } : t))
     )

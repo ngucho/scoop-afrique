@@ -16,7 +16,7 @@ const app = new Hono()
 
 /* --- List published articles --- */
 app.get('/', async (c) => {
-  if (!config.supabase) return c.json({ data: [], total: 0 })
+  if (!config.database) return c.json({ data: [], total: 0 })
   const category = c.req.query('category')
   const q = c.req.query('q')
   const tag = c.req.query('tag')

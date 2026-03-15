@@ -1,22 +1,12 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
+import { PdfHeader } from './PdfHeader.js'
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontSize: 10,
     fontFamily: 'Helvetica',
-  },
-  header: {
-    marginBottom: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    paddingBottom: 15,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
   },
   subtitle: {
     fontSize: 9,
@@ -94,6 +84,7 @@ interface InvoiceData {
   }
   line_items: LineItem[]
   subtotal: number
+  discount_amount?: number
   tax_rate: number
   tax_amount: number
   total: number
@@ -117,12 +108,7 @@ export function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.title}>SCOOP AFRIQUE</Text>
-          <Text style={styles.subtitle}>SARL au capital de 1 000 000 FCFA</Text>
-          <Text style={styles.subtitle}>Siège : Abidjan Cocody Riviera Faya — 01 BP 130 Abidjan 01</Text>
-          <Text style={styles.subtitle}>Facture {invoice.reference}</Text>
-        </View>
+        <PdfHeader docTitle={`Facture ${invoice.reference}`} />
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Facture</Text>
@@ -190,6 +176,14 @@ export function InvoiceTemplate({ invoice }: { invoice: InvoiceData }) {
               {formatMoney(invoice.subtotal, invoice.currency)}
             </Text>
           </View>
+          {(invoice.discount_amount ?? 0) > 0 && (
+            <View style={styles.totalRow}>
+              <Text style={styles.label}>Réduction:</Text>
+              <Text style={styles.totalValue}>
+                -{formatMoney(invoice.discount_amount!, invoice.currency)}
+              </Text>
+            </View>
+          )}
           {invoice.tax_amount > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.label}>TVA ({invoice.tax_rate}%):</Text>

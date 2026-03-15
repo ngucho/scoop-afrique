@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label, Select, Textarea } from 'scoop'
 
 const schema = z.object({
@@ -55,9 +56,10 @@ export function ContactForm({
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur lors de l\'enregistrement')
       return
     }
+    toast.success(contactId ? 'Contact mis à jour' : 'Contact créé')
     router.push(`/contacts/${json.data.id}`)
   }
 

@@ -1,17 +1,19 @@
 /**
  * CRM reference generator — DV-2026-001, FAC-2026-001, PRJ-2026-001, CTR-2026-001
  */
-import { getSupabase } from './supabase.js'
+import { desc, like, sql } from 'drizzle-orm'
+import { getDb } from '../db/index.js'
+import { crmDevis, crmInvoices, crmProjects, crmContracts } from '../db/schema.js'
 
-const PREFIX_TABLE: Record<string, string> = {
-  DV: 'crm_devis',
-  FAC: 'crm_invoices',
-  PRJ: 'crm_projects',
-  CTR: 'crm_contracts',
-}
+const PREFIX_TABLE = {
+  DV: crmDevis,
+  FAC: crmInvoices,
+  PRJ: crmProjects,
+  CTR: crmContracts,
+} as const
 
 export async function nextReference(prefix: string): Promise<string> {
-  const table = PREFIX_TABLE[prefix]
+  const table = PREFIX_TABLE[prefix as keyof typeof PREFIX_TABLE]
   if (!table) {
     throw new Error(`Unknown reference prefix: ${prefix}`)
   }
@@ -19,22 +21,17 @@ export async function nextReference(prefix: string): Promise<string> {
   const year = new Date().getFullYear()
   const pattern = `${prefix}-${year}-%`
 
-  const supabase = getSupabase()
-  const { data, error } = await supabase
+  const db = getDb()
+  const [row] = await db
+    .select({ reference: table.reference })
     .from(table)
-    .select('reference')
-    .like('reference', pattern)
-    .order('reference', { ascending: false })
+    .where(like(table.reference, pattern))
+    .orderBy(desc(table.reference))
     .limit(1)
-    .maybeSingle()
-
-  if (error) {
-    throw new Error(`Failed to get next reference: ${error.message}`)
-  }
 
   let nextNum = 1
-  if (data?.reference) {
-    const match = (data.reference as string).match(new RegExp(`${prefix}-${year}-(\\d+)`))
+  if (row?.reference) {
+    const match = (row.reference as string).match(new RegExp(`${prefix}-${year}-(\\d+)`))
     if (match) {
       nextNum = parseInt(match[1], 10) + 1
     }

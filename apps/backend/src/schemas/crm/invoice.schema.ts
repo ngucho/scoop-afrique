@@ -16,6 +16,7 @@ export const createInvoiceSchema = z.object({
   devis_id: z.string().uuid().optional(),
   line_items: z.array(lineItemSchema).min(1, 'Au moins une ligne requise'),
   tax_rate: z.number().min(0).max(100).optional().default(0),
+  discount_amount: z.number().int().min(0).optional().default(0),
   currency: z.string().optional().default('FCFA'),
   due_date: z.string().optional(),
   notes: z.string().optional(),

@@ -1,7 +1,10 @@
 /**
  * CRM deliverable and metrics service
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, desc } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmDeliverables, crmDeliverableMetrics } from '../../db/schema.js'
+import { toSnakeRecord } from './crm-util.js'
 import type {
   CreateDeliverableInput,
   UpdateDeliverableInput,
@@ -11,24 +14,21 @@ import type {
 export async function listDeliverablesByProject(
   projectId: string
 ): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_deliverables')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as Array<Record<string, unknown>>
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(crmDeliverables)
+    .where(eq(crmDeliverables.projectId, projectId))
+    .orderBy(desc(crmDeliverables.createdAt))
+  return rows.map((r) => toSnakeRecord(r as Record<string, unknown>))
 }
 
 export async function getDeliverableById(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase.from('crm_deliverables').select('*').eq('id', id).single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
-  }
-  return data as Record<string, unknown>
+  const db = getDb()
+  const rows = await db.select().from(crmDeliverables).where(eq(crmDeliverables.id, id)).limit(1)
+  const row = rows[0]
+  if (!row) return null
+  return toSnakeRecord(row as Record<string, unknown>)
 }
 
 export async function createDeliverable(
@@ -36,48 +36,50 @@ export async function createDeliverable(
   input: CreateDeliverableInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const insert: Record<string, unknown> = {
-    project_id: projectId,
-    title: input.title.trim(),
-    type: input.type ?? 'post',
-    platform: input.platform ?? 'instagram',
-    url: input.url?.trim() || null,
-    thumbnail_url: input.thumbnail_url?.trim() || null,
-    published_at: input.published_at || null,
-    notes: input.notes?.trim() || null,
-    created_by: createdBy ?? null,
-  }
+  const db = getDb()
+  const [deliverable] = await db
+    .insert(crmDeliverables)
+    .values({
+      projectId,
+      title: input.title.trim(),
+      type: (input.type ?? 'post') as typeof crmDeliverables.type.enumValues[number],
+      platform: (input.platform ?? 'instagram') as typeof crmDeliverables.platform.enumValues[number],
+      url: input.url?.trim() || null,
+      thumbnailUrl: input.thumbnail_url?.trim() || null,
+      publishedAt: input.published_at ? new Date(input.published_at) : null,
+      notes: input.notes?.trim() || null,
+      createdBy: createdBy ?? null,
+    })
+    .returning()
 
-  const { data, error } = await supabase.from('crm_deliverables').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  if (!deliverable) throw new Error('Failed to create deliverable')
+  return toSnakeRecord(deliverable as Record<string, unknown>)
 }
 
 export async function updateDeliverable(
   id: string,
   input: UpdateDeliverableInput
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const update: Record<string, unknown> = {}
+  const db = getDb()
+  const update: Partial<typeof crmDeliverables.$inferInsert> = {}
   if (input.title !== undefined) update.title = input.title.trim()
-  if (input.type !== undefined) update.type = input.type
-  if (input.platform !== undefined) update.platform = input.platform
+  if (input.type !== undefined) update.type = input.type as typeof crmDeliverables.type.enumValues[number]
+  if (input.platform !== undefined) update.platform = input.platform as typeof crmDeliverables.platform.enumValues[number]
   if (input.url !== undefined) update.url = input.url?.trim() || null
-  if (input.thumbnail_url !== undefined) update.thumbnail_url = input.thumbnail_url?.trim() || null
-  if (input.published_at !== undefined) update.published_at = input.published_at || null
+  if (input.thumbnail_url !== undefined) update.thumbnailUrl = input.thumbnail_url?.trim() || null
+  if (input.published_at !== undefined) update.publishedAt = input.published_at ? new Date(input.published_at) : null
   if (input.notes !== undefined) update.notes = input.notes?.trim() || null
 
-  const { data, error } = await supabase.from('crm_deliverables').update(update).eq('id', id).select().single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  const [deliverable] = await db.update(crmDeliverables).set(update).where(eq(crmDeliverables.id, id)).returning()
+  if (!deliverable) throw new Error('Failed to update deliverable')
+  return toSnakeRecord(deliverable as Record<string, unknown>)
 }
 
 export async function addDeliverableMetrics(
   deliverableId: string,
   input: DeliverableMetricsInput
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
+  const db = getDb()
   let engagementRate: number | null = null
   if (
     input.views != null &&
@@ -87,36 +89,37 @@ export async function addDeliverableMetrics(
     engagementRate = input.views > 0 ? Math.round((engagements / input.views) * 1000) / 1000 : 0
   }
 
-  const insert: Record<string, unknown> = {
-    deliverable_id: deliverableId,
-    views: input.views ?? null,
-    likes: input.likes ?? null,
-    comments: input.comments ?? null,
-    shares: input.shares ?? null,
-    saves: input.saves ?? null,
-    reach: input.reach ?? null,
-    impressions: input.impressions ?? null,
-    clicks: input.clicks ?? null,
-    engagement_rate: engagementRate ?? input.engagement_rate ?? null,
-    extra: input.extra ?? {},
-  }
+  const [metric] = await db
+    .insert(crmDeliverableMetrics)
+    .values({
+      deliverableId,
+      views: input.views ?? null,
+      likes: input.likes ?? null,
+      comments: input.comments ?? null,
+      shares: input.shares ?? null,
+      saves: input.saves ?? null,
+      reach: input.reach ?? null,
+      impressions: input.impressions ?? null,
+      clicks: input.clicks ?? null,
+      engagementRate: engagementRate ?? input.engagement_rate ?? null,
+      extra: input.extra ?? {},
+    })
+    .returning()
 
-  const { data, error } = await supabase.from('crm_deliverable_metrics').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  if (!metric) throw new Error('Failed to add deliverable metrics')
+  return toSnakeRecord(metric as Record<string, unknown>)
 }
 
 export async function getDeliverableMetrics(
   deliverableId: string,
   limit = 50
 ): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_deliverable_metrics')
-    .select('*')
-    .eq('deliverable_id', deliverableId)
-    .order('recorded_at', { ascending: false })
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(crmDeliverableMetrics)
+    .where(eq(crmDeliverableMetrics.deliverableId, deliverableId))
+    .orderBy(desc(crmDeliverableMetrics.recordedAt))
     .limit(limit)
-  if (error) throw new Error(error.message)
-  return (data ?? []) as Array<Record<string, unknown>>
+  return rows.map((r) => toSnakeRecord(r as Record<string, unknown>))
 }

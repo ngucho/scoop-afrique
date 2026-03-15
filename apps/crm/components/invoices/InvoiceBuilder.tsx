@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label, Textarea } from 'scoop'
 
 const lineItemSchema = z.object({
@@ -16,17 +17,22 @@ const lineItemSchema = z.object({
   tax_rate: z.coerce.number().min(0).max(100).optional().default(0),
 })
 
-const schema = z.object({
+const createSchema = z.object({
   contact_id: z.string().uuid().optional().or(z.literal('')),
-  project_id: z.string().uuid().optional().or(z.literal('')),
+  project_id: z.string().min(1, 'Sélectionnez un projet'),
   line_items: z.array(lineItemSchema).min(1, 'Au moins une ligne requise'),
   tax_rate: z.coerce.number().min(0).max(100).optional().default(0),
+  discount_amount: z.coerce.number().int().min(0).optional().default(0),
   due_date: z.string().optional(),
   notes: z.string().optional(),
   internal_notes: z.string().optional(),
 })
 
-type FormData = z.infer<typeof schema>
+const editSchema = createSchema.extend({
+  project_id: z.string().optional().or(z.literal('')),
+})
+
+type FormData = z.infer<typeof createSchema>
 
 interface InvoiceBuilderProps {
   invoiceId?: string
@@ -51,24 +57,27 @@ export function InvoiceBuilder({
     watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(invoiceId ? editSchema : createSchema),
     defaultValues: defaultValues ?? {
       line_items: [{ description: '', quantity: 1, unit_price: 0, unit: 'unité' }],
       tax_rate: 0,
+      discount_amount: 0,
     },
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'line_items' })
   const lineItems = watch('line_items')
   const taxRate = watch('tax_rate') ?? 0
+  const discountAmount = watch('discount_amount') ?? 0
 
   const subtotal =
     lineItems?.reduce(
       (sum, i) => sum + (i.quantity ?? 0) * (i.unit_price ?? 0),
       0
     ) ?? 0
-  const taxAmount = Math.round(subtotal * (taxRate / 100))
-  const total = subtotal + taxAmount
+  const taxable = Math.max(0, subtotal - discountAmount)
+  const taxAmount = Math.round(taxable * (taxRate / 100))
+  const total = taxable + taxAmount
 
   async function onSubmit(data: FormData) {
     setIsSubmitting(true)
@@ -82,6 +91,7 @@ export function InvoiceBuilder({
         unit_price: Number(i.unit_price),
         tax_rate: Number(i.tax_rate) ?? 0,
       })),
+      discount_amount: data.discount_amount ?? 0,
     }
     const url = invoiceId ? `/api/crm/invoices/${invoiceId}` : '/api/crm/invoices'
     const res = await fetch(url, {
@@ -93,9 +103,10 @@ export function InvoiceBuilder({
     const json = await res.json()
     setIsSubmitting(false)
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur lors de l\'enregistrement')
       return
     }
+    toast.success(invoiceId ? 'Facture mise à jour' : 'Facture créée')
     router.push(`/invoices/${json.data.id}`)
   }
 
@@ -120,11 +131,11 @@ export function InvoiceBuilder({
       )}
       {projects.length > 0 && (
         <div>
-          <Label htmlFor="project_id">Projet</Label>
+          <Label htmlFor="project_id">Projet *</Label>
           <select
             id="project_id"
             {...register('project_id')}
-            className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className={`flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${errors.project_id ? 'border-destructive' : ''}`}
           >
             <option value="">— Sélectionner —</option>
             {projects.map((p) => (
@@ -133,6 +144,18 @@ export function InvoiceBuilder({
               </option>
             ))}
           </select>
+          {errors.project_id && (
+            <p className="text-sm text-destructive mt-1">{errors.project_id.message}</p>
+          )}
+        </div>
+      )}
+      {projects.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm">
+          <p className="font-medium text-amber-800 dark:text-amber-200">Aucun projet disponible</p>
+          <p className="text-amber-700 dark:text-amber-300 mt-1">
+            Créez d&apos;abord un contact/organisation et un projet avant de créer une facture.
+          </p>
+          <a href="/projects/new" className="text-primary underline mt-2 inline-block">Créer un projet</a>
         </div>
       )}
 
@@ -193,7 +216,7 @@ export function InvoiceBuilder({
         )}
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <div>
           <Label htmlFor="tax_rate">TVA (%)</Label>
           <Input
@@ -204,6 +227,17 @@ export function InvoiceBuilder({
             max={100}
             step={0.01}
             className="w-24"
+          />
+        </div>
+        <div>
+          <Label htmlFor="discount_amount">Réduction (FCFA)</Label>
+          <Input
+            id="discount_amount"
+            type="number"
+            {...register('discount_amount')}
+            min={0}
+            className="w-28"
+            placeholder="0"
           />
         </div>
         <div>
@@ -221,8 +255,24 @@ export function InvoiceBuilder({
         <Textarea id="internal_notes" {...register('internal_notes')} rows={2} placeholder="Notes internes uniquement..." />
       </div>
 
-      <div className="rounded-lg border border-border p-4 bg-muted/20">
-        <div className="flex justify-between font-semibold">
+      <div className="rounded-lg border border-border p-4 bg-muted/20 space-y-1">
+        <div className="flex justify-between text-sm">
+          <span>Sous-total</span>
+          <span>{subtotal.toLocaleString('fr-FR')} FCFA</span>
+        </div>
+        {discountAmount > 0 && (
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Réduction</span>
+            <span>-{discountAmount.toLocaleString('fr-FR')} FCFA</span>
+          </div>
+        )}
+        {taxRate > 0 && (
+          <div className="flex justify-between text-sm">
+            <span>TVA ({taxRate}%)</span>
+            <span>{taxAmount.toLocaleString('fr-FR')} FCFA</span>
+          </div>
+        )}
+        <div className="flex justify-between font-semibold pt-2 border-t border-border">
           <span>Total</span>
           <span>{total.toLocaleString('fr-FR')} FCFA</span>
         </div>

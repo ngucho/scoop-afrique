@@ -1,7 +1,16 @@
 /**
  * CRM dashboard — KPIs and aggregates
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, gte, lt, and, desc, inArray, notInArray } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import {
+  crmInvoices,
+  crmDevis,
+  crmProjects,
+  devisRequests,
+  crmActivityLog,
+} from '../../db/schema.js'
+import { toSnakeRecord } from './crm-util.js'
 
 export async function getDashboardKpis(): Promise<{
   revenueThisMonth: number
@@ -13,77 +22,87 @@ export async function getDashboardKpis(): Promise<{
   unpaidInvoicesCount: number
   newDevisRequests: number
 }> {
-  const supabase = getSupabase()
+  const db = getDb()
   const now = new Date()
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const today = now.toISOString().slice(0, 10)
 
-  // Revenue this month (paid invoices)
-  const { data: paidInvoices } = await supabase
-    .from('crm_invoices')
-    .select('amount_paid')
-    .eq('status', 'paid')
-    .gte('paid_at', `${monthStart}T00:00:00Z`)
-  const revenueThisMonth = (paidInvoices ?? []).reduce((s, i) => s + ((i.amount_paid as number) ?? 0), 0)
+  // Revenue this month (paid invoices with paid_at in month)
+  const paidInMonth = await db
+    .select({ amountPaid: crmInvoices.amountPaid })
+    .from(crmInvoices)
+    .where(
+      and(
+        eq(crmInvoices.status, 'paid'),
+        gte(crmInvoices.paidAt, monthStart)
+      )
+    )
+  const revenueThisMonth = paidInMonth.reduce((s, i) => s + (Number(i.amountPaid) ?? 0), 0)
 
   // Pipeline (devis sent)
-  const { data: sentDevis } = await supabase
-    .from('crm_devis')
-    .select('total')
-    .eq('status', 'sent')
-  const pipelineAmount = (sentDevis ?? []).reduce((s, i) => s + ((i.total as number) ?? 0), 0)
-  const pipelineCount = sentDevis?.length ?? 0
+  const sentDevis = await db
+    .select({ total: crmDevis.total })
+    .from(crmDevis)
+    .where(eq(crmDevis.status, 'sent'))
+  const pipelineAmount = sentDevis.reduce((s, i) => s + (Number(i.total) ?? 0), 0)
+  const pipelineCount = sentDevis.length
 
   // Active projects (in_progress, review, delivered)
-  const { count: activeCount } = await supabase
-    .from('crm_projects')
-    .select('*', { count: 'exact', head: true })
-    .in('status', ['in_progress', 'review', 'delivered'])
+  const activeProjectsRows = await db
+    .select()
+    .from(crmProjects)
+    .where(inArray(crmProjects.status, ['in_progress', 'review', 'delivered']))
+  const activeProjects = activeProjectsRows.length
 
-  // Overdue projects (end_date < today, status not closed)
-  const { count: overdueCount } = await supabase
-    .from('crm_projects')
-    .select('*', { count: 'exact', head: true })
-    .lt('end_date', today)
-    .not('status', 'in', '("closed","cancelled")')
+  // Overdue projects (end_date < today, status not closed/cancelled)
+  const overdueProjectsRows = await db
+    .select()
+    .from(crmProjects)
+    .where(
+      and(
+        lt(crmProjects.endDate, today),
+        notInArray(crmProjects.status, ['closed', 'cancelled'])
+      )
+    )
+  const overdueProjects = overdueProjectsRows.length
 
   // Unpaid invoices (sent, partial, overdue)
-  const { data: unpaidInvoices } = await supabase
-    .from('crm_invoices')
-    .select('total, amount_paid')
-    .in('status', ['sent', 'partial', 'overdue'])
-  const unpaidInvoicesAmount = (unpaidInvoices ?? []).reduce(
-    (s, i) => s + (((i.total as number) ?? 0) - ((i.amount_paid as number) ?? 0)),
+  const unpaidInvoices = await db
+    .select({ total: crmInvoices.total, amountPaid: crmInvoices.amountPaid })
+    .from(crmInvoices)
+    .where(inArray(crmInvoices.status, ['sent', 'partial', 'overdue']))
+  const unpaidInvoicesAmount = unpaidInvoices.reduce(
+    (s, i) => s + ((Number(i.total) ?? 0) - (Number(i.amountPaid) ?? 0)),
     0
   )
-  const unpaidInvoicesCount = unpaidInvoices?.length ?? 0
+  const unpaidInvoicesCount = unpaidInvoices.length
 
   // New devis requests (last 7 days)
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  const { count: newDevisRequests } = await supabase
-    .from('devis_requests')
-    .select('*', { count: 'exact', head: true })
-    .gte('created_at', weekAgo)
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const newDevisRequestsRows = await db
+    .select()
+    .from(devisRequests)
+    .where(gte(devisRequests.createdAt, weekAgo))
+  const newDevisRequests = newDevisRequestsRows.length
 
   return {
     revenueThisMonth,
     pipelineAmount,
     pipelineCount,
-    activeProjects: activeCount ?? 0,
-    overdueProjects: overdueCount ?? 0,
+    activeProjects,
+    overdueProjects,
     unpaidInvoicesAmount,
     unpaidInvoicesCount,
-    newDevisRequests: newDevisRequests ?? 0,
+    newDevisRequests,
   }
 }
 
 export async function getRecentActivity(limit = 20): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_activity_log')
-    .select('*')
-    .order('created_at', { ascending: false })
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(crmActivityLog)
+    .orderBy(desc(crmActivityLog.createdAt))
     .limit(limit)
-  if (error) throw new Error(error.message)
-  return (data ?? []) as Array<Record<string, unknown>>
+  return rows.map((r) => toSnakeRecord(r as Record<string, unknown>))
 }

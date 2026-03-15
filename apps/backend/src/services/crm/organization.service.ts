@@ -1,7 +1,10 @@
 /**
  * CRM organization service
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, and, or, ilike, inArray, sql } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmOrganizations, crmContactOrganization, crmContacts } from '../../db/schema.js'
+import { toSnakeRecord } from './crm-util.js'
 import type { CreateOrganizationInput, UpdateOrganizationInput } from '../../schemas/crm/organization.schema.js'
 
 export async function listOrganizations(params?: {
@@ -9,61 +12,76 @@ export async function listOrganizations(params?: {
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
-  const supabase = getSupabase()
-  let q = supabase.from('crm_organizations').select('*', { count: 'exact' })
-
+  const db = getDb()
+  const conditions = []
   if (params?.search) {
-    q = q.or(`name.ilike.%${params.search}%,email.ilike.%${params.search}%`)
+    const pattern = `%${params.search}%`
+    conditions.push(or(ilike(crmOrganizations.name, pattern), ilike(crmOrganizations.email, pattern))!)
   }
 
-  q = q.order('name', { ascending: true })
-  if (params?.limit) q = q.limit(params.limit)
-  if (params?.offset) q = q.range(params.offset, params.offset + (params.limit ?? 50) - 1)
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const limit = params?.limit ?? 50
+  const offset = params?.offset ?? 0
 
-  const { data, error, count } = await q
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as Array<Record<string, unknown>>, total: count ?? 0 }
+  const [rows, [{ count }]] = await Promise.all([
+    db
+      .select()
+      .from(crmOrganizations)
+      .where(whereClause)
+      .orderBy(crmOrganizations.name)
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(crmOrganizations)
+      .where(whereClause),
+  ])
+
+  return {
+    data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)),
+    total: count ?? 0,
+  }
 }
 
 export async function getOrganizationById(id: string): Promise<Record<string, unknown> | null> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase.from('crm_organizations').select('*').eq('id', id).single()
-  if (error) {
-    if (error.code === 'PGRST116') return null
-    throw new Error(error.message)
-  }
-  return data as Record<string, unknown>
+  const db = getDb()
+  const rows = await db.select().from(crmOrganizations).where(eq(crmOrganizations.id, id)).limit(1)
+  const row = rows[0]
+  if (!row) return null
+  return toSnakeRecord(row as Record<string, unknown>)
 }
 
 export async function createOrganization(
   input: CreateOrganizationInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const insert: Record<string, unknown> = {
-    name: input.name.trim(),
-    type: input.type?.trim() || null,
-    website: input.website?.trim() || null,
-    email: input.email?.trim() || null,
-    phone: input.phone?.trim() || null,
-    address: input.address?.trim() || null,
-    country: input.country ?? 'CI',
-    notes: input.notes?.trim() || null,
-    tags: input.tags ?? [],
-    created_by: createdBy ?? null,
-  }
+  const db = getDb()
+  const [org] = await db
+    .insert(crmOrganizations)
+    .values({
+      name: input.name.trim(),
+      type: input.type?.trim() || null,
+      website: input.website?.trim() || null,
+      email: input.email?.trim() || null,
+      phone: input.phone?.trim() || null,
+      address: input.address?.trim() || null,
+      country: input.country ?? 'CI',
+      notes: input.notes?.trim() || null,
+      tags: input.tags ?? [],
+      createdBy: createdBy ?? null,
+    })
+    .returning()
 
-  const { data, error } = await supabase.from('crm_organizations').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  if (!org) throw new Error('Failed to create organization')
+  return toSnakeRecord(org as Record<string, unknown>)
 }
 
 export async function updateOrganization(
   id: string,
   input: UpdateOrganizationInput
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const update: Record<string, unknown> = {}
+  const db = getDb()
+  const update: Partial<typeof crmOrganizations.$inferInsert> = {}
   if (input.name !== undefined) update.name = input.name.trim()
   if (input.type !== undefined) update.type = input.type?.trim() || null
   if (input.website !== undefined) update.website = input.website?.trim() || null
@@ -74,55 +92,55 @@ export async function updateOrganization(
   if (input.notes !== undefined) update.notes = input.notes?.trim() || null
   if (input.tags !== undefined) update.tags = input.tags
 
-  const { data, error } = await supabase.from('crm_organizations').update(update).eq('id', id).select().single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  const [org] = await db.update(crmOrganizations).set(update).where(eq(crmOrganizations.id, id)).returning()
+  if (!org) throw new Error('Failed to update organization')
+  return toSnakeRecord(org as Record<string, unknown>)
 }
 
 export async function getContactOrganizations(contactId: string): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data: links, error } = await supabase
-    .from('crm_contact_organization')
-    .select('organization_id, role')
-    .eq('contact_id', contactId)
-  if (error) throw new Error(error.message)
-  if (!links?.length) return []
+  const db = getDb()
+  const links = await db
+    .select({ organizationId: crmContactOrganization.organizationId, role: crmContactOrganization.role })
+    .from(crmContactOrganization)
+    .where(eq(crmContactOrganization.contactId, contactId))
 
-  const ids = links.map((l) => l.organization_id)
-  const { data: orgs, error: orgError } = await supabase
-    .from('crm_organizations')
-    .select('id, name, type')
-    .in('id', ids)
-  if (orgError) throw new Error(orgError.message)
+  if (!links.length) return []
 
-  const roleByOrg = Object.fromEntries(links.map((l) => [l.organization_id, l.role]))
-  return (orgs ?? []).map((o) => ({
-    ...o,
-    role: roleByOrg[o.id as string] ?? null,
-  })) as Array<Record<string, unknown>>
+  const orgIds = links.map((l) => l.organizationId)
+  const orgs = await db
+    .select({ id: crmOrganizations.id, name: crmOrganizations.name, type: crmOrganizations.type })
+    .from(crmOrganizations)
+    .where(inArray(crmOrganizations.id, orgIds))
+
+  const roleByOrg = Object.fromEntries(links.map((l) => [l.organizationId, l.role]))
+  return orgs.map((o) => {
+    const rec = toSnakeRecord(o as Record<string, unknown>) as Record<string, unknown>
+    rec.role = roleByOrg[o.id] ?? null
+    return rec
+  })
 }
 
 export async function getOrganizationContacts(organizationId: string): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data: links, error } = await supabase
-    .from('crm_contact_organization')
-    .select('contact_id, role')
-    .eq('organization_id', organizationId)
-  if (error) throw new Error(error.message)
-  if (!links?.length) return []
+  const db = getDb()
+  const links = await db
+    .select({ contactId: crmContactOrganization.contactId, role: crmContactOrganization.role })
+    .from(crmContactOrganization)
+    .where(eq(crmContactOrganization.organizationId, organizationId))
 
-  const ids = links.map((l) => l.contact_id)
-  const { data: contacts, error: contactError } = await supabase
-    .from('crm_contacts')
-    .select('id, first_name, last_name, email')
-    .in('id', ids)
-  if (contactError) throw new Error(contactError.message)
+  if (!links.length) return []
 
-  const roleByContact = Object.fromEntries(links.map((l) => [l.contact_id, l.role]))
-  return (contacts ?? []).map((c) => ({
-    ...c,
-    role: roleByContact[c.id as string] ?? null,
-  })) as Array<Record<string, unknown>>
+  const contactIds = links.map((l) => l.contactId)
+  const contacts = await db
+    .select({ id: crmContacts.id, firstName: crmContacts.firstName, lastName: crmContacts.lastName, email: crmContacts.email })
+    .from(crmContacts)
+    .where(inArray(crmContacts.id, contactIds))
+
+  const roleByContact = Object.fromEntries(links.map((l) => [l.contactId, l.role]))
+  return contacts.map((c) => {
+    const rec = toSnakeRecord(c as Record<string, unknown>) as Record<string, unknown>
+    rec.role = roleByContact[c.id] ?? null
+    return rec
+  })
 }
 
 export async function linkContactOrganization(
@@ -130,23 +148,31 @@ export async function linkContactOrganization(
   organizationId: string,
   role?: string
 ): Promise<void> {
-  const supabase = getSupabase()
-  const { error } = await supabase.from('crm_contact_organization').upsert(
-    { contact_id: contactId, organization_id: organizationId, role: role ?? null },
-    { onConflict: 'contact_id,organization_id' }
-  )
-  if (error) throw new Error(error.message)
+  const db = getDb()
+  await db
+    .insert(crmContactOrganization)
+    .values({
+      contactId,
+      organizationId,
+      role: role ?? null,
+    })
+    .onConflictDoUpdate({
+      target: [crmContactOrganization.contactId, crmContactOrganization.organizationId],
+      set: { role: role ?? null },
+    })
 }
 
 export async function unlinkContactOrganization(
   contactId: string,
   organizationId: string
 ): Promise<void> {
-  const supabase = getSupabase()
-  const { error } = await supabase
-    .from('crm_contact_organization')
-    .delete()
-    .eq('contact_id', contactId)
-    .eq('organization_id', organizationId)
-  if (error) throw new Error(error.message)
+  const db = getDb()
+  await db
+    .delete(crmContactOrganization)
+    .where(
+      and(
+        eq(crmContactOrganization.contactId, contactId),
+        eq(crmContactOrganization.organizationId, organizationId)
+      )
+    )
 }

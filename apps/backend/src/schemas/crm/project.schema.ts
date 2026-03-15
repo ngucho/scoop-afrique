@@ -10,7 +10,7 @@ export const crmProjectStatusEnum = z.enum([
   'cancelled',
 ])
 
-export const createProjectSchema = z.object({
+const projectBaseSchema = z.object({
   title: z.string().min(1, 'Titre requis'),
   contact_id: z.string().uuid().optional(),
   organization_id: z.string().uuid().optional(),
@@ -28,7 +28,12 @@ export const createProjectSchema = z.object({
   assigned_to: z.string().uuid().optional(),
 })
 
-export const updateProjectSchema = createProjectSchema.partial().extend({
+export const createProjectSchema = projectBaseSchema.refine(
+  (d) => d.contact_id || d.organization_id,
+  { message: 'Contact ou organisation requis', path: ['contact_id'] }
+)
+
+export const updateProjectSchema = projectBaseSchema.partial().extend({
   status: crmProjectStatusEnum.optional(),
 })
 

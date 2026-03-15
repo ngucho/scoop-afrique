@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label, Textarea } from 'scoop'
 
 const lineItemSchema = z.object({
@@ -16,8 +17,9 @@ const lineItemSchema = z.object({
   tax_rate: z.coerce.number().min(0).max(100).optional().default(0),
 })
 
-const schema = z.object({
+const createSchema = z.object({
   title: z.string().min(1, 'Titre requis'),
+  project_id: z.string().min(1, 'Sélectionnez un projet'),
   contact_id: z.string().uuid().optional().or(z.literal('')),
   devis_request_id: z.string().uuid().optional().or(z.literal('')),
   service_slug: z.string().optional(),
@@ -28,7 +30,11 @@ const schema = z.object({
   internal_notes: z.string().optional(),
 })
 
-type FormData = z.infer<typeof schema>
+const editSchema = createSchema.extend({
+  project_id: z.string().optional().or(z.literal('')),
+})
+
+type FormData = z.infer<typeof createSchema>
 
 interface Service {
   id: string
@@ -39,9 +45,17 @@ interface Service {
   default_price: number
 }
 
+interface Project {
+  id: string
+  reference: string
+  title: string
+  contact?: { first_name?: string; last_name?: string }
+}
+
 interface DevisBuilderProps {
   devisId?: string
   defaultValues?: Partial<FormData>
+  projects?: Project[]
   contacts?: Array<{ id: string; first_name?: string; last_name?: string }>
   services?: Service[]
 }
@@ -49,6 +63,7 @@ interface DevisBuilderProps {
 export function DevisBuilder({
   devisId,
   defaultValues,
+  projects = [],
   contacts = [],
   services = [],
 }: DevisBuilderProps) {
@@ -62,7 +77,7 @@ export function DevisBuilder({
     watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(devisId ? editSchema : createSchema),
     defaultValues: defaultValues ?? {
       line_items: [{ description: '', quantity: 1, unit_price: 0, unit: 'unité' }],
       tax_rate: 0,
@@ -95,6 +110,7 @@ export function DevisBuilder({
     setIsSubmitting(true)
     const body = {
       ...data,
+      project_id: data.project_id || undefined,
       contact_id: data.contact_id || undefined,
       devis_request_id: data.devis_request_id || undefined,
       line_items: data.line_items.map((i) => ({
@@ -114,9 +130,10 @@ export function DevisBuilder({
     const json = await res.json()
     setIsSubmitting(false)
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur lors de l\'enregistrement')
       return
     }
+    toast.success(devisId ? 'Devis mis à jour' : 'Devis créé')
     router.push(`/devis/${json.data.id}`)
   }
 
@@ -135,15 +152,48 @@ export function DevisBuilder({
         )}
       </div>
 
-      {contacts.length > 0 && (
+      {projects.length > 0 && (
         <div>
-          <Label htmlFor="contact_id">Contact</Label>
+          <Label htmlFor="project_id">Projet *</Label>
+          <select
+            id="project_id"
+            {...register('project_id')}
+            className={`flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${errors.project_id ? 'border-destructive' : ''}`}
+          >
+            <option value="">— Sélectionner un projet —</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.reference} — {p.title}
+                {p.contact ? ` (${[p.contact.first_name, p.contact.last_name].filter(Boolean).join(' ')})` : ''}
+              </option>
+            ))}
+          </select>
+          {errors.project_id && (
+            <p className="text-sm text-destructive mt-1">{errors.project_id.message}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            Créez d&apos;abord un contact/organisation et un projet associé.
+          </p>
+        </div>
+      )}
+      {projects.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm">
+          <p className="font-medium text-amber-800 dark:text-amber-200">Aucun projet disponible</p>
+          <p className="text-amber-700 dark:text-amber-300 mt-1">
+            Créez d&apos;abord un contact (ou organisation), puis un projet associé avant de créer un devis.
+          </p>
+          <a href="/projects/new" className="text-primary underline mt-2 inline-block">Créer un projet</a>
+        </div>
+      )}
+      {contacts.length > 0 && projects.length > 0 && (
+        <div>
+          <Label htmlFor="contact_id">Contact (optionnel, dérivé du projet)</Label>
           <select
             id="contact_id"
             {...register('contact_id')}
             className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
-            <option value="">— Sélectionner —</option>
+            <option value="">— Déduit du projet —</option>
             {contacts.map((c) => (
               <option key={c.id} value={c.id}>
                 {`${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || c.id}

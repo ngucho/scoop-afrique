@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    { "idx": 0, "version": "7", "when": 1739001600000, "tag": "0000_initial_schema", "breakpoints": true },
+    { "idx": 1, "version": "7", "when": 1739088000000, "tag": "0001_storage_media", "breakpoints": true },
+    { "idx": 2, "version": "7", "when": 1739174400000, "tag": "0002_backend_v2", "breakpoints": true },
+    { "idx": 3, "version": "7", "when": 1739260800000, "tag": "0003_profiles_personal_info", "breakpoints": true },
+    { "idx": 4, "version": "7", "when": 1739347200000, "tag": "0004_profiles_business_only", "breakpoints": true },
+    { "idx": 5, "version": "7", "when": 1739433600000, "tag": "0005_article_system_v3", "breakpoints": true },
+    { "idx": 6, "version": "7", "when": 1739520000000, "tag": "0006_article_author_display_name", "breakpoints": true },
+    { "idx": 7, "version": "7", "when": 1741824000000, "tag": "0007_devis_requests", "breakpoints": true },
+    { "idx": 8, "version": "7", "when": 1741910400000, "tag": "0008_crm_schema", "breakpoints": true },
+    { "idx": 9, "version": "7", "when": 1741996800000, "tag": "0009_devis_requests_conversion", "breakpoints": true },
+    { "idx": 10, "version": "7", "when": 1742083200000, "tag": "0010_crm_services", "breakpoints": true },
+    { "idx": 11, "version": "7", "when": 1742169600000, "tag": "0011_project_contacts", "breakpoints": true },
+    { "idx": 12, "version": "7", "when": 1742256000000, "tag": "0012_devis_project_id", "breakpoints": true },
+    { "idx": 13, "version": "7", "when": 1742342400000, "tag": "0013_invoice_discount", "breakpoints": true }
+  ]
+}

@@ -34,13 +34,13 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 /
 ├── apps/
 │   ├── brands/     # Site vitrine (Next.js)
-│   ├── frontend/    # Webapp lecteur + admin (Next.js)
-│   └── backend/     # API REST (Hono/Node)
+│   ├── frontend/   # Webapp lecteur + admin (Next.js)
+│   ├── crm/        # CRM (contacts, projets, devis, factures)
+│   └── backend/    # API REST (Hono/Node)
 ├── packages/
-│   └── scoop/       # Design system (atoms, molecules, organisms, theme)
-├── docs/            # Documentation (ce fichier, API, runbook, déploiement…)
-├── supabase/
-│   └── migrations/  # Schéma SQL (articles, profiles, categories, etc.)
+│   └── scoop/      # Design system (atoms, molecules, organisms, theme)
+├── docs/           # Documentation (ce fichier, API, runbook, déploiement…)
+├── apps/backend/drizzle/  # Migrations Drizzle (14 migrations — voir PROJECT_GUIDE §10)
 ├── pnpm-workspace.yaml
 └── package.json
 ```
@@ -66,9 +66,14 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 - **Côté admin** : tableau de bord, articles (éditeur TipTap), catégories, commentaires, médias, profil (métadonnées Auth0), équipe.
 - **Port en dev** : 3001.
 
-### 2.3 Backend (`apps/backend`)
+### 2.3 CRM (`apps/crm`)
 
-- **Rôle** : API REST unique pour le frontend. Pas d’UI.
+- **Rôle** : application CRM pour gérer contacts, projets, devis, factures, reçus. Protégée par Auth0.
+- **Port en dev** : 3002.
+
+### 2.4 Backend (`apps/backend`)
+
+- **Rôle** : API REST unique pour le frontend, le CRM et la brands. Pas d’UI.
 - **Endpoints publics** : health, articles (liste, détail, likes), catégories, newsletter, commentaires (lecture).
 - **Endpoints protégés** : `/api/v1/admin/*` (articles, commentaires, catégories, médias, profil, utilisateurs Auth0, etc.) et `/api/v1/auth/me`. Authentification par JWT Auth0 (Bearer).
 - **Port en dev** : 4000.
@@ -87,7 +92,7 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 
 ## 4. Base de données et Auth0
 
-- **Supabase** : PostgreSQL. Tables principales : `profiles`, `articles`, `categories`, `article_likes`, `comments`, `media`, `article_revisions`, `article_collaborators`, etc. Migrations dans `supabase/migrations/`.
+- **Base de données** : PostgreSQL (Supabase). Drizzle ORM. Tables principales : `profiles`, `articles`, `categories`, `article_likes`, `comments`, `media`, `article_revisions`, `article_collaborators`, etc. Migrations dans `apps/backend/drizzle/`.
 - **Auth0** : seul fournisseur d’identité. Rôles (journalist, editor, manager, admin) via permissions dans le JWT. Métadonnées utilisateur (nom, adresse, téléphone, sexe) dans un claim personnalisé (`https://scoop-afrique.com/user_metadata`) ajouté par une Action Post-Login ; le frontend les lit depuis le payload du **access token**, pas depuis la session seule.
 - **Documentation détaillée** : `AUTH0_SETUP.md`, `SUPABASE_SETUP.md`, `RBAC.md`, `API.md`.
 
@@ -108,10 +113,10 @@ Cette documentation décrit l’ensemble du monorepo **Scoop Afrique** : objecti
 - **Prérequis** : Node.js 20+, pnpm 9+.
 - **Installation** : à la racine, `pnpm install`.
 - **Variables d’environnement** : copier les `.env.example` dans chaque app et renseigner Auth0, Supabase, CORS, etc. Voir `RUNBOOK.md`.
-- **Migrations** : `npx supabase db push` (ou exécuter les SQL à la main dans Supabase).
+- **Migrations** : `pnpm db:migrate` (voir [PROJECT_GUIDE §2 et §10](./PROJECT_GUIDE.md) pour le troubleshooting et l'ordre des migrations).
 - **Lancement** :
   - `pnpm dev` : toutes les apps en parallèle.
-  - `pnpm dev:brands`, `pnpm dev:frontend`, `pnpm dev:backend` : une seule app.
+  - `pnpm dev:brands`, `pnpm dev:frontend`, `pnpm dev:crm`, `pnpm dev:backend` : une seule app.
 - **Build** : `pnpm build` à la racine pour tout compiler.
 
 ---
@@ -130,7 +135,8 @@ Le déploiement sur **Vercel** (brands, frontend, backend) est décrit en détai
 | Document | Description |
 |----------|-------------|
 | **DOCUMENTATION_COMPLETE.md** | Ce fichier — vue d’ensemble et explications en français. |
-| **DEPLOYMENT_VERCEL.md** | Guide pas à pas : déployer brands, frontend et backend (Vercel et alternatives). |
+| **PROJECT_GUIDE.md** | **Guide complet** — setup Supabase, Auth0, Twilio, Resend, migrations, troubleshooting. |
+| **DEPLOYMENT_VERCEL.md** | Guide pas à pas : déployer brands, frontend, CRM et backend (Vercel et alternatives). |
 | **ARCHITECTURE.md** | Schémas et description technique de l’architecture. |
 | **API.md** | Référence de l’API REST (endpoints, auth, formats). |
 | **AUTH0_SETUP.md** | Configuration Auth0 (tenant, API, rôles, Action Post-Login). |

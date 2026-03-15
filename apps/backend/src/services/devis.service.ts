@@ -1,7 +1,8 @@
 /**
  * Devis (quote request) service — stores requests and sends notifications.
  */
-import { getSupabase } from '../lib/supabase.js'
+import { getDb } from '../db/index.js'
+import { devisRequests } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { DevisBody } from '../schemas/devis.js'
 
@@ -27,36 +28,35 @@ export interface DevisRecord {
 }
 
 export async function createDevisRequest(body: DevisBody): Promise<{ id: string; success: boolean; message?: string }> {
-  if (!config.supabase) {
+  if (!config.database) {
     return { id: '', success: false, message: 'Service indisponible' }
   }
 
-  const supabase = getSupabase()
-  const { error, data } = await supabase
-    .from('devis_requests')
-    .insert({
-      first_name: body.first_name.trim(),
-      last_name: body.last_name.trim(),
+  const db = getDb()
+  const [row] = await db
+    .insert(devisRequests)
+    .values({
+      firstName: body.first_name.trim(),
+      lastName: body.last_name.trim(),
       email: body.email.trim().toLowerCase(),
       phone: body.phone?.trim() || null,
       company: body.company?.trim() || null,
-      service_slug: body.service_slug?.trim() || null,
-      budget_min: body.budget_min ?? null,
-      budget_max: body.budget_max ?? null,
-      budget_currency: body.budget_currency || 'FCFA',
-      preferred_date: body.preferred_date || null,
+      serviceSlug: body.service_slug?.trim() || null,
+      budgetMin: body.budget_min ?? null,
+      budgetMax: body.budget_max ?? null,
+      budgetCurrency: body.budget_currency || 'FCFA',
+      preferredDate: body.preferred_date ?? null,
       deadline: body.deadline?.trim() || null,
       description: body.description.trim(),
-      source_url: body.source_url || null,
+      sourceUrl: body.source_url || null,
     })
-    .select('id')
-    .single()
+    .returning({ id: devisRequests.id })
 
-  if (error) {
-    return { id: '', success: false, message: error.message }
+  if (!row) {
+    return { id: '', success: false, message: 'Failed to create devis request' }
   }
 
-  const id = data?.id as string
+  const id = row.id
 
   // Send notifications (fire-and-forget; don't block response)
   void sendDevisNotifications({ ...body, id }).catch((err) => {
@@ -91,7 +91,7 @@ async function sendDevisNotifications(payload: DevisBody & { id: string }): Prom
   const fromEmail = config.resend?.fromEmail ?? 'Scoop Afrique <onboarding@resend.dev>'
   if (config.resend?.apiKey) {
     try {
-      const res = await fetch('https://api.resend.com/emails', {
+      const res = (await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,7 +103,7 @@ async function sendDevisNotifications(payload: DevisBody & { id: string }): Prom
           subject: `[Devis] ${first_name} ${last_name} – ${service_slug || 'Demande générale'}`,
           text: summary,
         }),
-      })
+      })) as { ok: boolean; text: () => Promise<string> }
       if (!res.ok) {
         const err = await res.text()
         throw new Error(`Resend error: ${err}`)

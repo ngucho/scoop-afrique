@@ -289,7 +289,7 @@ CREATE INDEX idx_crm_contracts_status ON public.crm_contracts(status);
 -- -----------------------------------------------------------------------------
 CREATE TABLE public.crm_expenses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id UUID REFERENCES public.crm_projects(id) ON DELETE CASCADE,
+  project_id UUID NOT NULL REFERENCES public.crm_projects(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   amount INTEGER NOT NULL,
   currency TEXT NOT NULL DEFAULT 'FCFA',

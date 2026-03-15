@@ -6,13 +6,14 @@ Bienvenue dans la documentation du monorepo **Scoop Afrique**. Tous les document
 
 ## Entrée principale
 
-- **[DOCUMENTATION_COMPLETE.md](./DOCUMENTATION_COMPLETE.md)** — Vue d’ensemble du projet, architecture, applications, design system, API, auth et déploiement. À lire en premier.
+- **[PROJECT_GUIDE.md](./PROJECT_GUIDE.md)** — **Guide complet** : setup Supabase, Auth0, Twilio, Resend, migrations, troubleshooting. À consulter pour toute configuration.
+- **[DOCUMENTATION_COMPLETE.md](./DOCUMENTATION_COMPLETE.md)** — Vue d'ensemble du projet, architecture, applications, design system, API, auth et déploiement.
 
 ---
 
 ## Déploiement
 
-- **[DEPLOYMENT_VERCEL.md](./DEPLOYMENT_VERCEL.md)** — Guide pas à pas pour déployer la **brands**, le **frontend** et le **backend** sur Vercel (et alternatives Railway/Render pour le backend).
+- **[DEPLOYMENT_VERCEL.md](./DEPLOYMENT_VERCEL.md)** — Guide pas à pas pour déployer la **brands**, le **frontend**, le **CRM** et le **backend** sur Vercel (et alternatives Railway/Render pour le backend).
 
 ---
 
@@ -21,8 +22,8 @@ Bienvenue dans la documentation du monorepo **Scoop Afrique**. Tous les document
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Schémas système, apps, packages, routes frontend/backend. |
-| [API.md](./API.md) | Référence de l’API REST (endpoints, auth, formats de réponse). |
-| [RUNBOOK.md](./RUNBOOK.md) | Démarrage rapide, variables d’environnement, commandes utiles. |
+| [API.md](./API.md) | Référence de l'API REST (endpoints, auth, formats de réponse). |
+| [RUNBOOK.md](./RUNBOOK.md) | Démarrage rapide, variables d'environnement, commandes utiles. |
 
 ---
 
@@ -32,7 +33,7 @@ Bienvenue dans la documentation du monorepo **Scoop Afrique**. Tous les document
 |----------|-------------|
 | [AUTH0_SETUP.md](./AUTH0_SETUP.md) | Configuration Auth0 (tenant, API, rôles, Action Post-Login, GET /auth/me et 401). |
 | [RBAC.md](./RBAC.md) | Rôles et permissions (journalist, editor, manager, admin). |
-| [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) | Configuration Supabase (projet, migrations, RLS). |
+| [SUPABASE_SETUP.md](./SUPABASE_SETUP.md) | Configuration Supabase (projet, migrations, RLS). Voir [PROJECT_GUIDE §3](./PROJECT_GUIDE.md#3-supabase-setup--complete-tutorial) pour le tutoriel complet. |
 
 ---
 
@@ -49,13 +50,15 @@ Bienvenue dans la documentation du monorepo **Scoop Afrique**. Tous les document
 | Document | Description |
 |----------|-------------|
 | [auth0-actions/README.md](./auth0-actions/README.md) | Présentation des Actions Auth0 utilisées. |
-| [auth0-actions/post-login-add-user-metadata.js](./auth0-actions/post-login-add-user-metadata.js) | Code de l’Action Post-Login (claim `user_metadata`). |
+| [auth0-actions/post-login-add-user-metadata.js](./auth0-actions/post-login-add-user-metadata.js) | Code de l'Action Post-Login (claim `user_metadata`). |
 
 ---
 
 ## Autres
 
-- **scoop-afrique/** — Documents métier (analyse, audit, commercial, etc.).
+- **scoop-afrique/** — Documents métier (analyse, statut entreprise, etc.).
+- **archive/** — Documents dépréciés (remplacés par PROJECT_GUIDE ou obsolètes).
+
 ---
 
-**Scoop Afrique** — Le media digital qui décrypte l’Afrique autrement.
+**Scoop Afrique** — Le media digital qui décrypte l'Afrique autrement.

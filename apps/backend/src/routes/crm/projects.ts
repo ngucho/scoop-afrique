@@ -20,12 +20,14 @@ app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 app.get('/', async (c) => {
   const contactId = c.req.query('contact_id')
   const status = c.req.query('status')
+  const withContact = c.req.query('with_contact') === 'true'
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
 
   const { data, total } = await projectService.listProjects({
     contactId: contactId || undefined,
     status: status || undefined,
+    withContact,
     limit,
     offset,
   })

@@ -101,6 +101,6 @@ if (typeof process.env.VERCEL === 'undefined') {
   serve({ fetch: app.fetch, port: config.port }, (info) => {
     console.log(`Backend API running on http://localhost:${info.port} [${config.nodeEnv}]`)
     console.log(`Auth0: ${config.auth0 ? `configured (${config.auth0.domain})` : 'NOT CONFIGURED'}`)
-    console.log(`Supabase: ${config.supabase ? 'configured' : 'NOT CONFIGURED'}`)
+    console.log(`Database: ${config.database ? 'Drizzle configured' : 'NOT CONFIGURED'}`)
   })
 }

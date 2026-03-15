@@ -14,7 +14,11 @@
     "build:frontend": "pnpm --filter @scoop-afrique/frontend build",
     "build:backend": "pnpm --filter @scoop-afrique/backend build",
     "lint": "pnpm -r run lint",
-    "supabase": "npx supabase"
+    "db:migrate": "pnpm --filter @scoop-afrique/backend db:migrate",
+    "db:push": "pnpm --filter @scoop-afrique/backend db:push",
+    "db:seed": "pnpm --filter @scoop-afrique/backend db:seed",
+    "db:studio": "pnpm --filter @scoop-afrique/backend db:studio",
+    "db:bootstrap": "pnpm --filter @scoop-afrique/backend db:bootstrap"
   },
   "devDependencies": {},
   "pnpm": {

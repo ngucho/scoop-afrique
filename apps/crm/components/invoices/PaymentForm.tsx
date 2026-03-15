@@ -5,7 +5,18 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
+
+const PAYMENT_METHODS = [
+  { value: 'cash', label: 'Espèces' },
+  { value: 'bank_transfer', label: 'Virement bancaire' },
+  { value: 'mobile_money', label: 'Mobile Money' },
+  { value: 'wave', label: 'Wave' },
+  { value: 'orange_money', label: 'Orange Money' },
+  { value: 'check', label: 'Chèque' },
+  { value: 'other', label: 'Autre' },
+] as const
 
 const schema = z.object({
   amount: z.coerce.number().int().positive('Montant > 0'),
@@ -28,11 +39,15 @@ export function PaymentForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { method: 'other' },
+    defaultValues: { method: 'cash' },
   })
+
+  const selectedMethod = watch('method') ?? 'cash'
+  const methodLabel = PAYMENT_METHODS.find((m) => m.value === selectedMethod)?.label ?? selectedMethod
 
   async function onSubmit(data: FormData) {
     const res = await fetch(`/api/crm/invoices/${invoiceId}/payments`, {
@@ -46,9 +61,10 @@ export function PaymentForm({
     })
     const json = await res.json()
     if (!res.ok) {
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
       return
     }
+    toast.success('Paiement enregistré')
     onSuccess()
     router.refresh()
   }
@@ -70,20 +86,21 @@ export function PaymentForm({
         )}
       </div>
       <div>
-        <Label htmlFor="method">Méthode</Label>
+        <Label htmlFor="method">Méthode de paiement</Label>
         <select
           id="method"
           {...register('method')}
           className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
-          <option value="cash">Espèces</option>
-          <option value="bank_transfer">Virement</option>
-          <option value="mobile_money">Mobile Money</option>
-          <option value="wave">Wave</option>
-          <option value="orange_money">Orange Money</option>
-          <option value="check">Chèque</option>
-          <option value="other">Autre</option>
+          {PAYMENT_METHODS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
         </select>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          Méthode choisie : <span className="font-medium text-foreground">{methodLabel}</span>
+        </p>
       </div>
       <div>
         <Label htmlFor="reference">Référence transaction</Label>

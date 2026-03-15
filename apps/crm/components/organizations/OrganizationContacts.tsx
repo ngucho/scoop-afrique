@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { Button } from 'scoop'
 import { Users, Plus, X } from 'lucide-react'
 
@@ -41,11 +42,12 @@ export function OrganizationContacts({
     })
     setSubmitting(false)
     if (res.ok) {
+      toast.success('Contact associé')
       setSelectedContactId('')
       fetchContacts()
     } else {
       const json = await res.json()
-      alert(json.error ?? 'Erreur')
+      toast.error(json.error ?? 'Erreur')
     }
   }
 

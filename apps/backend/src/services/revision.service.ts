@@ -3,7 +3,9 @@
  * A revision is created on every manual save and on publish.
  * Only the 3 latest revisions per article are kept to save storage.
  */
-import { getSupabase } from '../lib/supabase.js'
+import { eq, desc, lt, and } from 'drizzle-orm'
+import { getDb } from '../db/index.js'
+import { articleRevisions, articles, profiles } from '../db/schema.js'
 import { config } from '../config/env.js'
 
 const MAX_REVISIONS_PER_ARTICLE = 3
@@ -21,7 +23,19 @@ export interface ArticleRevision {
   author?: { email: string | null } | null
 }
 
-const REVISION_SELECT = `*, author:profiles!article_revisions_created_by_fkey(email)`
+function toRevision(row: typeof articleRevisions.$inferSelect & { authorEmail?: string | null }): ArticleRevision {
+  return {
+    id: row.id,
+    article_id: row.articleId,
+    content: row.content,
+    title: row.title,
+    excerpt: row.excerpt,
+    version: row.version,
+    created_by: row.createdBy,
+    created_at: row.createdAt.toISOString(),
+    author: row.authorEmail != null ? { email: row.authorEmail } : null,
+  }
+}
 
 /** Create a new revision for an article. Returns the version number. */
 export async function createRevision(
@@ -31,59 +45,72 @@ export async function createRevision(
   excerpt: string | null,
   userId: string,
 ): Promise<{ revision: ArticleRevision; version: number }> {
-  if (!config.supabase) throw new Error('Supabase not configured')
-  const supabase = getSupabase()
+  if (!config.database) throw new Error('Database not configured')
+  const db = getDb()
 
-  // Get next version number
-  const { data: latest } = await supabase
-    .from('article_revisions')
-    .select('version')
-    .eq('article_id', articleId)
-    .order('version', { ascending: false })
+  const [latest] = await db
+    .select({ version: articleRevisions.version })
+    .from(articleRevisions)
+    .where(eq(articleRevisions.articleId, articleId))
+    .orderBy(desc(articleRevisions.version))
     .limit(1)
-    .single()
 
   const nextVersion = (latest?.version ?? 0) + 1
 
-  const { data, error } = await supabase
-    .from('article_revisions')
-    .insert({
-      article_id: articleId,
-      content,
+  const [row] = await db
+    .insert(articleRevisions)
+    .values({
+      articleId,
+      content: content as typeof articleRevisions.$inferInsert.content,
       title,
       excerpt: excerpt ?? null,
       version: nextVersion,
-      created_by: userId,
+      createdBy: userId,
     })
-    .select(REVISION_SELECT)
-    .single()
+    .returning()
 
-  if (error) throw new Error(error.message)
+  if (!row) throw new Error('Failed to create revision')
 
-  await pruneRevisions(supabase, articleId, MAX_REVISIONS_PER_ARTICLE)
-  return { revision: data as ArticleRevision, version: nextVersion }
+  await pruneRevisions(db, articleId, MAX_REVISIONS_PER_ARTICLE)
+
+  const [withAuthor] = await db
+    .select({
+      id: articleRevisions.id,
+      articleId: articleRevisions.articleId,
+      content: articleRevisions.content,
+      title: articleRevisions.title,
+      excerpt: articleRevisions.excerpt,
+      version: articleRevisions.version,
+      createdBy: articleRevisions.createdBy,
+      createdAt: articleRevisions.createdAt,
+      authorEmail: profiles.email,
+    })
+    .from(articleRevisions)
+    .leftJoin(profiles, eq(articleRevisions.createdBy, profiles.id))
+    .where(eq(articleRevisions.id, row.id))
+    .limit(1)
+
+  return { revision: toRevision(withAuthor ?? { ...row, authorEmail: null }), version: nextVersion }
 }
 
 /** Keep only the latest N revisions for an article; delete older ones. */
 async function pruneRevisions(
-  supabase: ReturnType<typeof getSupabase>,
+  db: ReturnType<typeof getDb>,
   articleId: string,
   keep: number,
 ): Promise<void> {
-  const { data: kept } = await supabase
-    .from('article_revisions')
-    .select('version')
-    .eq('article_id', articleId)
-    .order('version', { ascending: false })
+  const kept = await db
+    .select({ version: articleRevisions.version })
+    .from(articleRevisions)
+    .where(eq(articleRevisions.articleId, articleId))
+    .orderBy(desc(articleRevisions.version))
     .limit(keep)
-  const versions = (kept ?? []).map((r) => r.version)
+  const versions = kept.map((r) => r.version)
   if (versions.length < keep) return
   const minVersionToKeep = Math.min(...versions)
-  await supabase
-    .from('article_revisions')
-    .delete()
-    .eq('article_id', articleId)
-    .lt('version', minVersionToKeep)
+  await db
+    .delete(articleRevisions)
+    .where(and(eq(articleRevisions.articleId, articleId), lt(articleRevisions.version, minVersionToKeep)))
 }
 
 /** List revisions for an article, newest first. */
@@ -92,19 +119,30 @@ export async function listRevisions(
   page = 1,
   limit = 20,
 ): Promise<{ data: ArticleRevision[]; total: number }> {
-  if (!config.supabase) return { data: [], total: 0 }
-  const supabase = getSupabase()
+  if (!config.database) return { data: [], total: 0 }
+  const db = getDb()
   const offset = (page - 1) * limit
 
-  const { data, error, count } = await supabase
-    .from('article_revisions')
-    .select(REVISION_SELECT, { count: 'exact' })
-    .eq('article_id', articleId)
-    .order('version', { ascending: false })
-    .range(offset, offset + limit - 1)
+  const allRows = await db
+    .select({
+      id: articleRevisions.id,
+      articleId: articleRevisions.articleId,
+      content: articleRevisions.content,
+      title: articleRevisions.title,
+      excerpt: articleRevisions.excerpt,
+      version: articleRevisions.version,
+      createdBy: articleRevisions.createdBy,
+      createdAt: articleRevisions.createdAt,
+      authorEmail: profiles.email,
+    })
+    .from(articleRevisions)
+    .leftJoin(profiles, eq(articleRevisions.createdBy, profiles.id))
+    .where(eq(articleRevisions.articleId, articleId))
+    .orderBy(desc(articleRevisions.version))
+  const total = allRows.length
 
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as ArticleRevision[], total: count ?? 0 }
+  const rows = allRows.slice(offset, offset + limit)
+  return { data: rows.map(toRevision), total }
 }
 
 /** Get a specific revision by version number. */
@@ -112,17 +150,25 @@ export async function getRevision(
   articleId: string,
   version: number,
 ): Promise<ArticleRevision | null> {
-  if (!config.supabase) return null
-  const supabase = getSupabase()
-
-  const { data } = await supabase
-    .from('article_revisions')
-    .select(REVISION_SELECT)
-    .eq('article_id', articleId)
-    .eq('version', version)
-    .single()
-
-  return (data as ArticleRevision) ?? null
+  if (!config.database) return null
+  const db = getDb()
+  const [row] = await db
+    .select({
+      id: articleRevisions.id,
+      articleId: articleRevisions.articleId,
+      content: articleRevisions.content,
+      title: articleRevisions.title,
+      excerpt: articleRevisions.excerpt,
+      version: articleRevisions.version,
+      createdBy: articleRevisions.createdBy,
+      createdAt: articleRevisions.createdAt,
+      authorEmail: profiles.email,
+    })
+    .from(articleRevisions)
+    .leftJoin(profiles, eq(articleRevisions.createdBy, profiles.id))
+    .where(and(eq(articleRevisions.articleId, articleId), eq(articleRevisions.version, version)))
+    .limit(1)
+  return row ? toRevision(row) : null
 }
 
 /** Restore an article to a specific revision. Creates a new revision as well. */
@@ -134,7 +180,6 @@ export async function restoreRevision(
   const rev = await getRevision(articleId, version)
   if (!rev) return null
 
-  // Create a new revision with the restored content
   const { revision } = await createRevision(
     articleId,
     rev.content,
@@ -143,19 +188,18 @@ export async function restoreRevision(
     userId,
   )
 
-  // Update the article itself
-  if (config.supabase) {
-    const supabase = getSupabase()
-    await supabase
-      .from('articles')
-      .update({
-        content: rev.content,
+  if (config.database) {
+    const db = getDb()
+    await db
+      .update(articles)
+      .set({
+        content: rev.content as typeof articles.$inferInsert.content,
         title: rev.title,
         excerpt: rev.excerpt,
         version: revision.version,
-        last_saved_by: userId,
+        lastSavedBy: userId,
       })
-      .eq('id', articleId)
+      .where(eq(articles.id, articleId))
   }
 
   return revision

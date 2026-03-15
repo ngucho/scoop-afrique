@@ -16,13 +16,13 @@ import * as articleService from '../../services/article.service.js'
 import { config } from '../../config/env.js'
 import type { AppEnv } from '../../types.js'
 
-function requireSupabase(c: import('hono').Context) {
-  if (!config.supabase) {
+function requireDatabase(c: import('hono').Context) {
+  if (!config.database) {
     return c.json(
       {
-        error: 'Supabase not configured',
+        error: 'Database not configured',
         code: 'CONFIG',
-        hint: 'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in the backend .env',
+        hint: 'Set DATABASE_URL in the backend .env (pooler from Supabase Connect dialog)',
       },
       503
     )
@@ -69,8 +69,8 @@ app.post(
   '/',
   requireRole('journalist', 'editor', 'manager', 'admin'),
   async (c) => {
-    const supabaseErr = requireSupabase(c)
-    if (supabaseErr) return supabaseErr
+    const dbErr = requireDatabase(c)
+    if (dbErr) return dbErr
 
     const user = c.get('user')
     let body: unknown
@@ -97,8 +97,8 @@ app.post(
 
 /* --- Update article --- */
 app.patch('/:id', async (c) => {
-  const supabaseErr = requireSupabase(c)
-  if (supabaseErr) return supabaseErr
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
 
   const user = c.get('user')
   const id = c.req.param('id')
@@ -129,8 +129,8 @@ app.post(
   '/:id/publish',
   requireRole('editor', 'manager', 'admin'),
   async (c) => {
-    const supabaseErr = requireSupabase(c)
-    if (supabaseErr) return supabaseErr
+    const dbErr = requireDatabase(c)
+    if (dbErr) return dbErr
 
     const user = c.get('user')
     const id = c.req.param('id')

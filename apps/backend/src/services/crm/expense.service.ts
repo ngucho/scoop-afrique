@@ -1,18 +1,20 @@
 /**
  * CRM expense service
  */
-import { getSupabase } from '../../lib/supabase.js'
+import { eq, desc } from 'drizzle-orm'
+import { getDb } from '../../db/index.js'
+import { crmExpenses } from '../../db/schema.js'
+import { toSnakeRecord } from './crm-util.js'
 import type { CreateExpenseInput } from '../../schemas/crm/expense.schema.js'
 
 export async function listExpensesByProject(projectId: string): Promise<Array<Record<string, unknown>>> {
-  const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('crm_expenses')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('incurred_at', { ascending: false })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as Array<Record<string, unknown>>
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(crmExpenses)
+    .where(eq(crmExpenses.projectId, projectId))
+    .orderBy(desc(crmExpenses.createdAt))
+  return rows.map((r) => toSnakeRecord(r as Record<string, unknown>))
 }
 
 export async function createExpense(
@@ -20,20 +22,22 @@ export async function createExpense(
   input: CreateExpenseInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
-  const supabase = getSupabase()
-  const insert: Record<string, unknown> = {
-    project_id: projectId,
-    title: input.title.trim(),
-    amount: input.amount,
-    currency: input.currency ?? 'FCFA',
-    category: input.category?.trim() || null,
-    receipt_url: input.receipt_url?.trim() || null,
-    incurred_at: input.incurred_at || new Date().toISOString().slice(0, 10),
-    notes: input.notes?.trim() || null,
-    created_by: createdBy ?? null,
-  }
+  const db = getDb()
+  const [expense] = await db
+    .insert(crmExpenses)
+    .values({
+      projectId,
+      title: input.title.trim(),
+      amount: input.amount,
+      currency: input.currency ?? 'FCFA',
+      category: input.category?.trim() || null,
+      receiptUrl: input.receipt_url?.trim() || null,
+      incurredAt: input.incurred_at || new Date().toISOString().slice(0, 10),
+      notes: input.notes?.trim() || null,
+      createdBy: createdBy ?? null,
+    })
+    .returning()
 
-  const { data, error } = await supabase.from('crm_expenses').insert(insert).select().single()
-  if (error) throw new Error(error.message)
-  return data as Record<string, unknown>
+  if (!expense) throw new Error('Failed to create expense')
+  return toSnakeRecord(expense as Record<string, unknown>)
 }

@@ -10,6 +10,7 @@ export const crmDevisStatusEnum = z.enum([
 ])
 
 export const createDevisSchema = z.object({
+  project_id: z.string().uuid().optional(),
   contact_id: z.string().uuid().optional(),
   devis_request_id: z.string().uuid().optional(),
   service_slug: z.string().optional(),

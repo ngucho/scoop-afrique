@@ -8,7 +8,9 @@
  * - Computes word_count / reading_time_min on every save.
  * - Uses collaborator service for canEdit checks.
  */
-import { getSupabase } from '../lib/supabase.js'
+import { eq, and, desc, sql, or, ilike, isNotNull } from 'drizzle-orm'
+import { getDb } from '../db/index.js'
+import { articles, categories, profiles } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { CreateArticleBody, UpdateArticleBody } from '../schemas/article.js'
 import type { AppRole } from './profile.service.js'
@@ -99,83 +101,158 @@ function slugify(title: string): string {
 
 /** Return a slug that is unique in articles. If base exists, appends -2, -3, etc. */
 async function ensureUniqueSlug(
-  supabase: ReturnType<typeof getSupabase>,
+  db: ReturnType<typeof getDb>,
   baseSlug: string,
   excludeArticleId?: string
 ): Promise<string> {
   let slug = baseSlug
   let n = 1
   for (;;) {
-    let query = supabase.from('articles').select('id').eq('slug', slug).limit(1)
-    if (excludeArticleId) query = query.neq('id', excludeArticleId)
-    const { data } = await query
-    if (!data?.length) return slug
+    const conditions = excludeArticleId
+      ? and(eq(articles.slug, slug), sql`${articles.id} != ${excludeArticleId}`)
+      : eq(articles.slug, slug)
+    const [row] = await db.select({ id: articles.id }).from(articles).where(conditions).limit(1)
+    if (!row) return slug
     n += 1
     slug = `${baseSlug}-${n}`
   }
 }
 
-const ARTICLE_SELECT = `
-  *,
-  author:profiles!articles_author_id_fkey(email),
-  category:categories!articles_category_id_fkey(id, name, slug)
-`
+function toArticle(row: Record<string, unknown>): Article {
+  const r = row as typeof articles.$inferSelect
+  return {
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    excerpt: r.excerpt,
+    cover_image_url: r.coverImageUrl,
+    video_url: r.videoUrl,
+    content: r.content,
+    category_id: r.categoryId,
+    author_id: r.authorId,
+    author_display_name: r.authorDisplayName,
+    tags: r.tags ?? [],
+    status: r.status as ArticleStatus,
+    published_at: r.publishedAt?.toISOString() ?? null,
+    scheduled_at: r.scheduledAt?.toISOString() ?? null,
+    meta_title: r.metaTitle,
+    meta_description: r.metaDescription,
+    og_image_url: r.ogImageUrl,
+    view_count: r.viewCount ?? 0,
+    word_count: r.wordCount ?? 0,
+    reading_time_min: r.readingTimeMin ?? 1,
+    version: r.version ?? 1,
+    last_saved_by: r.lastSavedBy,
+    created_at: r.createdAt.toISOString(),
+    updated_at: r.updatedAt.toISOString(),
+  }
+}
+
+function toArticleWithAuthor(row: Record<string, unknown>): ArticleWithAuthor {
+  const r = row as typeof articles.$inferSelect & { authorEmail?: string | null; categoryId?: string; categoryName?: string; categorySlug?: string }
+  return {
+    ...toArticle(r),
+    author: r.authorEmail != null ? { email: r.authorEmail } : null,
+    category: r.categoryId && r.categoryName && r.categorySlug ? { id: r.categoryId, name: r.categoryName, slug: r.categorySlug } : null,
+  }
+}
 
 /* ---------- List ---------- */
 
 export async function listArticles(
   options: ListOptions
 ): Promise<{ data: ArticleWithAuthor[]; total: number }> {
-  if (!config.supabase) return { data: [], total: 0 }
-  const supabase = getSupabase()
+  if (!config.database) return { data: [], total: 0 }
+  const db = getDb()
   const limit = Math.min(options.limit ?? 20, 100)
   const offset = ((options.page ?? 1) - 1) * limit
 
-  let query = supabase.from('articles').select(ARTICLE_SELECT, { count: 'exact' })
+  const conditions: ReturnType<typeof eq>[] = []
 
-  // Status filter
   if (options.status) {
-    query = query.eq('status', options.status)
+    conditions.push(eq(articles.status, options.status))
     if (options.status === 'published') {
-      query = query.not('published_at', 'is', null)
+      conditions.push(isNotNull(articles.publishedAt))
     }
   } else if (!options.allowAllStatuses) {
-    query = query.eq('status', 'published').not('published_at', 'is', null)
+    conditions.push(eq(articles.status, 'published'))
+    conditions.push(isNotNull(articles.publishedAt))
   }
 
-  // Category filter (by slug)
   if (options.category) {
-    const { data: cat } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('slug', options.category)
-      .single()
-    if (cat) query = query.eq('category_id', cat.id)
-    else return { data: [], total: 0 }
+    const [cat] = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, options.category)).limit(1)
+    if (!cat) return { data: [], total: 0 }
+    conditions.push(eq(articles.categoryId, cat.id))
   }
 
-  // Author filter
   if (options.authorId) {
-    query = query.eq('author_id', options.authorId)
+    conditions.push(eq(articles.authorId, options.authorId))
   }
 
-  // Tag filter (array contains)
   if (options.tag) {
-    query = query.contains('tags', [options.tag])
+    conditions.push(sql`${options.tag} = ANY(${articles.tags})`)
   }
 
-  // Full-text search
   if (options.q) {
-    query = query.or(`title.ilike.%${options.q}%,excerpt.ilike.%${options.q}%`)
+    conditions.push(or(ilike(articles.title, `%${options.q}%`), ilike(articles.excerpt, `%${options.q}%`))!)
   }
 
-  query = query
-    .order('published_at', { ascending: false, nullsFirst: false })
-    .range(offset, offset + limit - 1)
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
-  const { data, error, count } = await query
-  if (error) throw new Error(error.message)
-  return { data: (data ?? []) as ArticleWithAuthor[], total: count ?? 0 }
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(articles)
+    .where(whereClause)
+  const total = countRow?.count ?? 0
+
+  const rows = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      excerpt: articles.excerpt,
+      coverImageUrl: articles.coverImageUrl,
+      videoUrl: articles.videoUrl,
+      content: articles.content,
+      categoryId: articles.categoryId,
+      authorId: articles.authorId,
+      authorDisplayName: articles.authorDisplayName,
+      tags: articles.tags,
+      status: articles.status,
+      publishedAt: articles.publishedAt,
+      scheduledAt: articles.scheduledAt,
+      metaTitle: articles.metaTitle,
+      metaDescription: articles.metaDescription,
+      ogImageUrl: articles.ogImageUrl,
+      viewCount: articles.viewCount,
+      wordCount: articles.wordCount,
+      readingTimeMin: articles.readingTimeMin,
+      version: articles.version,
+      lastSavedBy: articles.lastSavedBy,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      authorEmail: profiles.email,
+      catId: categories.id,
+      catName: categories.name,
+      catSlug: categories.slug,
+    })
+    .from(articles)
+    .leftJoin(profiles, eq(articles.authorId, profiles.id))
+    .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .where(whereClause)
+    .orderBy(desc(articles.publishedAt))
+    .limit(limit)
+    .offset(offset)
+
+  const data = rows.map((r) =>
+    toArticleWithAuthor({
+      ...r,
+      categoryId: r.catId ?? undefined,
+      categoryName: r.catName ?? undefined,
+      categorySlug: r.catSlug ?? undefined,
+    })
+  )
+  return { data, total }
 }
 
 /* ---------- Get by ID / slug ---------- */
@@ -184,34 +261,70 @@ export async function getArticleByIdOrSlug(
   idOrSlug: string,
   onlyPublished = true
 ): Promise<ArticleWithAuthor | null> {
-  if (!config.supabase) return null
-  const supabase = getSupabase()
-  const isUuid =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      idOrSlug
-    )
-  let query = supabase.from('articles').select(ARTICLE_SELECT).limit(1)
-  if (isUuid) query = query.eq('id', idOrSlug)
-  else query = query.eq('slug', idOrSlug)
-  if (onlyPublished) query = query.eq('status', 'published')
-  const { data, error } = await query.single()
-  if (error || !data) return null
-  return data as ArticleWithAuthor
+  if (!config.database) return null
+  const db = getDb()
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug)
+
+  const conditions = isUuid ? eq(articles.id, idOrSlug) : eq(articles.slug, idOrSlug)
+  const statusCondition = onlyPublished ? eq(articles.status, 'published') : undefined
+  const whereClause = statusCondition ? and(conditions, statusCondition) : conditions
+
+  const [row] = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      excerpt: articles.excerpt,
+      coverImageUrl: articles.coverImageUrl,
+      videoUrl: articles.videoUrl,
+      content: articles.content,
+      categoryId: articles.categoryId,
+      authorId: articles.authorId,
+      authorDisplayName: articles.authorDisplayName,
+      tags: articles.tags,
+      status: articles.status,
+      publishedAt: articles.publishedAt,
+      scheduledAt: articles.scheduledAt,
+      metaTitle: articles.metaTitle,
+      metaDescription: articles.metaDescription,
+      ogImageUrl: articles.ogImageUrl,
+      viewCount: articles.viewCount,
+      wordCount: articles.wordCount,
+      readingTimeMin: articles.readingTimeMin,
+      version: articles.version,
+      lastSavedBy: articles.lastSavedBy,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      authorEmail: profiles.email,
+      catId: categories.id,
+      catName: categories.name,
+      catSlug: categories.slug,
+    })
+    .from(articles)
+    .leftJoin(profiles, eq(articles.authorId, profiles.id))
+    .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .where(whereClause)
+    .limit(1)
+
+  if (!row) return null
+  return toArticleWithAuthor({
+    ...row,
+    categoryId: row.catId ?? undefined,
+    categoryName: row.catName ?? undefined,
+    categorySlug: row.catSlug ?? undefined,
+  })
 }
 
 /* ---------- Increment view count ---------- */
 
 export async function incrementViewCount(articleId: string): Promise<void> {
-  if (!config.supabase) return
-  const supabase = getSupabase()
-  const { error } = await supabase.rpc('increment_view_count', { article_id: articleId })
-  if (error) {
-    // Fallback: direct update (if RPC not available yet)
+  if (!config.database) return
+  const db = getDb()
+  try {
+    await db.execute(sql`SELECT increment_view_count(${articleId}::uuid)`)
+  } catch {
     try {
-      await supabase
-        .from('articles')
-        .update({ view_count: 1 })
-        .eq('id', articleId)
+      await db.update(articles).set({ viewCount: sql`${articles.viewCount} + 1` }).where(eq(articles.id, articleId))
     } catch {
       // Silently fail — view count is non-critical
     }
@@ -224,42 +337,41 @@ export async function createArticle(
   body: CreateArticleBody,
   authorId: string
 ): Promise<Article> {
-  if (!config.supabase) throw new Error('Supabase not configured')
-  const supabase = getSupabase()
+  if (!config.database) throw new Error('Database not configured')
+  const db = getDb()
   const baseSlug = body.slug ?? slugify(body.title)
-  const slug = await ensureUniqueSlug(supabase, baseSlug)
+  const slug = await ensureUniqueSlug(db, baseSlug)
 
   const contentData = body.content ?? []
   const wordCount = computeWordCount(contentData)
 
-  const { data, error } = await supabase
-    .from('articles')
-    .insert({
+  const [row] = await db
+    .insert(articles)
+    .values({
       title: body.title,
       slug,
       excerpt: body.excerpt ?? null,
-      category_id: body.category_id ?? null,
-      content: contentData,
-      cover_image_url: body.cover_image_url ?? null,
-      video_url: body.video_url ?? null,
+      categoryId: body.category_id ?? null,
+      content: contentData as typeof articles.$inferInsert.content,
+      coverImageUrl: body.cover_image_url ?? null,
+      videoUrl: body.video_url ?? null,
       tags: body.tags ?? [],
-      author_id: authorId,
-      author_display_name: body.author_display_name ?? null,
-      status: body.status ?? 'draft',
-      meta_title: body.meta_title ?? null,
-      meta_description: body.meta_description ?? null,
-      og_image_url: body.og_image_url ?? null,
-      scheduled_at: body.scheduled_at ?? null,
-      word_count: wordCount,
-      reading_time_min: computeReadingTime(wordCount),
+      authorId,
+      authorDisplayName: body.author_display_name ?? null,
+      status: (body.status ?? 'draft') as 'draft' | 'review' | 'scheduled' | 'published',
+      metaTitle: body.meta_title ?? null,
+      metaDescription: body.meta_description ?? null,
+      ogImageUrl: body.og_image_url ?? null,
+      scheduledAt: body.scheduled_at ? new Date(body.scheduled_at) : null,
+      wordCount,
+      readingTimeMin: computeReadingTime(wordCount),
       version: 1,
-      last_saved_by: authorId,
+      lastSavedBy: authorId,
     })
-    .select()
-    .single()
+    .returning()
 
-  if (error) throw new Error(error.message)
-  return data as Article
+  if (!row) throw new Error('Failed to create article')
+  return toArticle(row)
 }
 
 /* ---------- Update ---------- */
@@ -278,71 +390,75 @@ export async function updateArticle(
   role: AppRole,
   options: UpdateOptions = {},
 ): Promise<Article | null> {
-  if (!config.supabase) return null
-  const supabase = getSupabase()
+  if (!config.database) return null
+  const db = getDb()
 
-  const existing = await supabase
-    .from('articles')
-    .select('author_id, status, title, excerpt, content, version')
-    .eq('id', id)
-    .single()
-  if (existing.error || !existing.data) return null
+  const [existing] = await db
+    .select({ authorId: articles.authorId, status: articles.status, title: articles.title, excerpt: articles.excerpt, content: articles.content, version: articles.version })
+    .from(articles)
+    .where(eq(articles.id, id))
+    .limit(1)
+  if (!existing) return null
 
-  // Collaborator-aware permission check (author, collaborator, or editor+)
   const allowed = await canEditArticle(id, userId, role)
   if (!allowed) return null
 
-  const update: Record<string, unknown> = { ...body }
+  const update: Partial<typeof articles.$inferInsert> = {}
+  if (body.title !== undefined) update.title = body.title
+  if (body.slug !== undefined && body.slug.trim()) update.slug = body.slug.trim()
+  if (body.excerpt !== undefined) update.excerpt = body.excerpt
+  if (body.category_id !== undefined) update.categoryId = body.category_id || null
+  if (body.content !== undefined) update.content = body.content as never
+  if (body.cover_image_url !== undefined) update.coverImageUrl = body.cover_image_url
+  if (body.video_url !== undefined) update.videoUrl = body.video_url
+  if (body.tags !== undefined) update.tags = body.tags
+  if (body.status !== undefined) update.status = body.status as 'draft' | 'review' | 'scheduled' | 'published'
+  if (body.meta_title !== undefined) update.metaTitle = body.meta_title
+  if (body.meta_description !== undefined) update.metaDescription = body.meta_description
+  if (body.og_image_url !== undefined) update.ogImageUrl = body.og_image_url
+  if (body.scheduled_at !== undefined) update.scheduledAt = body.scheduled_at ? new Date(body.scheduled_at) : null
 
-  // Ensure slug is unique when updating (exclude current article)
-  if (typeof update.slug === 'string' && update.slug.trim()) {
-    update.slug = await ensureUniqueSlug(supabase, update.slug.trim(), id)
+  if (typeof body.slug === 'string' && body.slug.trim()) {
+    update.slug = await ensureUniqueSlug(db, body.slug.trim(), id)
   }
 
-  // Set published_at when publishing for the first time
-  if (body.status === 'published' && existing.data.status !== 'published') {
-    update.published_at = new Date().toISOString()
+  if (body.status === 'published' && existing.status !== 'published') {
+    update.publishedAt = new Date()
   }
 
-  // Compute word count whenever content is updated
   if (body.content !== undefined) {
-    const wc = computeWordCount(body.content)
-    update.word_count = wc
-    update.reading_time_min = computeReadingTime(wc)
+    update.wordCount = computeWordCount(body.content)
+    update.readingTimeMin = computeReadingTime(update.wordCount)
   }
 
-  update.last_saved_by = userId
+  update.lastSavedBy = userId
 
-  // Create revision for manual saves and publishes
   const shouldRevision =
     options.createRevision ||
     body.status === 'published' ||
     (!options.autosave && body.content !== undefined)
   if (shouldRevision) {
-    const revTitle = (body.title ?? existing.data.title) as string
-    const revExcerpt = (body.excerpt !== undefined ? body.excerpt : existing.data.excerpt) as string | null
-    const revContent = body.content ?? existing.data.content
+    const revTitle = (body.title ?? existing.title) as string
+    const revExcerpt = (body.excerpt !== undefined ? body.excerpt : existing.excerpt) as string | null
+    const revContent = body.content ?? existing.content
     const { version: newVersion } = await createRevision(id, revContent, revTitle, revExcerpt, userId)
     update.version = newVersion
   }
 
-  const { data, error } = await supabase
-    .from('articles')
-    .update(update)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) throw new Error(error.message)
-  return data as Article
+  const [row] = await db
+    .update(articles)
+    .set(update as Record<string, unknown>)
+    .where(eq(articles.id, id))
+    .returning()
+  return row ? toArticle(row) : null
 }
 
 /* ---------- Delete ---------- */
 
 export async function deleteArticle(id: string, role: AppRole): Promise<boolean> {
   if (!['manager', 'admin'].includes(role)) return false
-  if (!config.supabase) return false
-  const supabase = getSupabase()
-  const { error } = await supabase.from('articles').delete().eq('id', id)
-  return !error
+  if (!config.database) return false
+  const db = getDb()
+  const [deleted] = await db.delete(articles).where(eq(articles.id, id)).returning({ id: articles.id })
+  return !!deleted
 }
