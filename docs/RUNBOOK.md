@@ -12,7 +12,7 @@
 ```bash
 # 1. Clone and install
 git clone <repo>
-cd scoop-afrique-landing
+cd scoop-afrique-webapp
 pnpm install
 
 # 2. Configure environment
@@ -34,7 +34,7 @@ pnpm dev          # All apps in parallel
 # OR
 pnpm dev:backend  # Backend only (port 4000)
 pnpm dev:frontend # Frontend only (port 3001)
-pnpm dev:landing  # Landing only (port 3000)
+pnpm dev:brands  # Brands only (port 3000)
 ```
 
 ## Environment Variables
@@ -119,7 +119,7 @@ Deploy to Railway, Render, or Fly.io:
 ### Deploy Landing
 
 1. Connect repo to Vercel (separate project)
-2. Set root directory: `apps/landing`
+2. Set root directory: `apps/brands`
 3. Build command: `pnpm build`
 
 ## Troubleshooting
@@ -164,7 +164,7 @@ Server actions that need the token will also redirect to `/` if `getAccessToken(
 | `pnpm dev` | Start all apps |
 | `pnpm dev:backend` | Start backend |
 | `pnpm dev:frontend` | Start frontend |
-| `pnpm dev:landing` | Start landing |
+| `pnpm dev:brands` | Start brands |
 | `pnpm build` | Build all apps |
 | `pnpm lint` | Lint all apps |
 | `pnpm --filter @scoop-afrique/backend build` | Build backend only |

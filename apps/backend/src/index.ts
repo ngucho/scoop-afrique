@@ -22,6 +22,7 @@ import articlesRoutes from './routes/articles.js'
 import categoriesRoutes from './routes/categories.js'
 import commentsRoutes from './routes/comments.js'
 import newsletterRoutes from './routes/newsletter.js'
+import devisRoutes from './routes/devis.js'
 import adminArticlesRoutes from './routes/admin/articles.js'
 import adminCommentsRoutes from './routes/admin/comments.js'
 import adminCategoriesRoutes from './routes/admin/categories.js'
@@ -33,6 +34,7 @@ import adminCollaboratorsRoutes from './routes/admin/collaborators.js'
 import adminEditorialCommentsRoutes from './routes/admin/editorial-comments.js'
 import adminAuth0UsersRoutes from './routes/admin/auth0-users.js'
 import adminNotificationsRoutes from './routes/admin/notifications.js'
+import crmRoutes from './routes/crm/index.js'
 
 assertConfig()
 
@@ -51,6 +53,7 @@ const prefix = config.apiPrefix // /api/v1
 app.route(`${prefix}/articles`, articlesRoutes)
 app.route(`${prefix}/categories`, categoriesRoutes)
 app.route(`${prefix}/newsletter`, newsletterRoutes)
+app.route(`${prefix}/devis`, devisRoutes)
 
 // Comment routes use nested paths
 app.route(`${prefix}`, commentsRoutes) // /api/v1/articles/:id/comments + /api/v1/comments/:id
@@ -70,6 +73,9 @@ app.route(`${prefix}/admin/articles`, adminLocksRoutes)
 app.route(`${prefix}/admin/articles`, adminRevisionsRoutes)
 app.route(`${prefix}/admin/articles`, adminCollaboratorsRoutes)
 app.route(`${prefix}/admin/articles`, adminEditorialCommentsRoutes)
+
+/* ---- CRM API v1 ---- */
+app.route(`${prefix}/crm`, crmRoutes)
 
 /* ---- 404 ---- */
 app.notFound((c) => c.json({ error: 'Not Found' }, 404))

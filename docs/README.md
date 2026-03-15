@@ -12,7 +12,7 @@ Bienvenue dans la documentation du monorepo **Scoop Afrique**. Tous les document
 
 ## Déploiement
 
-- **[DEPLOYMENT_VERCEL.md](./DEPLOYMENT_VERCEL.md)** — Guide pas à pas pour déployer la **landing**, le **frontend** et le **backend** sur Vercel (et alternatives Railway/Render pour le backend).
+- **[DEPLOYMENT_VERCEL.md](./DEPLOYMENT_VERCEL.md)** — Guide pas à pas pour déployer la **brands**, le **frontend** et le **backend** sur Vercel (et alternatives Railway/Render pour le backend).
 
 ---
 
