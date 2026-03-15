@@ -116,16 +116,16 @@ export function CrmSidebar({
         ))}
       </nav>
 
-      {/* Logout */}
+      {/* Logout: use <a> for full page navigation so Auth0 redirect works (no CORS) */}
       <div className="border-t border-sidebar-border p-2 shrink-0">
-        <Link
+        <a
           href="/auth/logout"
           className="crm-nav-item text-destructive hover:text-destructive"
           style={{ color: 'var(--destructive)' }}
         >
           <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.8} />
           <span className="text-[13px]">Déconnexion</span>
-        </Link>
+        </a>
       </div>
     </aside>
   )
