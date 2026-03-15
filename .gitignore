@@ -26,3 +26,6 @@ yarn-error.log*
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Backend: copied at build for Vercel (pdf templates run from src/)
+apps/backend/src/pdf-templates/*.js
