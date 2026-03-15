@@ -4,6 +4,7 @@
 import { getDb } from '../db/index.js'
 import { devisRequests } from '../db/schema.js'
 import { config } from '../config/env.js'
+import { logApiError } from '@scoop-afrique/api-logger'
 import type { DevisBody } from '../schemas/devis.js'
 
 const TEAM_EMAIL = 'contact@scoop-afrique.com'
@@ -85,7 +86,7 @@ export async function createDevisRequest(body: DevisBody): Promise<{ id: string;
 
   // Send notifications (fire-and-forget; don't block response)
   void sendDevisNotifications({ ...body, id }).catch((err) => {
-    console.error('[devis] Notification error:', err)
+    logApiError({ msg: 'devis_notification_error', err, path: '/api/v1/devis' })
   })
 
   return { id, success: true }
@@ -166,7 +167,7 @@ ${SITE_URL}`
         }),
       })
     } catch (err) {
-      console.error('[devis] Prospect email error:', err)
+      logApiError({ msg: 'devis_prospect_email_error', err, path: '/api/v1/devis' })
     }
   }
 
@@ -189,7 +190,7 @@ ${SITE_URL}`
         body: params.toString(),
       })
     } catch (err) {
-      console.error('[devis] WhatsApp error:', err)
+      logApiError({ msg: 'devis_whatsapp_error', err, path: '/api/v1/devis' })
     }
   }
 
@@ -213,7 +214,7 @@ ${SITE_URL}`
         body: params.toString(),
       })
     } catch (err) {
-      console.error('[devis] SMS error:', err)
+      logApiError({ msg: 'devis_sms_error', err, path: '/api/v1/devis' })
     }
   }
 }
