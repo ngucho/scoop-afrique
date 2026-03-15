@@ -51,13 +51,15 @@ export default async function NewDevisPage({
     default_price: (s.default_price as number) ?? 0,
   }))
 
-  let defaultValues: Partial<{
-    title: string
-    service_slug: string
-    devis_request_id: string
-    contact_id: string
-    line_items: Array<{ description: string; quantity: number; unit_price: number; unit: string; tax_rate?: number }>
-  }> | undefined
+  let defaultValues:
+    | Partial<{
+        title: string
+        service_slug: string
+        devis_request_id: string
+        contact_id: string
+        line_items: Array<{ description: string; quantity: number; unit_price: number; unit: string; tax_rate: number }>
+      }>
+    | undefined
 
   if (devisRequestId && devisRequestResult?.data) {
     const req = devisRequestResult.data as Record<string, unknown>

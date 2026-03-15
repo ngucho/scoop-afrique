@@ -99,11 +99,11 @@ export default async function InvoiceDetailPage({
               {(project.description as string) && (
                 <p className="text-muted-foreground line-clamp-3">{String(project.description)}</p>
               )}
-              {(project.start_date || project.end_date) && (
+              {(project.start_date != null || project.end_date != null) ? (
                 <p className="text-muted-foreground pt-1">
                   {formatDate(project.start_date)} — {formatDate(project.end_date)}
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
         )}
