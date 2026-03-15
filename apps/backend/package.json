@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "prebuild": "pnpm --filter @scoop-afrique/api-logger run build",
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-pdf-templates.js",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "db:generate": "drizzle-kit generate",
