@@ -1,7 +1,7 @@
 /**
  * CRM contact service
  */
-import { eq, and, desc, or, ilike, count } from 'drizzle-orm'
+import { eq, and, desc, or, ilike, count, sql } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmContacts } from '../../db/schema.js'
 import { config } from '../../config/env.js'
@@ -56,12 +56,31 @@ export async function getContactById(id: string): Promise<Record<string, unknown
   return row ? toSnakeRecord(row as Record<string, unknown>) : null
 }
 
+export async function getContactByEmail(email: string): Promise<Record<string, unknown> | null> {
+  if (!config.database) return null
+  const db = getDb()
+  const normalized = email.trim().toLowerCase()
+  const [row] = await db
+    .select()
+    .from(crmContacts)
+    .where(sql`lower(trim(${crmContacts.email})) = ${normalized}`)
+    .limit(1)
+  return row ? toSnakeRecord(row as Record<string, unknown>) : null
+}
+
 export async function createContact(
   input: CreateContactInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
   if (!config.database) throw new Error('Database not configured')
   const db = getDb()
+
+  // If email provided, check for existing contact and return it instead of creating
+  if (input.email?.trim()) {
+    const existing = await getContactByEmail(input.email.trim())
+    if (existing) return existing
+  }
+
   const [row] = await db
     .insert(crmContacts)
     .values({

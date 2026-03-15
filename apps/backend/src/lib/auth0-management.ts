@@ -12,9 +12,7 @@
  * @see https://auth0.com/docs/manage-users/user-accounts/metadata/manage-metadata-api
  */
 import { config } from '../config/env.js'
-
-/** Fetch API Response shape (for TS envs where global Response type is narrow). */
-type FetchResponse = { ok: boolean; json(): Promise<unknown> }
+import type { FetchResponse } from './http.js'
 
 let cachedToken: { token: string; expiresAt: number } | null = null
 

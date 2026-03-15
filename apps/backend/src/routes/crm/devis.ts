@@ -43,7 +43,7 @@ app.post('/', async (c) => {
 
 app.get('/:id', async (c) => {
   const id = c.req.param('id')
-  const devis = await devisService.getDevisWithContact(id)
+  const devis = await devisService.getDevisWithContactAndProject(id)
   if (!devis) return c.json({ error: 'Not found' }, 404)
   return c.json({ data: devis })
 })
@@ -72,28 +72,40 @@ app.patch('/:id', async (c) => {
 app.post('/:id/send', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
-  const devis = await devisService.getDevisWithContact(id)
+  const devis = await devisService.getDevisWithContactAndProject(id)
   if (!devis) return c.json({ error: 'Not found' }, 404)
   const updated = await devisService.markDevisSent(id, user.id)
   const contact = devis.crm_contacts as Record<string, unknown> | null
-  void import('../../services/crm/notification.crm.service.js').then(({ notifyDevisSent }) =>
-    notifyDevisSent({
-      reference: devis.reference as string,
-      total: devis.total as number,
-      currency: (devis.currency as string) ?? 'FCFA',
-      contactEmail: contact?.email as string,
-      contactName: contact
-        ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
-        : undefined,
-      contactWhatsapp: contact?.whatsapp as string,
-    })
-  ).catch((e) => console.error('[crm] Devis send notification:', e))
+  void (async () => {
+    try {
+      const { notifyDevisSent } = await import('../../services/crm/notification.crm.service.js')
+      const { renderDevisPdf } = await import('../../services/crm/pdf.service.js')
+      const { uploadPdfToStorage } = await import('../../services/crm/pdf.service.js')
+      const buffer = await renderDevisPdf(devis)
+      const ref = (devis.reference as string) || id
+      const pdfUrl = await uploadPdfToStorage(buffer, `devis/${ref}.pdf`)
+      await notifyDevisSent({
+        reference: devis.reference as string,
+        total: devis.total as number,
+        currency: (devis.currency as string) ?? 'FCFA',
+        contactEmail: contact?.email as string,
+        contactName: contact
+          ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
+          : undefined,
+        contactWhatsapp: (contact?.whatsapp as string) || (contact?.phone as string),
+        devisPdfBuffer: buffer,
+        devisPdfUrl: pdfUrl ?? undefined,
+      })
+    } catch (e) {
+      console.error('[crm] Devis send notification:', e)
+    }
+  })()
   return c.json({ data: updated })
 })
 
 app.get('/:id/pdf', async (c) => {
   const id = c.req.param('id')
-  const devis = await devisService.getDevisWithContact(id)
+  const devis = await devisService.getDevisWithContactAndProject(id)
   if (!devis) return c.json({ error: 'Not found' }, 404)
   try {
     const { renderDevisPdf } = await import('../../services/crm/pdf.service.js')

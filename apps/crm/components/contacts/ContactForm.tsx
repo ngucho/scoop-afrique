@@ -20,6 +20,7 @@ const schema = z.object({
   source: z.string().optional(),
   type: z.enum(['prospect', 'client', 'partner', 'sponsor', 'influencer', 'other']).optional(),
   notes: z.string().optional(),
+  devis_request_id: z.string().uuid().optional().or(z.literal('')),
 })
 
 type FormData = z.infer<typeof schema>
@@ -46,8 +47,24 @@ export function ContactForm({
       ...data,
       email: data.email || undefined,
       country: data.country || 'CI',
+      devis_request_id: data.devis_request_id || undefined,
     }
     const url = contactId ? `/api/crm/contacts/${contactId}` : '/api/crm/contacts'
+
+    // When creating with email: check if contact exists by email first
+    if (!contactId && data.email?.trim()) {
+      const checkRes = await fetch(
+        `/api/crm/contacts/by-email?email=${encodeURIComponent(data.email.trim())}`,
+        { credentials: 'include' }
+      )
+      const checkJson = await checkRes.json()
+      if (checkRes.ok && checkJson.data?.id) {
+        toast.success('Contact existant trouvé')
+        router.push(`/contacts/${checkJson.data.id}`)
+        return
+      }
+    }
+
     const res = await fetch(url, {
       method: contactId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,6 +82,9 @@ export function ContactForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md space-y-4">
+      {defaultValues?.devis_request_id && (
+        <input type="hidden" {...register('devis_request_id')} />
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <Label htmlFor="first_name">Prénom</Label>

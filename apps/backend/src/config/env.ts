@@ -56,12 +56,14 @@ const envSchema = z.object({
   // Resend (email for devis notifications)
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
+  NOTIFICATION_EMAIL: z.string().optional(), // comma-separated emails for devis/invoice alerts
 
-  // Twilio (WhatsApp for devis notifications)
+  // Twilio (WhatsApp + SMS for notifications)
   TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
   TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
   TWILIO_WHATSAPP_FROM: z.string().min(1).optional(), // e.g. whatsapp:+1234567890
   TWILIO_WHATSAPP_TO: z.string().min(1).optional(),   // team WhatsApp number
+  TWILIO_SMS_TO: z.string().min(1).optional(),       // team SMS number (optional, for devis alerts)
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -114,7 +116,13 @@ export const config = {
 
   resend:
     env.RESEND_API_KEY
-      ? { apiKey: env.RESEND_API_KEY, fromEmail: env.RESEND_FROM_EMAIL }
+      ? {
+          apiKey: env.RESEND_API_KEY,
+          fromEmail: env.RESEND_FROM_EMAIL,
+          notificationEmails: env.NOTIFICATION_EMAIL
+            ? env.NOTIFICATION_EMAIL.split(',').map((e) => e.trim()).filter(Boolean)
+            : ['contact@scoop-afrique.com'],
+        }
       : null,
 
   twilio:
@@ -124,6 +132,8 @@ export const config = {
           authToken: env.TWILIO_AUTH_TOKEN,
           whatsappFrom: env.TWILIO_WHATSAPP_FROM,
           whatsappTo: env.TWILIO_WHATSAPP_TO,
+          smsTo: env.TWILIO_SMS_TO ?? env.TWILIO_WHATSAPP_TO,
+          smsFrom: env.TWILIO_WHATSAPP_FROM.replace(/^whatsapp:/i, ''),
         }
       : null,
 } as const

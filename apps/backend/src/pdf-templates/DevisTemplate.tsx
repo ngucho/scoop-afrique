@@ -1,24 +1,33 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
 import { PdfHeader } from './PdfHeader.js'
+import { PdfPaymentMethods } from './PdfPaymentMethods.js'
+
+const BRAND = '#B91C1C'
+const TEXT = '#1a1a1a'
+const MUTED = '#555'
+const BORDER = '#d1d5db'
+const BORDER_DARK = '#374151'
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
     fontSize: 10,
     fontFamily: 'Helvetica',
+    color: TEXT,
   },
   subtitle: {
     fontSize: 9,
-    color: '#666',
+    color: MUTED,
   },
   section: {
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: BRAND,
   },
   row: {
     flexDirection: 'row',
@@ -26,10 +35,11 @@ const styles = StyleSheet.create({
   },
   label: {
     width: 100,
-    color: '#666',
+    color: MUTED,
   },
   value: {
     flex: 1,
+    color: TEXT,
   },
   table: {
     marginTop: 15,
@@ -37,35 +47,42 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
-    paddingBottom: 5,
-    marginBottom: 5,
+    borderBottomWidth: 2,
+    borderBottomColor: BRAND,
+    paddingBottom: 6,
+    marginBottom: 6,
     fontWeight: 'bold',
+    color: BRAND,
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#ccc',
+    borderBottomColor: BORDER,
   },
-  colDesc: { flex: 3 },
-  colQty: { width: 50, textAlign: 'right' },
-  colPrice: { width: 80, textAlign: 'right' },
-  colTotal: { width: 90, textAlign: 'right' },
+  colDesc: { flex: 3, color: TEXT },
+  colQty: { width: 50, textAlign: 'right', color: TEXT },
+  colPrice: { width: 80, textAlign: 'right', color: TEXT },
+  colTotal: { width: 90, textAlign: 'right', color: TEXT },
   totals: {
     marginTop: 20,
     marginLeft: 'auto',
-    width: 200,
+    width: 220,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: BORDER,
+    borderRadius: 4,
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 4,
   },
-  totalLabel: {},
+  totalLabel: { color: MUTED },
   totalValue: {
     fontWeight: 'bold',
+    color: BRAND,
   },
   footer: {
     position: 'absolute',
@@ -73,7 +90,7 @@ const styles = StyleSheet.create({
     left: 40,
     right: 40,
     fontSize: 8,
-    color: '#666',
+    color: MUTED,
     textAlign: 'center',
   },
 })
@@ -95,6 +112,13 @@ interface DevisData {
     email?: string
     phone?: string
     company?: string
+  }
+  project?: {
+    reference?: string
+    title?: string
+    description?: string
+    start_date?: string
+    end_date?: string
   }
   line_items: LineItem[]
   subtotal: number
@@ -133,13 +157,15 @@ export function DevisTemplate({ devis }: { devis: DevisData }) {
           </View>
         </View>
 
-        {contactName && (
+        {(contactName || contact?.company || contact?.email || contact?.phone) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Client</Text>
-            <View style={styles.row}>
-              <Text style={styles.label}>Nom:</Text>
-              <Text style={styles.value}>{contactName}</Text>
-            </View>
+            {contactName && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Nom:</Text>
+                <Text style={styles.value}>{contactName}</Text>
+              </View>
+            )}
             {contact?.company && (
               <View style={styles.row}>
                 <Text style={styles.label}>Société:</Text>
@@ -150,6 +176,44 @@ export function DevisTemplate({ devis }: { devis: DevisData }) {
               <View style={styles.row}>
                 <Text style={styles.label}>Email:</Text>
                 <Text style={styles.value}>{contact.email}</Text>
+              </View>
+            )}
+            {contact?.phone && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Téléphone:</Text>
+                <Text style={styles.value}>{contact.phone}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {devis.project && (devis.project.reference || devis.project.title) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Projet</Text>
+            {devis.project.reference && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Référence:</Text>
+                <Text style={styles.value}>{devis.project.reference}</Text>
+              </View>
+            )}
+            {devis.project.title && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Titre:</Text>
+                <Text style={styles.value}>{devis.project.title}</Text>
+              </View>
+            )}
+            {devis.project.description && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Description:</Text>
+                <Text style={[styles.value, { flex: 2 }]}>{devis.project.description}</Text>
+              </View>
+            )}
+            {(devis.project.start_date || devis.project.end_date) && (
+              <View style={styles.row}>
+                <Text style={styles.label}>Période:</Text>
+                <Text style={styles.value}>
+                  {devis.project.start_date || '—'} — {devis.project.end_date || '—'}
+                </Text>
               </View>
             )}
           </View>
@@ -203,6 +267,8 @@ export function DevisTemplate({ devis }: { devis: DevisData }) {
           </View>
         </View>
 
+        <PdfPaymentMethods isDevis />
+
         {devis.valid_until && (
           <View style={[styles.section, { marginTop: 20 }]}>
             <Text style={styles.subtitle}>
@@ -219,7 +285,7 @@ export function DevisTemplate({ devis }: { devis: DevisData }) {
         )}
 
         <Text style={styles.footer} fixed>
-          Scoop Afrique — Devis {devis.reference} — Document confidentiel
+          SCOOP — Devis {devis.reference} — Document confidentiel — (+225) 07 02 90 79 49 — contact@scoop-afrique.com
         </Text>
       </Page>
     </Document>

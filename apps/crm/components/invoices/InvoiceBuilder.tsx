@@ -28,17 +28,41 @@ const createSchema = z.object({
   internal_notes: z.string().optional(),
 })
 
+const createFromProjectSchema = createSchema.omit({ line_items: true }).extend({
+  line_items: z.array(lineItemSchema).min(1),
+})
+
 const editSchema = createSchema.extend({
   project_id: z.string().optional().or(z.literal('')),
 })
 
 type FormData = z.infer<typeof createSchema>
 
+type LineItemInput = {
+  description?: string
+  quantity?: number
+  unit_price?: number
+  unit?: string
+  tax_rate?: number
+}
+
 interface InvoiceBuilderProps {
   invoiceId?: string
   defaultValues?: Partial<FormData>
   contacts?: Array<{ id: string; first_name?: string; last_name?: string }>
   projects?: Array<{ id: string; reference: string; title: string }>
+  defaultProjectId?: string
+  lineItemsFromProject?: Array<LineItemInput>
+}
+
+function normalizeLineItem(item: LineItemInput): { description: string; quantity: number; unit_price: number; unit: string; tax_rate: number } {
+  return {
+    description: String(item.description ?? ''),
+    quantity: Number(item.quantity ?? 1),
+    unit_price: Number(item.unit_price ?? 0),
+    unit: String(item.unit ?? 'unité'),
+    tax_rate: Number(item.tax_rate ?? 0),
+  }
 }
 
 export function InvoiceBuilder({
@@ -46,9 +70,17 @@ export function InvoiceBuilder({
   defaultValues,
   contacts = [],
   projects = [],
+  defaultProjectId,
+  lineItemsFromProject,
 }: InvoiceBuilderProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const initialLineItems = lineItemsFromProject?.length
+    ? lineItemsFromProject.map(normalizeLineItem)
+    : defaultValues?.line_items ?? [{ description: '', quantity: 1, unit_price: 0, unit: 'unité', tax_rate: 0 }]
+
+  const useProjectLineItems = Boolean(lineItemsFromProject?.length)
 
   const {
     register,
@@ -57,11 +89,15 @@ export function InvoiceBuilder({
     watch,
     formState: { errors },
   } = useForm<FormData>({
-    resolver: zodResolver(invoiceId ? editSchema : createSchema),
-    defaultValues: defaultValues ?? {
-      line_items: [{ description: '', quantity: 1, unit_price: 0, unit: 'unité' }],
-      tax_rate: 0,
-      discount_amount: 0,
+    resolver: zodResolver(
+      invoiceId ? editSchema : useProjectLineItems ? createFromProjectSchema : createSchema
+    ),
+    defaultValues: {
+      ...defaultValues,
+      project_id: defaultProjectId ?? defaultValues?.project_id ?? '',
+      line_items: initialLineItems,
+      tax_rate: defaultValues?.tax_rate ?? 0,
+      discount_amount: defaultValues?.discount_amount ?? 0,
     },
   })
 
@@ -112,6 +148,14 @@ export function InvoiceBuilder({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">
+      {defaultProjectId && !lineItemsFromProject?.length && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm">
+          <p className="font-medium text-amber-800 dark:text-amber-200">Projet sans devis</p>
+          <p className="text-amber-700 dark:text-amber-300 mt-1">
+            Ce projet n&apos;a pas de devis avec des lignes. Saisissez les lignes manuellement ou créez d&apos;abord un devis pour ce projet.
+          </p>
+        </div>
+      )}
       {contacts.length > 0 && (
         <div>
           <Label htmlFor="contact_id">Contact</Label>
@@ -160,56 +204,89 @@ export function InvoiceBuilder({
       )}
 
       <div>
-        <Label>Lignes</Label>
-        <div className="space-y-3 mt-2">
-          {fields.map((field, idx) => (
-            <div
-              key={field.id}
-              className="flex flex-wrap gap-2 items-end p-3 rounded-lg border border-border bg-muted/20"
-            >
-              <div className="flex-1 min-w-[200px]">
-                <Input
-                  {...register(`line_items.${idx}.description`)}
-                  placeholder="Description"
-                  className={errors.line_items?.[idx]?.description ? 'border-destructive' : ''}
-                />
+        <Label>Lignes {useProjectLineItems && '(du devis du projet)'}</Label>
+        {useProjectLineItems ? (
+          <div className="mt-2 rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-3">Description</th>
+                  <th className="text-right p-3">Qté</th>
+                  <th className="text-right p-3">Prix unit.</th>
+                  <th className="text-right p-3">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineItems.map((item, i) => {
+                  const qty = Number(item.quantity ?? 1)
+                  const price = Number(item.unit_price ?? 0)
+                  return (
+                    <tr key={i} className="border-t border-border">
+                      <td className="p-3">{String(item.description ?? '—')}</td>
+                      <td className="text-right p-3">{qty}</td>
+                      <td className="text-right p-3">
+                        {price.toLocaleString('fr-FR')} {String(item.unit ?? '')}
+                      </td>
+                      <td className="text-right p-3">
+                        {(qty * price).toLocaleString('fr-FR')} FCFA
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="space-y-3 mt-2">
+            {fields.map((field, idx) => (
+              <div
+                key={field.id}
+                className="flex flex-wrap gap-2 items-end p-3 rounded-lg border border-border bg-muted/20"
+              >
+                <div className="flex-1 min-w-[200px]">
+                  <Input
+                    {...register(`line_items.${idx}.description`)}
+                    placeholder="Description"
+                    className={errors.line_items?.[idx]?.description ? 'border-destructive' : ''}
+                  />
+                </div>
+                <div className="w-20">
+                  <Input
+                    type="number"
+                    {...register(`line_items.${idx}.quantity`)}
+                    placeholder="Qté"
+                    min={1}
+                  />
+                </div>
+                <div className="w-24">
+                  <Input
+                    type="number"
+                    {...register(`line_items.${idx}.unit_price`)}
+                    placeholder="Prix"
+                    min={0}
+                  />
+                </div>
+                <div className="w-24">
+                  <Input {...register(`line_items.${idx}.unit`)} placeholder="unité" />
+                </div>
+                {fields.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => remove(idx)}
+                  >
+                    Suppr.
+                  </Button>
+                )}
               </div>
-              <div className="w-20">
-                <Input
-                  type="number"
-                  {...register(`line_items.${idx}.quantity`)}
-                  placeholder="Qté"
-                  min={1}
-                />
-              </div>
-              <div className="w-24">
-                <Input
-                  type="number"
-                  {...register(`line_items.${idx}.unit_price`)}
-                  placeholder="Prix"
-                  min={0}
-                />
-              </div>
-              <div className="w-24">
-                <Input {...register(`line_items.${idx}.unit`)} placeholder="unité" />
-              </div>
-              {fields.length > 1 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => remove(idx)}
-                >
-                  Suppr.
-                </Button>
-              )}
-            </div>
-          ))}
-          <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unit_price: 0, unit: 'unité', tax_rate: 0 })}>
-            + Ligne
-          </Button>
-        </div>
-        {errors.line_items && (
+            ))}
+            <Button type="button" variant="outline" onClick={() => append({ description: '', quantity: 1, unit_price: 0, unit: 'unité', tax_rate: 0 })}>
+              + Ligne
+            </Button>
+          </div>
+        )}
+        {errors.line_items && !useProjectLineItems && (
           <p className="text-sm text-destructive mt-1">
             {errors.line_items.message}
           </p>

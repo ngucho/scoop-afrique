@@ -19,6 +19,7 @@ export async function renderPdfToBuffer(doc: React.ReactElement): Promise<Buffer
 
 export async function renderDevisPdf(devis: Record<string, unknown>): Promise<Buffer> {
   const contact = devis.crm_contacts as Record<string, unknown> | null
+  const project = devis.crm_projects as Record<string, unknown> | null
   const doc = React.createElement(DevisTemplate, {
     devis: {
         reference: devis.reference as string,
@@ -30,6 +31,15 @@ export async function renderDevisPdf(devis: Record<string, unknown>): Promise<Bu
               email: contact.email as string,
               phone: contact.phone as string,
               company: contact.company as string,
+            }
+          : undefined,
+        project: project
+          ? {
+              reference: project.reference as string,
+              title: project.title as string,
+              description: project.description as string,
+              start_date: project.start_date as string,
+              end_date: project.end_date as string,
             }
           : undefined,
         line_items: ((devis.line_items as Array<Record<string, unknown>>) ?? []).map((i) => ({
@@ -53,6 +63,7 @@ export async function renderDevisPdf(devis: Record<string, unknown>): Promise<Bu
 
 export async function renderInvoicePdf(invoice: Record<string, unknown>): Promise<Buffer> {
   const contact = invoice.crm_contacts as Record<string, unknown> | null
+  const project = invoice.crm_projects as Record<string, unknown> | null
   const doc = React.createElement(InvoiceTemplate, {
     invoice: {
         reference: invoice.reference as string,
@@ -61,7 +72,17 @@ export async function renderInvoicePdf(invoice: Record<string, unknown>): Promis
               first_name: contact.first_name as string,
               last_name: contact.last_name as string,
               email: contact.email as string,
+              phone: contact.phone as string,
               company: contact.company as string,
+            }
+          : undefined,
+        project: project
+          ? {
+              reference: project.reference as string,
+              title: project.title as string,
+              description: project.description as string,
+              start_date: project.start_date as string,
+              end_date: project.end_date as string,
             }
           : undefined,
         line_items: ((invoice.line_items as Array<Record<string, unknown>>) ?? []).map((i) => ({
