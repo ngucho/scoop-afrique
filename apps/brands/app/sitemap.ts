@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { getAllServiceSlugs } from '@/lib/services-data'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const currentDate = new Date().toISOString()

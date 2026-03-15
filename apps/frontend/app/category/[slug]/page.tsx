@@ -1,16 +1,19 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { Heading, Button, SectionHeader } from 'scoop'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { ArticleCard } from '@/components/reader/ArticleCard'
 import { FeaturedHero } from '@/components/reader/FeaturedHero'
 import { apiGet } from '@/lib/api/client'
+import { config } from '@/lib/config'
 import type { ArticlesResponse, Category } from '@/lib/api/types'
 
 export const revalidate = 60
 export const dynamicParams = true
 
 const LIMIT = 13
+const SITE_URL = config.siteUrl
 
 async function getCategoryBySlug(slug: string): Promise<Category | null> {
   try {
@@ -49,6 +52,33 @@ export async function generateStaticParams() {
 
 interface PageProps {
   params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params
+  const category = await getCategoryBySlug(slug)
+  if (!category) return { title: 'Catégorie introuvable' }
+  const title = `${category.name} — Articles | Scoop.Afrique`
+  const description = `Articles de la rubrique ${category.name}. Actualités, décryptages et analyses par Scoop Afrique.`
+  const url = `${SITE_URL}/category/${encodeURIComponent(slug)}`
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'Scoop.Afrique',
+      type: 'website',
+      locale: 'fr_FR',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
+    alternates: { canonical: url },
+  }
 }
 
 export default async function CategoryPage({ params }: PageProps) {

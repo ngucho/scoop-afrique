@@ -1,14 +1,32 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { Heading, Button, SectionHeader, CategoryChips } from 'scoop'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { ArticleCard } from '@/components/reader/ArticleCard'
 import { READER_CATEGORIES } from '@/lib/readerCategories'
 import { apiGet } from '@/lib/api/client'
+import { config } from '@/lib/config'
 import type { ArticlesResponse } from '@/lib/api/types'
 
 export const revalidate = 30
 
 const LIMIT = 12
+const SITE_URL = config.siteUrl
+
+export const metadata: Metadata = {
+  title: 'Tous les articles — Actualités panafricaines',
+  description:
+    "Parcourez tous les articles de Scoop Afrique : actualités, politique, culture, sport, société. Le média qui décrypte l'Afrique autrement.",
+  openGraph: {
+    title: 'Articles | Scoop.Afrique',
+    description: "Tous les articles et actualités panafricaines",
+    url: `${SITE_URL}/articles`,
+    siteName: 'Scoop.Afrique',
+    type: 'website',
+  },
+  twitter: { card: 'summary_large_image', title: 'Articles | Scoop.Afrique' },
+  alternates: { canonical: `${SITE_URL}/articles` },
+}
 
 const CATEGORY_CHIP_ITEMS = [
   { id: 'all', label: 'Tous', href: '/articles' },
