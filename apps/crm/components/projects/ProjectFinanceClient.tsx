@@ -103,7 +103,7 @@ export function ProjectFinanceClient({
                 {devis.status ? ` • ${String(devis.status)}` : ''}
               </p>
             </div>
-            {devis.pdf_url && (
+            {devis.pdf_url ? (
               <a
                 href={devis.pdf_url as string}
                 target="_blank"
@@ -112,7 +112,7 @@ export function ProjectFinanceClient({
               >
                 <ExternalLink className="h-3.5 w-3.5" /> PDF
               </a>
-            )}
+            ) : null}
           </div>
         </section>
       )}
