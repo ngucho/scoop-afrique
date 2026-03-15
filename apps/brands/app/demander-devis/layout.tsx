@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'Demander un devis',
@@ -13,6 +13,13 @@ export const metadata: Metadata = {
     title: 'Demander un devis | Scoop Afrique',
     description: 'Formulaire de demande de devis. Couverture, publication, interview, partenariat.',
     siteName: 'Scoop Afrique',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Scoop Afrique — Demander un devis' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Demander un devis | Scoop Afrique',
+    description: 'Formulaire de demande de devis. Couverture, publication, interview, partenariat.',
+    images: ['/og-image.png'],
   },
   robots: { index: true, follow: true },
 }

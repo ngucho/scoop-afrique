@@ -25,7 +25,7 @@ const brasika = localFont({
   display: 'swap',
 })
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

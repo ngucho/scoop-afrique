@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 
-const BASE_URL = 'https://www.scoop-afrique.com'
+const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   title: 'Stratégie éditoriale 2026 | Scoop Afrique',
