@@ -1,23 +1,27 @@
-import { getSupabase } from '../lib/supabase.js'
+import { eq, and, or } from 'drizzle-orm'
+import { getDb } from '../db/index.js'
+import { articleLikes } from '../db/schema.js'
 import { config } from '../config/env.js'
 
 export async function getLikeCount(articleId: string): Promise<number> {
-  if (!config.supabase) return 0
-  const supabase = getSupabase()
-  const { count, error } = await supabase.from('article_likes').select('*', { count: 'exact', head: true }).eq('article_id', articleId)
-  if (error) return 0
-  return count ?? 0
+  if (!config.database) return 0
+  const db = getDb()
+  const rows = await db
+    .select()
+    .from(articleLikes)
+    .where(eq(articleLikes.articleId, articleId))
+  return rows.length
 }
 
 export async function hasLiked(articleId: string, userId: string | null, anonymousId: string | null): Promise<boolean> {
-  if (!config.supabase) return false
-  const supabase = getSupabase()
-  let query = supabase.from('article_likes').select('id').eq('article_id', articleId).limit(1)
-  if (userId) query = query.eq('user_id', userId)
-  else if (anonymousId) query = query.eq('anonymous_id', anonymousId)
-  else return false
-  const { data } = await query
-  return (data?.length ?? 0) > 0
+  if (!config.database) return false
+  if (!userId && !anonymousId) return false
+  const db = getDb()
+  const conditions = userId
+    ? and(eq(articleLikes.articleId, articleId), eq(articleLikes.userId, userId))
+    : and(eq(articleLikes.articleId, articleId), eq(articleLikes.anonymousId, anonymousId!))
+  const [row] = await db.select().from(articleLikes).where(conditions).limit(1)
+  return !!row
 }
 
 export async function toggleLike(
@@ -25,20 +29,20 @@ export async function toggleLike(
   userId: string | null,
   anonymousId: string | null
 ): Promise<{ count: number; liked: boolean }> {
-  if (!config.supabase) return { count: 0, liked: false }
+  if (!config.database) return { count: 0, liked: false }
   if (!userId && !anonymousId) return { count: await getLikeCount(articleId), liked: false }
-  const supabase = getSupabase()
+  const db = getDb()
   const existing = await hasLiked(articleId, userId, anonymousId)
   if (existing) {
-    let del = supabase.from('article_likes').delete().eq('article_id', articleId)
-    if (userId) del = del.eq('user_id', userId)
-    else del = del.eq('anonymous_id', anonymousId!)
-    await del
+    const conditions = userId
+      ? and(eq(articleLikes.articleId, articleId), eq(articleLikes.userId, userId))
+      : and(eq(articleLikes.articleId, articleId), eq(articleLikes.anonymousId, anonymousId!))
+    await db.delete(articleLikes).where(conditions)
   } else {
-    await supabase.from('article_likes').insert({
-      article_id: articleId,
-      user_id: userId ?? null,
-      anonymous_id: anonymousId ?? null,
+    await db.insert(articleLikes).values({
+      articleId,
+      userId: userId ?? null,
+      anonymousId: anonymousId ?? null,
     })
   }
   const count = await getLikeCount(articleId)

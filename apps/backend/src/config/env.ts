@@ -1,23 +1,39 @@
 /**
  * Backend environment configuration — validated with Zod.
  *
- * Required in production: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Auth0 (IAM):            AUTH0_DOMAIN, AUTH0_AUDIENCE
+ * Database: DATABASE_URL (pooler) — Drizzle ORM, parameterized queries (SQL injection safe)
+ * Storage:  SUPABASE_SERVICE_ROLE_KEY — Supabase Storage API (URL derived from DATABASE_URL)
+ * Auth0:    AUTH0_DOMAIN, AUTH0_AUDIENCE
  */
 import { z } from 'zod'
+
+/** Extract Supabase project ref from pooler URL: postgresql://postgres.REF@host/postgres */
+function projectRefFromDatabaseUrl(url: string): string | null {
+  try {
+    const m = url.match(/postgres(?:ql)?:\/\/[^/]*?\.([a-z0-9]+)@/i) || url.match(/postgres(?:ql)?:\/\/postgres\.([a-z0-9]+)@/i)
+    return m ? m[1] : null
+  } catch {
+    return null
+  }
+}
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().min(1).max(65535).default(4000),
   CORS_ORIGINS: z
     .string()
-    .default('http://localhost:3000,http://localhost:3001')
+    .default('http://localhost:3000,http://localhost:3001,http://localhost:3002')
     .transform((s) => s.split(',').map((x) => x.trim())),
   API_PREFIX: z.string().default('/api/v1'),
 
-  // Supabase
-  SUPABASE_URL: z.string().url().optional(),
+  // Database — pooler URL (Supabase Connect dialog → PostgreSQL → URI)
+  DATABASE_URL: z.string().min(1).optional(),
+
+  // Storage — Supabase service role key (for Storage API only; URL derived from DATABASE_URL)
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+
+  // Legacy — fallback if DATABASE_URL not set (deprecated)
+  SUPABASE_URL: z.string().url().optional(),
 
   // Auth0 (IAM — sole identity provider). Domain = hostname only, e.g. tenant.auth0.com
   AUTH0_DOMAIN: z
@@ -36,6 +52,16 @@ const envSchema = z.object({
   AUTH0_MANAGEMENT_CLIENT_SECRET: z.string().min(1).optional(),
   AUTH0_CLIENT_ID: z.string().min(1).optional(),
   AUTH0_CLIENT_SECRET: z.string().min(1).optional(),
+
+  // Resend (email for devis notifications)
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional(),
+
+  // Twilio (WhatsApp for devis notifications)
+  TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
+  TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
+  TWILIO_WHATSAPP_FROM: z.string().min(1).optional(), // e.g. whatsapp:+1234567890
+  TWILIO_WHATSAPP_TO: z.string().min(1).optional(),   // team WhatsApp number
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -47,15 +73,26 @@ if (!parsed.success) {
 
 const env = parsed.data
 
+const supabaseUrl =
+  env.SUPABASE_URL ||
+  (env.DATABASE_URL && projectRefFromDatabaseUrl(env.DATABASE_URL)
+    ? `https://${projectRefFromDatabaseUrl(env.DATABASE_URL)}.supabase.co`
+    : null)
+
 export const config = {
   nodeEnv: env.NODE_ENV,
   port: env.PORT,
   corsOrigins: env.CORS_ORIGINS,
   apiPrefix: env.API_PREFIX,
 
+  database:
+    env.DATABASE_URL
+      ? { url: env.DATABASE_URL }
+      : null,
+
   supabase:
-    env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
-      ? { url: env.SUPABASE_URL, serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY }
+    supabaseUrl && env.SUPABASE_SERVICE_ROLE_KEY
+      ? { url: supabaseUrl, serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY }
       : null,
 
   auth0:
@@ -74,11 +111,29 @@ export const config = {
           audience: `https://${env.AUTH0_DOMAIN}/api/v2/`,
         }
       : null,
+
+  resend:
+    env.RESEND_API_KEY
+      ? { apiKey: env.RESEND_API_KEY, fromEmail: env.RESEND_FROM_EMAIL }
+      : null,
+
+  twilio:
+    env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM && env.TWILIO_WHATSAPP_TO
+      ? {
+          accountSid: env.TWILIO_ACCOUNT_SID,
+          authToken: env.TWILIO_AUTH_TOKEN,
+          whatsappFrom: env.TWILIO_WHATSAPP_FROM,
+          whatsappTo: env.TWILIO_WHATSAPP_TO,
+        }
+      : null,
 } as const
 
 export function assertConfig(): void {
+  if (config.database === null && config.nodeEnv === 'production') {
+    throw new Error('DATABASE_URL is required in production (pooler from Supabase Connect dialog)')
+  }
   if (config.supabase === null && config.nodeEnv === 'production') {
-    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required in production')
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for Storage (URL derived from DATABASE_URL)')
   }
   if (config.auth0 === null && config.nodeEnv === 'production') {
     throw new Error('AUTH0_DOMAIN and AUTH0_AUDIENCE are required in production')

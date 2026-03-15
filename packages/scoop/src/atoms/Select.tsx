@@ -22,7 +22,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
       <select
         ref={ref}
         className={cn(
-          'flex h-10 w-full appearance-none border border-input bg-background pl-3 pr-9 py-2 font-sans text-sm text-foreground transition-colors',
+          'flex h-11 w-full appearance-none rounded-[var(--radius-button)] border border-[var(--surface-border)] bg-[var(--surface)] pl-4 pr-10 py-3 font-sans text-sm text-foreground transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           'disabled:pointer-events-none disabled:opacity-50',
           error && 'border-destructive focus-visible:ring-destructive',

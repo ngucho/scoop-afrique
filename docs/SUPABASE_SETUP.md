@@ -1,5 +1,7 @@
 # Supabase — Setup Guide for Scoop Afrique
 
+> **Full guide:** See [PROJECT_GUIDE.md](./PROJECT_GUIDE.md) for complete tutorials, migration troubleshooting, and all services (Auth0, Twilio, Resend).
+
 This guide walks you through creating a Supabase project, setting up the database, and connecting it to the backend.
 
 ---
@@ -39,27 +41,13 @@ In **Project Settings > API**:
 
 ## 3. Run Migrations
 
-The schema is defined in SQL files under `supabase/migrations/`.
-
-### Option A: SQL Editor (simplest)
-
-In the Supabase Dashboard > **SQL Editor**, run each file in order:
-
-1. **`20250208100000_initial_schema.sql`** — Tables, enums, indexes, RLS, triggers
-2. **`20250208100001_backend_v2.sql`** — New columns (video_url, tags, view_count), media table, view counter RPC, comments rename
-
-### Option B: Supabase CLI
+Migrations are managed by **Drizzle Kit** and live in `apps/backend/drizzle/`:
 
 ```bash
-# Install CLI (Windows/Scoop)
-scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-scoop install supabase
-
-# Or use npx
-npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF
-npx supabase db push
+pnpm db:migrate
 ```
+
+Requires `DATABASE_URL` in `apps/backend/.env` (pooler URI from Supabase Connect dialog). See [PROJECT_GUIDE.md §10](./PROJECT_GUIDE.md#10-drizzle-migration-reference) for the full migration list.
 
 ---
 
@@ -80,7 +68,7 @@ npx supabase db push
 Optional — pre-fills categories:
 
 ```bash
-# Run supabase/seed.sql in the SQL Editor
+pnpm db:seed
 ```
 
 Categories: Actualites, Politique, Economie, Societe, Culture, Sport, Opinions, Dossiers, Videos, Sante, Environnement, Technologie, Genre.
@@ -92,8 +80,10 @@ Categories: Actualites, Politique, Economie, Societe, Culture, Sport, Opinions, 
 In `apps/backend/.env`:
 
 ```bash
-# Supabase (database + storage — service role only)
-SUPABASE_URL=https://xxxx.supabase.co
+# Database (pooler URI from Supabase Connect dialog)
+DATABASE_URL=postgresql://postgres.xxxx:PASSWORD@...pooler.supabase.com:5432/postgres
+
+# Storage (service role key)
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...
 
 # Auth0 (sole IAM)
@@ -153,8 +143,8 @@ Authorization is always from the Auth0 token — never from `profiles.role`.
 
 ## 9. Quick Checklist
 
-- [ ] Create Supabase project and note URL + service_role key
-- [ ] Run both migrations in order
+- [ ] Create Supabase project and note DATABASE_URL + service_role key
+- [ ] Run `pnpm db:migrate` to apply migrations
 - [ ] Create `images` storage bucket (public, 5 MB, image MIME types)
 - [ ] Run `seed.sql` to insert categories
 - [ ] Set env vars in `apps/backend/.env`

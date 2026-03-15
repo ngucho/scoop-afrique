@@ -1,5 +1,7 @@
 # SCOOP AFRIQUE — Runbook
 
+> **Full setup guide:** See [PROJECT_GUIDE.md](./PROJECT_GUIDE.md) for complete tutorials (Supabase, Auth0, Twilio, Resend) and migration troubleshooting.
+
 ## Prerequisites
 
 - Node.js 20+
@@ -12,7 +14,7 @@
 ```bash
 # 1. Clone and install
 git clone <repo>
-cd scoop-afrique-landing
+cd scoop-afrique-webapp
 pnpm install
 
 # 2. Configure environment
@@ -21,20 +23,17 @@ cp apps/frontend/.env.example apps/frontend/.env.local
 # Fill in Auth0 and Supabase credentials
 
 # 3. Run database migrations
-npx supabase login
-npx supabase link --project-ref YOUR_PROJECT_REF
-npx supabase db push
-# Or run SQL files manually in Supabase Dashboard > SQL Editor
+pnpm db:migrate
 
 # 4. Seed the database (optional)
-# Run supabase/seed.sql in the SQL Editor
+pnpm db:seed
 
 # 5. Start development
 pnpm dev          # All apps in parallel
 # OR
 pnpm dev:backend  # Backend only (port 4000)
 pnpm dev:frontend # Frontend only (port 3001)
-pnpm dev:landing  # Landing only (port 3000)
+pnpm dev:brands  # Brands only (port 3000)
 ```
 
 ## Environment Variables
@@ -46,7 +45,7 @@ PORT=4000
 NODE_ENV=development
 CORS_ORIGINS="http://localhost:3001"
 API_PREFIX="/api/v1"
-SUPABASE_URL="https://xxxx.supabase.co"
+DATABASE_URL="postgresql://postgres.xxxx:PASSWORD@...pooler.supabase.com:5432/postgres"
 SUPABASE_SERVICE_ROLE_KEY="eyJhbGci..."
 AUTH0_DOMAIN="your-tenant.auth0.com"
 AUTH0_AUDIENCE="https://api.scoop-afrique.com"
@@ -119,13 +118,13 @@ Deploy to Railway, Render, or Fly.io:
 ### Deploy Landing
 
 1. Connect repo to Vercel (separate project)
-2. Set root directory: `apps/landing`
+2. Set root directory: `apps/brands`
 3. Build command: `pnpm build`
 
 ## Troubleshooting
 
 ### Backend won't start
-- Check `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set
+- Check `DATABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set
 - Check `AUTH0_DOMAIN` and `AUTH0_AUDIENCE` are set
 - Run `pnpm --filter @scoop-afrique/backend build` to check TypeScript errors
 
@@ -135,9 +134,10 @@ Deploy to Railway, Render, or Fly.io:
 - Check logout URLs: `http://localhost:3001`
 - Verify `AUTH0_AUDIENCE` matches the API identifier in Auth0
 
-### Database errors
-- Verify migrations have been run in order
-- Check service role key has correct permissions
+### Database errors / migrations fail
+- See [PROJECT_GUIDE.md §2](./PROJECT_GUIDE.md#2-why-supabase-migrations-fail-troubleshooting) for detailed troubleshooting
+- Verify migrations have been run in order (see [PROJECT_GUIDE.md §10](./PROJECT_GUIDE.md#10-migration-order-reference))
+- Ensure project is linked: `npx supabase link --project-ref YOUR_PROJECT_REF`
 - Run `npx supabase db push` to sync migrations
 
 ### Frontend build fails
@@ -164,8 +164,9 @@ Server actions that need the token will also redirect to `/` if `getAccessToken(
 | `pnpm dev` | Start all apps |
 | `pnpm dev:backend` | Start backend |
 | `pnpm dev:frontend` | Start frontend |
-| `pnpm dev:landing` | Start landing |
+| `pnpm dev:brands` | Start brands |
 | `pnpm build` | Build all apps |
 | `pnpm lint` | Lint all apps |
 | `pnpm --filter @scoop-afrique/backend build` | Build backend only |
-| `npx supabase db push` | Apply migrations |
+| `pnpm db:migrate` | Apply Drizzle migrations |
+| `pnpm db:seed` | Seed default categories |
