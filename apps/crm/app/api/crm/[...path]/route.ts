@@ -10,6 +10,14 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
+/** Response headers from backend, with encoding stripped so client gets plain body (avoids ERR_CONTENT_DECODING_FAILED) */
+function proxyResponseHeaders(backendRes: Response): Headers {
+  const headers = new Headers(backendRes.headers)
+  headers.delete('content-encoding')
+  headers.delete('transfer-encoding')
+  return headers
+}
+
 async function proxyRequest(
   request: NextRequest,
   pathSegments: string[]
@@ -130,7 +138,7 @@ async function proxyRequest(
     return new NextResponse(body, {
       status: res.status,
       statusText: res.statusText,
-      headers: res.headers,
+      headers: proxyResponseHeaders(res),
     })
   } catch (err) {
     const durationMs = Date.now() - start
