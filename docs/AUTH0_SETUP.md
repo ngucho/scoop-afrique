@@ -97,6 +97,9 @@ Click **Create**.
 | `delete:media` | Delete media. |
 | `read:users` | Read users/profiles (admin). |
 | `manage:users` | Manage roles/settings (admin). |
+| `read:crm` | Read all CRM objects (contacts, projects, invoices, etc.). |
+| `write:crm` | Create and update CRM objects. |
+| `manage:crm` | Delete, close, full CRM access. |
 
 3. Go to **Settings** → **RBAC Settings**:
    - Turn **Enable RBAC** **On**.
@@ -132,10 +135,10 @@ Auth0 RBAC is **permission-based**; roles are a way to **group permissions** and
 
 In each **Role** → **Permissions**:
 
-- **journalist:** `read:articles`, `create:articles`, `update:articles` (own only is enforced in backend), `read:media`, `create:media`
-- **editor:** journalist + `publish:articles`, `delete:media` (if you added it)
-- **manager:** editor + `delete:articles`
-- **admin:** all permissions including `read:users`, `manage:users`
+- **journalist:** `read:articles`, `create:articles`, `update:articles` (own only is enforced in backend), `read:media`, `create:media` — no CRM access
+- **editor:** journalist + `publish:articles`, `delete:media` (if you added it), `read:crm`, `write:crm`
+- **manager:** editor + `delete:articles`, `manage:crm`
+- **admin:** all permissions including `read:users`, `manage:users`, `read:crm`, `write:crm`, `manage:crm`
 
 (Exact list should match the permissions you created in the API and how your backend maps them — see section 6.)
 

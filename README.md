@@ -1,6 +1,6 @@
 # Scoop.Afrique — Monorepo
 
-Monorepo **pnpm** pour **Scoop.Afrique** : design system partagé (**scoop**) et trois applications — **landing**, **frontend** (webapp média), **backend** (API).
+Monorepo **pnpm** pour **Scoop.Afrique** : design system partagé (**scoop**) et trois applications — **brands**, **frontend** (webapp média), **backend** (API).
 
 > **Note** : Le vrai Scoop.Afrique s'écrit avec un **point** (Scoop.Afrique).
 
@@ -8,15 +8,15 @@ Monorepo **pnpm** pour **Scoop.Afrique** : design system partagé (**scoop**) et
 
 | Cible | Rôle |
 |-------|------|
-| **`apps/landing`** | Site vitrine actuel (Next.js). En ligne en attendant la webapp. |
+| **`apps/brands`** | Site vitrine actuel (Next.js). En ligne en attendant la webapp. |
 | **`apps/frontend`** | Future webapp : articles, likes, commentaires, newsletter, annonces, espace employés (rédaction, accès, articles, perf, encarts pub, partenaires). |
 | **`apps/backend`** | API (Hono + Node) : articles, auth, newsletter, annonces, admin. Couche métier, sécurité, pas d’UI. |
-| **`packages/scoop`** | Design system (Atomic Design, Tailwind v4, style shadcn). **Une seule source de vérité** pour l’UI ; utilisé par landing et frontend. |
+| **`packages/scoop`** | Design system (Atomic Design, Tailwind v4, style shadcn). **Une seule source de vérité** pour l’UI ; utilisé par brands et frontend. |
 
 ```
 /
   apps/
-    landing/          # Next.js — vitrine (hero, manifeste, publications, a-propos, contact, etc.)
+    brands/          # Next.js — vitrine (hero, manifeste, publications, a-propos, contact, etc.)
     frontend/         # Next.js — webapp (articles, newsletter, admin)
     backend/          # Hono/Node — API (health, articles, auth à venir)
   packages/
@@ -39,7 +39,7 @@ En cas d’erreur **« Unexpected store location »** avec pnpm, exécuter une s
 
 ## Build et vérification
 
-Tout le monorepo (scoop, landing, frontend, backend) :
+Tout le monorepo (scoop, brands, frontend, backend) :
 
 ```bash
 pnpm build
@@ -48,7 +48,7 @@ pnpm build
 Build par application :
 
 ```bash
-pnpm build:landing    # Next.js landing
+pnpm build:brands    # Next.js brands
 pnpm build:frontend   # Next.js webapp
 pnpm build:backend    # Compilation TypeScript backend
 ```
@@ -60,7 +60,7 @@ Pour vérifier que tout se build correctement : exécuter `pnpm build` à la rac
 Lancer une seule app :
 
 ```bash
-pnpm dev:landing      # http://localhost:3000
+pnpm dev:brands      # http://localhost:3000
 pnpm dev:frontend     # http://localhost:3001
 pnpm dev:backend      # http://localhost:4000
 ```
@@ -109,15 +109,15 @@ cd packages/scoop && pnpm storybook
 
 - Dans le CSS global de l’app : `@import 'scoop/theme.css'` après Tailwind.
 - Composants : `import { Button, GlitchText, CursorTracker } from 'scoop'`.
-- Les apps n’inventent pas de composants UI : tout vient de `scoop` (ou de class names SSR-safe exposés par l’app, ex. `lib/landing.ts` dans la landing).
+- Les apps n’inventent pas de composants UI : tout vient de `scoop` (ou de class names SSR-safe exposés par l’app, ex. `lib/brands.ts` dans la brands).
 
-## Landing (`apps/landing`)
+## Landing (`apps/brands`)
 
 - **Next.js** App Router, SEO (robots, sitemap, métadonnées, JSON-LD), headers de sécurité.
 - **Pages** : `/`, `/a-propos`, `/contact`, `/mentions-legales`, `/politique-de-confidentialite`.
-- **Composants** : `components/` (hero, manifeste, why, publications, social-cta, footer) utilisent uniquement `scoop` et `lib/landing.ts` (class names SSR-safe).
-- **Assets** : `apps/landing/public/` (fonts, publications, favicons).
-- **Scripts** : `apps/landing/scripts/resize-publications.mjs` pour redimensionner les images de publications (ex. depuis la racine : `node apps/landing/scripts/resize-publications.mjs` ; nécessite `sharp` dans `apps/landing`).
+- **Composants** : `components/` (hero, manifeste, why, publications, social-cta, footer) utilisent uniquement `scoop` et `lib/brands.ts` (class names SSR-safe).
+- **Assets** : `apps/brands/public/` (fonts, publications, favicons).
+- **Scripts** : `apps/brands/scripts/resize-publications.mjs` pour redimensionner les images de publications (ex. depuis la racine : `node apps/brands/scripts/resize-publications.mjs` ; nécessite `sharp` dans `apps/brands`).
 
 ## Frontend (`apps/frontend`)
 
@@ -149,11 +149,11 @@ La documentation complète (architecture, API, auth, déploiement) est dans le d
 
 - **[docs/README.md](docs/README.md)** — Index de toute la documentation.
 - **[docs/DOCUMENTATION_COMPLETE.md](docs/DOCUMENTATION_COMPLETE.md)** — Vue d’ensemble du projet en français (objectifs, stack, apps, design system, déploiement).
-- **[docs/DEPLOYMENT_VERCEL.md](docs/DEPLOYMENT_VERCEL.md)** — Déploiement sur Vercel : landing, frontend et backend (avec alternatives Railway/Render).
+- **[docs/DEPLOYMENT_VERCEL.md](docs/DEPLOYMENT_VERCEL.md)** — Déploiement sur Vercel : brands, frontend et backend (avec alternatives Railway/Render).
 
-## Checklist pré-production (landing)
+## Checklist pré-production (brands)
 
-- [ ] Domaine et `BASE_URL` à jour dans `apps/landing`
+- [ ] Domaine et `BASE_URL` à jour dans `apps/brands`
 - [ ] `og-image.png` (1200×630) et favicons en place
 - [ ] Logo et vidéo hero configurés
 - [ ] Vérification sitemap / Search Console et headers de sécurité

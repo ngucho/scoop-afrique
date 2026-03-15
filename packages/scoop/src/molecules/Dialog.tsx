@@ -59,7 +59,7 @@ const Dialog = React.forwardRef<HTMLDivElement, DialogProps>(
           }}
           tabIndex={-1}
           className={cn(
-            'relative z-50 w-full max-w-md rounded-lg border border-border bg-popover p-6 text-popover-foreground shadow-lg',
+            'relative z-50 w-full max-w-md rounded-[var(--radius-xl)] border border-[var(--surface-border)] bg-[var(--popover)] p-6 text-popover-foreground shadow-[var(--shadow-xl)]',
             'focus:outline-none',
             className
           )}

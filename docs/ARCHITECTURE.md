@@ -43,7 +43,7 @@
 
 | App | Stack | Purpose | Port |
 |-----|-------|---------|------|
-| **landing** | Next.js 16 | Marketing vitrine | 3000 |
+| **brands** | Next.js 16 | Marketing vitrine | 3000 |
 | **frontend** | Next.js 16 | Reader + Admin/Manager | 3001 |
 | **backend** | Hono + Node.js | REST API | 4000 |
 
@@ -162,6 +162,7 @@ Routes → Middleware → Services → Supabase
 
 | File | Content |
 |------|---------|
+| `PROJECT_GUIDE.md` | **Complete setup guide** — Supabase, Auth0, Twilio, Resend, migrations troubleshooting |
 | `API.md` | Full API endpoint reference |
 | `RBAC.md` | Roles, permissions, mapping |
 | `editorial-workflow.md` | Article lifecycle and workflow |

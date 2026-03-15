@@ -1,7 +1,9 @@
 /**
  * Notification service — alerts for article owners (e.g. comments on their articles).
  */
-import { getSupabase } from '../lib/supabase.js'
+import { eq, inArray, and } from 'drizzle-orm'
+import { getDb } from '../db/index.js'
+import { articles, editorialComments, comments } from '../db/schema.js'
 import { config } from '../config/env.js'
 
 export interface EditorialNotificationItem {
@@ -29,7 +31,7 @@ export interface UserNotifications {
 export async function getNotificationsForUser(
   authorId: string,
 ): Promise<UserNotifications> {
-  if (!config.supabase) {
+  if (!config.database) {
     return {
       editorial: [],
       editorial_total: 0,
@@ -37,14 +39,14 @@ export async function getNotificationsForUser(
       reader_pending_total: 0,
     }
   }
-  const supabase = getSupabase()
+  const db = getDb()
 
-  const { data: myArticles } = await supabase
-    .from('articles')
-    .select('id, title, slug')
-    .eq('author_id', authorId)
-  const articleIds = (myArticles ?? []).map((a) => a.id)
-  const articleMap = new Map((myArticles ?? []).map((a) => [a.id, { title: a.title, slug: a.slug }]))
+  const myArticles = await db
+    .select({ id: articles.id, title: articles.title, slug: articles.slug })
+    .from(articles)
+    .where(eq(articles.authorId, authorId))
+  const articleIds = myArticles.map((a) => a.id)
+  const articleMap = new Map(myArticles.map((a) => [a.id, { title: a.title, slug: a.slug }]))
 
   if (articleIds.length === 0) {
     return {
@@ -55,27 +57,25 @@ export async function getNotificationsForUser(
     }
   }
 
-  const [editorialRes, readerRes] = await Promise.all([
-    supabase
-      .from('editorial_comments')
-      .select('article_id')
-      .in('article_id', articleIds)
-      .eq('resolved', false),
-    supabase
-      .from('comments')
-      .select('article_id')
-      .in('article_id', articleIds)
-      .eq('status', 'pending'),
+  const [editorialRows, readerRows] = await Promise.all([
+    db
+      .select({ articleId: editorialComments.articleId })
+      .from(editorialComments)
+      .where(and(inArray(editorialComments.articleId, articleIds), eq(editorialComments.resolved, false))),
+    db
+      .select({ articleId: comments.articleId })
+      .from(comments)
+      .where(and(inArray(comments.articleId, articleIds), eq(comments.status, 'pending'))),
   ])
 
   const editorialByArticle = new Map<string, number>()
-  for (const row of editorialRes.data ?? []) {
-    const id = row.article_id as string
+  for (const row of editorialRows) {
+    const id = row.articleId
     editorialByArticle.set(id, (editorialByArticle.get(id) ?? 0) + 1)
   }
   const readerByArticle = new Map<string, number>()
-  for (const row of readerRes.data ?? []) {
-    const id = row.article_id as string
+  for (const row of readerRows) {
+    const id = row.articleId
     readerByArticle.set(id, (readerByArticle.get(id) ?? 0) + 1)
   }
 
