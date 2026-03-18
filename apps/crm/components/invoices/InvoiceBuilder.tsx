@@ -125,7 +125,8 @@ export function InvoiceBuilder({
         ...i,
         quantity: Number(i.quantity),
         unit_price: Number(i.unit_price),
-        tax_rate: Number(i.tax_rate) ?? 0,
+        // Avoid NaN when tax_rate is missing
+        tax_rate: Number(i.tax_rate ?? 0),
       })),
       discount_amount: data.discount_amount ?? 0,
     }
@@ -143,6 +144,8 @@ export function InvoiceBuilder({
       return
     }
     toast.success(invoiceId ? 'Facture mise à jour' : 'Facture créée')
+    // Ensure the subsequent detail page re-renders with fresh data
+    router.refresh()
     router.push(`/invoices/${json.data.id}`)
   }
 

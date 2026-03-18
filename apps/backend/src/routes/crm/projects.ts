@@ -18,9 +18,19 @@ const app = new Hono<AppEnv>()
 app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
+  const user = c.get('user')
   const contactId = c.req.query('contact_id')
   const status = c.req.query('status')
   const withContact = c.req.query('with_contact') === 'true'
+  const archivedQuery = c.req.query('archived')
+  const archived =
+    archivedQuery === 'true'
+      ? user.role === 'admin'
+        ? true
+        : undefined
+      : archivedQuery === 'false'
+        ? false
+        : undefined
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
 
@@ -28,6 +38,7 @@ app.get('/', async (c) => {
     contactId: contactId || undefined,
     status: status || undefined,
     withContact,
+    archived,
     limit,
     offset,
   })
@@ -52,16 +63,25 @@ app.post('/', requireRole('manager', 'admin'), async (c) => {
 })
 
 app.get('/:id', async (c) => {
+  const user = c.get('user')
   const id = c.req.param('id')
   const project = await projectService.getProjectById(id)
   if (!project) return c.json({ error: 'Not found' }, 404)
+  if (Boolean((project as Record<string, unknown>)['is_archived']) && user.role !== 'admin')
+    return c.json({ error: 'Not found' }, 404)
   return c.json({ data: project })
 })
 
 app.get('/:id/folder', async (c) => {
+  const user = c.get('user')
   const id = c.req.param('id')
   const folder = await projectService.getProjectFolder(id)
   if (!folder) return c.json({ error: 'Not found' }, 404)
+  if (
+    Boolean((folder.project as Record<string, unknown> | undefined)?.['is_archived']) &&
+    user.role !== 'admin'
+  )
+    return c.json({ error: 'Not found' }, 404)
   return c.json({ data: folder })
 })
 
@@ -84,6 +104,22 @@ app.patch('/:id', async (c) => {
   }
   const updated = await projectService.updateProject(id, parsed.data, user.id)
   return c.json({ data: updated })
+})
+
+// Admin archive (soft-delete)
+app.delete('/:id', requireRole('admin'), async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const archived = await projectService.archiveProject(id, user.id)
+  return c.json({ data: archived })
+})
+
+// Admin restore (undo archive)
+app.post('/:id/restore', requireRole('admin'), async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const restored = await projectService.restoreProject(id, user.id)
+  return c.json({ data: restored })
 })
 
 app.post('/:id/close', requireRole('manager', 'admin'), async (c) => {

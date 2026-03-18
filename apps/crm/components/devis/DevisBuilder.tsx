@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm, useFieldArray, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -106,6 +106,20 @@ export function DevisBuilder({
   const taxAmount = Math.round(subtotal * (taxRate / 100))
   const total = subtotal + taxAmount
 
+  function findFirstErrorMessage(value: unknown): string | null {
+    if (!value || typeof value !== 'object') return null
+    const v = value as Record<string, unknown>
+
+    const message = typeof v.message === 'string' ? v.message : null
+    if (message) return message
+
+    for (const child of Object.values(v)) {
+      const childMsg = findFirstErrorMessage(child)
+      if (childMsg) return childMsg
+    }
+    return null
+  }
+
   async function onSubmit(data: FormData) {
     setIsSubmitting(true)
     const body = {
@@ -113,32 +127,61 @@ export function DevisBuilder({
       project_id: data.project_id || undefined,
       contact_id: data.contact_id || undefined,
       devis_request_id: data.devis_request_id || undefined,
+      // Ensure optional fields are never sent as null.
+      service_slug: (data as any).service_slug ? (data as any).service_slug : undefined,
+      notes: (data as any).notes ? (data as any).notes : undefined,
       line_items: data.line_items.map((i) => ({
         ...i,
         quantity: Number(i.quantity),
         unit_price: Number(i.unit_price),
-        tax_rate: Number(i.tax_rate) ?? 0,
+        // Avoid NaN when tax_rate is missing
+        tax_rate: Number(i.tax_rate ?? 0),
       })),
     }
     const url = devisId ? `/api/crm/devis/${devisId}` : '/api/crm/devis'
-    const res = await fetch(url, {
-      method: devisId ? 'PATCH' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      credentials: 'include',
-    })
-    const json = await res.json()
-    setIsSubmitting(false)
-    if (!res.ok) {
-      toast.error(json.error ?? 'Erreur lors de l\'enregistrement')
-      return
+    try {
+      const res = await fetch(url, {
+        method: devisId ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        credentials: 'include',
+      })
+
+      const json = (await res.json().catch(() => ({}))) as Record<string, unknown>
+
+      if (!res.ok) {
+        toast.error(String((json as any).error ?? 'Erreur lors de l\'enregistrement'))
+        return
+      }
+
+      const nextId = (json as any).data?.id as string | undefined
+      if (!nextId) {
+        toast.error('Réponse backend invalide (ID manquant)')
+        return
+      }
+
+      toast.success(devisId ? 'Devis mis à jour' : 'Devis créé')
+      // Ensure the subsequent detail page re-renders with fresh data
+      router.refresh()
+      router.push(`/devis/${nextId}`)
+    } catch (e) {
+      toast.error('Erreur réseau lors de l\'enregistrement')
+      console.error('[crm] Devis save error:', e)
+    } finally {
+      setIsSubmitting(false)
     }
-    toast.success(devisId ? 'Devis mis à jour' : 'Devis créé')
-    router.push(`/devis/${json.data.id}`)
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">
+    <form
+      onSubmit={handleSubmit(onSubmit, (errs) => {
+        // Helpful during debugging: RHF error shapes can be deeply nested (arrays of line items).
+        console.warn('[crm] Devis validation errors:', errs)
+        const msg = findFirstErrorMessage(errs)
+        toast.error(msg ?? 'Vérifiez le formulaire avant d\'enregistrer (validation)')
+      })}
+      className="space-y-6 max-w-3xl"
+    >
       <div>
         <Label htmlFor="title">Titre</Label>
         <Input

@@ -4,6 +4,7 @@ import { Button } from 'scoop'
 import { ProjectCloseButton } from '@/components/projects/ProjectCloseButton'
 import { ProjectContactsWidget } from '@/components/projects/ProjectContactsWidget'
 import { crmGetServer } from '@/lib/api-server'
+import { ActivityClient } from '@/components/activity/ActivityClient'
 import {
   Calendar,
   DollarSign,
@@ -13,6 +14,8 @@ import {
   Edit,
   ExternalLink,
 } from 'lucide-react'
+import { getCrmIsAdmin } from '@/lib/crm-admin'
+import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -41,17 +44,21 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params
 
-  const [projectRes, contactsRes, allContactsRes] = await Promise.all([
+  const [projectRes, contactsRes, allContactsRes, activityRes] = await Promise.all([
     crmGetServer<Record<string, unknown>>(`projects/${id}`),
     crmGetServer<Array<Record<string, unknown>>>(`projects/${id}/contacts`),
     crmGetServer<Array<Record<string, unknown>>>('contacts?limit=200'),
+    crmGetServer<Array<Record<string, unknown>>>(`activity/project/${id}?limit=50`),
   ])
 
   const project = projectRes?.data
   if (!project) notFound()
 
+  const isAdmin = await getCrmIsAdmin()
+  const isArchived = Boolean((project as Record<string, unknown>)['is_archived'])
   const projectContacts = contactsRes?.data ?? []
   const allContacts = allContactsRes?.data ?? []
+  const activity = activityRes?.data ?? []
   const status = String(project.status ?? 'draft')
   const isActive = !['closed', 'cancelled', 'completed'].includes(status)
 
@@ -85,6 +92,12 @@ export default async function ProjectDetailPage({
               <span className="hidden sm:inline">Modifier</span>
             </button>
           </Link>
+          <AdminArchiveRestoreActions
+            resource="projects"
+            id={id}
+            isArchived={isArchived}
+            isAdmin={isAdmin}
+          />
           {isActive && <ProjectCloseButton projectId={id} />}
         </div>
       </div>
@@ -192,6 +205,11 @@ export default async function ProjectDetailPage({
             allContacts={allContacts}
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <p className="crm-section-title mb-0">Journal d&apos;activité</p>
+        <ActivityClient initialActivity={activity} />
       </div>
     </div>
   )

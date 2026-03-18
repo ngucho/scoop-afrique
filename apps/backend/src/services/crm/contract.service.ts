@@ -13,6 +13,7 @@ export async function listContracts(params?: {
   projectId?: string
   contactId?: string
   status?: string
+  archived?: boolean
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
@@ -21,6 +22,9 @@ export async function listContracts(params?: {
   if (params?.projectId) conditions.push(eq(crmContracts.projectId, params.projectId))
   if (params?.contactId) conditions.push(eq(crmContracts.contactId, params.contactId))
   if (params?.status) conditions.push(eq(crmContracts.status, params.status as typeof crmContracts.status.enumValues[number]))
+  // Soft-delete: hide archived contracts by default
+  if (params?.archived === true) conditions.push(eq(crmContracts.isArchived, true))
+  else conditions.push(eq(crmContracts.isArchived, false))
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const limit = params?.limit ?? 50
@@ -139,6 +143,46 @@ export async function updateContract(
     action: 'updated',
     createdBy: updatedBy ?? undefined,
   })
+  return toSnakeRecord(contract as Record<string, unknown>)
+}
+
+export async function archiveContract(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [contract] = await db
+    .update(crmContracts)
+    .set({ isArchived: true })
+    .where(eq(crmContracts.id, id))
+    .returning()
+  if (!contract) throw new Error('Failed to archive contract')
+
+  await logActivity({
+    entityType: 'contract',
+    entityId: id,
+    action: 'archived',
+    description: `Contrat ${contract.reference} archivé`,
+    createdBy: archivedBy ?? undefined,
+  })
+
+  return toSnakeRecord(contract as Record<string, unknown>)
+}
+
+export async function restoreContract(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [contract] = await db
+    .update(crmContracts)
+    .set({ isArchived: false })
+    .where(eq(crmContracts.id, id))
+    .returning()
+  if (!contract) throw new Error('Failed to restore contract')
+
+  await logActivity({
+    entityType: 'contract',
+    entityId: id,
+    action: 'restored',
+    description: `Contrat ${contract.reference} restauré`,
+    createdBy: restoredBy ?? undefined,
+  })
+
   return toSnakeRecord(contract as Record<string, unknown>)
 }
 

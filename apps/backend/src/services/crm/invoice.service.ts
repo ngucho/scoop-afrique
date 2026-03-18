@@ -14,6 +14,7 @@ export async function listInvoices(params?: {
   contactId?: string
   projectId?: string
   status?: string
+  archived?: boolean
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
@@ -22,6 +23,9 @@ export async function listInvoices(params?: {
   if (params?.contactId) conditions.push(eq(crmInvoices.contactId, params.contactId))
   if (params?.projectId) conditions.push(eq(crmInvoices.projectId, params.projectId))
   if (params?.status) conditions.push(eq(crmInvoices.status, params.status as typeof crmInvoices.status.enumValues[number]))
+  // Soft-delete: hide archived invoices by default
+  if (params?.archived === true) conditions.push(eq(crmInvoices.isArchived, true))
+  else conditions.push(eq(crmInvoices.isArchived, false))
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const limit = params?.limit ?? 50
@@ -242,6 +246,46 @@ export async function updateInvoice(
     action: 'updated',
     createdBy: updatedBy ?? undefined,
   })
+  return toSnakeRecord(invoice as Record<string, unknown>)
+}
+
+export async function archiveInvoice(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [invoice] = await db
+    .update(crmInvoices)
+    .set({ isArchived: true })
+    .where(eq(crmInvoices.id, id))
+    .returning()
+  if (!invoice) throw new Error('Failed to archive invoice')
+
+  await logActivity({
+    entityType: 'invoice',
+    entityId: id,
+    action: 'archived',
+    description: `Facture ${invoice.reference} archivée`,
+    createdBy: archivedBy ?? undefined,
+  })
+
+  return toSnakeRecord(invoice as Record<string, unknown>)
+}
+
+export async function restoreInvoice(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [invoice] = await db
+    .update(crmInvoices)
+    .set({ isArchived: false })
+    .where(eq(crmInvoices.id, id))
+    .returning()
+  if (!invoice) throw new Error('Failed to restore invoice')
+
+  await logActivity({
+    entityType: 'invoice',
+    entityId: id,
+    action: 'restored',
+    description: `Facture ${invoice.reference} restaurée`,
+    createdBy: restoredBy ?? undefined,
+  })
+
   return toSnakeRecord(invoice as Record<string, unknown>)
 }
 
