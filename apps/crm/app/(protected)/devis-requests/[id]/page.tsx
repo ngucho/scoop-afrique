@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { Heading, Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { DevisRequestActions } from '@/components/devis-requests/DevisRequestActions'
+import { getCrmIsAdmin } from '@/lib/crm-admin'
 
 export default async function DevisRequestDetailPage({
   params,
@@ -16,6 +17,7 @@ export default async function DevisRequestDetailPage({
   if (!req) notFound()
 
   const name = `${req.first_name ?? ''} ${req.last_name ?? ''}`.trim() || '—'
+  const isAdmin = await getCrmIsAdmin()
 
   return (
     <div className="space-y-6">
@@ -63,7 +65,7 @@ export default async function DevisRequestDetailPage({
             <Link href={`/devis/new?devis_request_id=${id}`}>
               <Button variant="outline">Créer un devis</Button>
             </Link>
-            <DevisRequestActions id={id} variant="detail" />
+            <DevisRequestActions id={id} variant="detail" isAdmin={isAdmin} />
           </>
         )}
       </div>

@@ -14,6 +14,7 @@ export async function listDevis(params?: {
   contactId?: string
   projectId?: string
   status?: string
+  archived?: boolean
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
@@ -22,6 +23,9 @@ export async function listDevis(params?: {
   if (params?.contactId) conditions.push(eq(crmDevis.contactId, params.contactId))
   if (params?.projectId) conditions.push(eq(crmDevis.projectId, params.projectId))
   if (params?.status) conditions.push(eq(crmDevis.status, params.status as typeof crmDevis.status.enumValues[number]))
+  // Soft-delete: hide archived devis by default
+  if (params?.archived === true) conditions.push(eq(crmDevis.isArchived, true))
+  else conditions.push(eq(crmDevis.isArchived, false))
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const limit = params?.limit ?? 50
@@ -260,6 +264,46 @@ export async function updateDevis(
     action: 'updated',
     createdBy: updatedBy ?? undefined,
   })
+  return toSnakeRecord(devis as Record<string, unknown>)
+}
+
+export async function archiveDevis(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [devis] = await db
+    .update(crmDevis)
+    .set({ isArchived: true })
+    .where(eq(crmDevis.id, id))
+    .returning()
+  if (!devis) throw new Error('Failed to archive devis')
+
+  await logActivity({
+    entityType: 'devis',
+    entityId: id,
+    action: 'archived',
+    description: `Devis ${devis.reference} archivé`,
+    createdBy: archivedBy ?? undefined,
+  })
+
+  return toSnakeRecord(devis as Record<string, unknown>)
+}
+
+export async function restoreDevis(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [devis] = await db
+    .update(crmDevis)
+    .set({ isArchived: false })
+    .where(eq(crmDevis.id, id))
+    .returning()
+  if (!devis) throw new Error('Failed to restore devis')
+
+  await logActivity({
+    entityType: 'devis',
+    entityId: id,
+    action: 'restored',
+    description: `Devis ${devis.reference} restauré`,
+    createdBy: restoredBy ?? undefined,
+  })
+
   return toSnakeRecord(devis as Record<string, unknown>)
 }
 

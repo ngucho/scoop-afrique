@@ -4,6 +4,9 @@ import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { InvoiceActions } from '@/components/invoices/InvoiceActions'
 import { PaymentForm } from '@/components/invoices/PaymentForm'
+import { getCrmIsAdmin } from '@/lib/crm-admin'
+import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
+import { ActivityClient } from '@/components/activity/ActivityClient'
 
 export default async function InvoiceDetailPage({
   params,
@@ -11,14 +14,19 @@ export default async function InvoiceDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [invoiceRes, paymentsRes] = await Promise.all([
+  const [invoiceRes, paymentsRes, activityRes] = await Promise.all([
     crmGetServer<Record<string, unknown>>(`invoices/${id}`),
     crmGetServer<Array<Record<string, unknown>>>(`invoices/${id}/payments`),
+    crmGetServer<Array<Record<string, unknown>>>(`activity/invoice/${id}?limit=50`),
   ])
   const invoice = invoiceRes?.data
   const payments = paymentsRes?.data ?? []
+  const activity = activityRes?.data ?? []
 
   if (!invoice) notFound()
+
+  const isAdmin = await getCrmIsAdmin()
+  const isArchived = Boolean((invoice as Record<string, unknown>)['is_archived'])
 
   const contact = invoice.crm_contacts as Record<string, unknown> | null
   const project = invoice.crm_projects as Record<string, unknown> | null
@@ -39,7 +47,15 @@ export default async function InvoiceDetailPage({
         <Heading as="h1" level="h1">
           {invoice.reference as string}
         </Heading>
-        <InvoiceActions invoiceId={id} status={invoice.status as string} />
+        <div className="flex items-center gap-2">
+          <InvoiceActions invoiceId={id} status={invoice.status as string} />
+          <AdminArchiveRestoreActions
+            resource="invoices"
+            id={id}
+            isArchived={isArchived}
+            isAdmin={isAdmin}
+          />
+        </div>
       </div>
 
       <div className="flex gap-4">
@@ -215,6 +231,11 @@ export default async function InvoiceDetailPage({
           <PaymentForm invoiceId={id} />
         )}
       </section>
+
+      <div className="space-y-2">
+        <p className="crm-section-title mb-0">Journal d&apos;activité</p>
+        <ActivityClient initialActivity={activity} />
+      </div>
     </div>
   )
 }

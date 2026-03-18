@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { Plus, Receipt, ArrowRight, AlertCircle } from 'lucide-react'
+import { getCrmIsAdmin } from '@/lib/crm-admin'
+import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -17,8 +19,15 @@ function formatMoney(amount: number, currency = 'FCFA'): string {
 }
 
 export default async function InvoicesPage() {
-  const result = await crmGetServer<Array<Record<string, unknown>>>('invoices?limit=100')
-  const invoices = result?.data ?? []
+  const isAdmin = await getCrmIsAdmin()
+
+  const activeRes = await crmGetServer<Array<Record<string, unknown>>>('invoices?limit=100')
+  const invoices = activeRes?.data ?? []
+
+  const archivedRes = isAdmin
+    ? await crmGetServer<Array<Record<string, unknown>>>('invoices?limit=100&archived=true')
+    : null
+  const archivedInvoices = archivedRes?.data ?? []
 
   const totalUnpaid = invoices
     .filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
@@ -34,7 +43,10 @@ export default async function InvoicesPage() {
       <div className="crm-page-header">
         <div>
           <h1 className="crm-page-title">Factures</h1>
-          <p className="crm-page-subtitle">{invoices.length} facture{invoices.length !== 1 ? 's' : ''}</p>
+          <p className="crm-page-subtitle">
+            {invoices.length} facture{invoices.length !== 1 ? 's' : ''}
+            {isAdmin ? ` · ${archivedInvoices.length} archivé${archivedInvoices.length !== 1 ? 's' : ''}` : ''}
+          </p>
         </div>
         <Link href="/invoices/new">
           <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
@@ -83,6 +95,7 @@ export default async function InvoicesPage() {
                 <th className="text-right">Total</th>
                 <th className="text-right hidden sm:table-cell">Payé</th>
                 <th className="w-8" />
+                <th className="w-8" />
               </tr>
             </thead>
             <tbody>
@@ -122,6 +135,89 @@ export default async function InvoicesPage() {
                       <span className="text-xs" style={{ color: paid >= total ? 'oklch(0.42 0.14 145)' : 'var(--muted-foreground)' }}>
                         {formatMoney(paid, currency)}
                       </span>
+                    </td>
+                    <td>
+                      <AdminArchiveRestoreActions
+                        resource="invoices"
+                        id={inv.id as string}
+                        isArchived={Boolean((inv as Record<string, unknown>)['is_archived'])}
+                        isAdmin={isAdmin}
+                      />
+                    </td>
+                    <td>
+                      <Link href={`/invoices/${inv.id}`} className="flex items-center justify-center p-1 text-muted-foreground hover:text-foreground transition-colors">
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {isAdmin && archivedInvoices.length > 0 && (
+        <div className="crm-card overflow-hidden">
+          <p className="crm-section-title px-4 pt-4 mb-3">Archivées ({archivedInvoices.length})</p>
+          <table className="crm-table">
+            <thead>
+              <tr>
+                <th>Référence</th>
+                <th>Client</th>
+                <th>Statut</th>
+                <th className="hidden md:table-cell">Échéance</th>
+                <th className="text-right">Total</th>
+                <th className="text-right hidden sm:table-cell">Payé</th>
+                <th className="w-8" />
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {archivedInvoices.map((inv, i) => {
+                const status = String(inv.status ?? 'draft')
+                const currency = String(inv.currency ?? 'FCFA')
+                const total = Number(inv.total ?? 0)
+                const paid = Number(inv.amount_paid ?? 0)
+                const remaining = total - paid
+                const dueDate = inv.due_date
+                  ? new Date(inv.due_date as string).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : '—'
+                const isOverdue = status === 'overdue'
+
+                return (
+                  <tr key={inv.id as string} className={`crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1|2|3|4}`}>
+                    <td>
+                      <Link href={`/invoices/${inv.id}`} className="font-semibold text-foreground hover:text-primary transition-colors">
+                        {String(inv.reference ?? '—')}
+                      </Link>
+                    </td>
+                    <td className="text-muted-foreground text-xs">{String(inv.contact_id ?? '—')}</td>
+                    <td>
+                      <span className={`crm-pill crm-pill-${status}`}>
+                        {STATUS_LABELS[status] ?? status}
+                      </span>
+                    </td>
+                    <td className="hidden md:table-cell">
+                      <span className={`text-xs flex items-center gap-1 ${isOverdue ? '' : 'text-muted-foreground'}`}
+                        style={isOverdue ? { color: 'oklch(0.5 0.18 20)' } : {}}>
+                        {isOverdue && <AlertCircle className="h-3 w-3" />}
+                        {dueDate}
+                      </span>
+                    </td>
+                    <td className="text-right font-semibold text-sm">{formatMoney(total, currency)}</td>
+                    <td className="text-right hidden sm:table-cell">
+                      <span className="text-xs" style={{ color: paid >= total ? 'oklch(0.42 0.14 145)' : 'var(--muted-foreground)' }}>
+                        {formatMoney(paid, currency)}
+                      </span>
+                    </td>
+                    <td>
+                      <AdminArchiveRestoreActions
+                        resource="invoices"
+                        id={inv.id as string}
+                        isArchived={Boolean((inv as Record<string, unknown>)['is_archived'])}
+                        isAdmin={isAdmin}
+                      />
                     </td>
                     <td>
                       <Link href={`/invoices/${inv.id}`} className="flex items-center justify-center p-1 text-muted-foreground hover:text-foreground transition-colors">

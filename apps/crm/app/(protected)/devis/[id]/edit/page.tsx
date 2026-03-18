@@ -24,13 +24,15 @@ export default async function DevisEditPage({
 
   const defaultValues = {
     title: devis.title as string,
-    project_id: (devis.project_id as string) ?? '',
-    contact_id: devis.contact_id as string,
-    service_slug: devis.service_slug as string,
+    project_id: (devis.project_id as string | null) ?? '',
+    contact_id: (devis.contact_id as string | null) ?? '',
+    // zod expects optional string, but RHF defaultValues must not be null
+    service_slug: (devis.service_slug as string | null) ?? undefined,
     line_items: lineItems.length > 0 ? lineItems : [{ description: '', quantity: 1, unit_price: 0, unit: 'unité', tax_rate: 0 }],
     tax_rate: (devis.tax_rate as number) ?? 0,
     valid_until: devis.valid_until ? (devis.valid_until as string).slice(0, 10) : undefined,
-    notes: devis.notes as string,
+    // zod expects optional string, but RHF defaultValues must not be null
+    notes: (devis.notes as string | null) ?? undefined,
   }
 
   const [projectsResult, contactsResult, servicesResult] = await Promise.all([
