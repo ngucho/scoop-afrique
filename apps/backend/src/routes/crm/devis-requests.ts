@@ -36,7 +36,7 @@ app.patch('/:id', async (c) => {
   return c.json({ data: updated, message: 'Updated' })
 })
 
-app.delete('/:id', async (c) => {
+app.delete('/:id', requireRole('admin'), async (c) => {
   const id = c.req.param('id')
   const req = await devisRequestsService.getDevisRequestById(id)
   if (!req) return c.json({ error: 'Not found' }, 404)

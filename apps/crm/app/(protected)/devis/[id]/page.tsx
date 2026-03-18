@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation'
 import { Heading, Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { DevisActions } from '@/components/devis/DevisActions'
+import { getCrmIsAdmin } from '@/lib/crm-admin'
+import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
+import { ActivityClient } from '@/components/activity/ActivityClient'
 
 export default async function DevisDetailPage({
   params,
@@ -10,10 +13,17 @@ export default async function DevisDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const result = await crmGetServer<Record<string, unknown>>(`devis/${id}`)
+  const [result, activityRes] = await Promise.all([
+    crmGetServer<Record<string, unknown>>(`devis/${id}`),
+    crmGetServer<Array<Record<string, unknown>>>(`activity/devis/${id}?limit=50`),
+  ])
   const devis = result?.data
+  const activity = activityRes?.data ?? []
 
   if (!devis) notFound()
+
+  const isAdmin = await getCrmIsAdmin()
+  const isArchived = Boolean((devis as Record<string, unknown>)['is_archived'])
 
   const contact = devis.crm_contacts as Record<string, unknown> | null
   const project = devis.crm_projects as Record<string, unknown> | null
@@ -31,7 +41,15 @@ export default async function DevisDetailPage({
         <Heading as="h1" level="h1">
           {devis.reference as string} — {devis.title as string}
         </Heading>
-        <DevisActions devisId={id} status={devis.status as string} />
+        <div className="flex items-center gap-2">
+          <DevisActions devisId={id} status={devis.status as string} />
+          <AdminArchiveRestoreActions
+            resource="devis"
+            id={id}
+            isArchived={isArchived}
+            isAdmin={isAdmin}
+          />
+        </div>
       </div>
 
       <div className="flex gap-4">
@@ -160,6 +178,11 @@ export default async function DevisDetailPage({
             <p className="whitespace-pre-wrap">{String(devis.notes)}</p>
           </div>
         ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <p className="crm-section-title mb-0">Journal d&apos;activité</p>
+        <ActivityClient initialActivity={activity} />
       </div>
     </div>
   )

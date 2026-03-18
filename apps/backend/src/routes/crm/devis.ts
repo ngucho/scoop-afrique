@@ -8,9 +8,19 @@ const app = new Hono<AppEnv>()
 app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
+  const user = c.get('user')
   const contactId = c.req.query('contact_id')
   const projectId = c.req.query('project_id')
   const status = c.req.query('status')
+  const archivedQuery = c.req.query('archived')
+  const archived =
+    archivedQuery === 'true'
+      ? user.role === 'admin'
+        ? true
+        : undefined
+      : archivedQuery === 'false'
+        ? false
+        : undefined
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
 
@@ -18,6 +28,7 @@ app.get('/', async (c) => {
     contactId: contactId || undefined,
     projectId: projectId || undefined,
     status: status || undefined,
+    archived,
     limit,
     offset,
   })
@@ -42,9 +53,12 @@ app.post('/', async (c) => {
 })
 
 app.get('/:id', async (c) => {
+  const user = c.get('user')
   const id = c.req.param('id')
   const devis = await devisService.getDevisWithContactAndProject(id)
   if (!devis) return c.json({ error: 'Not found' }, 404)
+  if (Boolean((devis as Record<string, unknown>)['is_archived']) && user.role !== 'admin')
+    return c.json({ error: 'Not found' }, 404)
   return c.json({ data: devis })
 })
 
@@ -67,6 +81,22 @@ app.patch('/:id', async (c) => {
   }
   const updated = await devisService.updateDevis(id, parsed.data, user.id)
   return c.json({ data: updated })
+})
+
+// Admin archive (soft-delete)
+app.delete('/:id', requireRole('admin'), async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const archived = await devisService.archiveDevis(id, user.id)
+  return c.json({ data: archived })
+})
+
+// Admin restore (undo archive)
+app.post('/:id/restore', requireRole('admin'), async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const restored = await devisService.restoreDevis(id, user.id)
+  return c.json({ data: restored })
 })
 
 app.post('/:id/send', async (c) => {

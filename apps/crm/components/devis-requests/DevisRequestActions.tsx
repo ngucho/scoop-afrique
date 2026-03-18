@@ -8,9 +8,10 @@ import { useState } from 'react'
 interface DevisRequestActionsProps {
   id: string
   variant?: 'card' | 'detail'
+  isAdmin?: boolean
 }
 
-export function DevisRequestActions({ id, variant = 'card' }: DevisRequestActionsProps) {
+export function DevisRequestActions({ id, variant = 'card', isAdmin = false }: DevisRequestActionsProps) {
   const router = useRouter()
   const [loading, setLoading] = useState<'treat' | 'delete' | null>(null)
 
@@ -22,6 +23,7 @@ export function DevisRequestActions({ id, variant = 'card' }: DevisRequestAction
   }
 
   async function handleDelete() {
+    if (!isAdmin) return
     if (!confirm('Supprimer cette demande ? Cette action est irréversible.')) return
     setLoading('delete')
     const res = await crmDelete(`devis-requests/${id}`)

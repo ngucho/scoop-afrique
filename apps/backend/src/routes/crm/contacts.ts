@@ -112,13 +112,23 @@ app.patch('/:id', async (c) => {
   return c.json({ data: updated })
 })
 
-app.delete('/:id', requireRole('manager', 'admin'), async (c) => {
+app.delete('/:id', requireRole('admin'), async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
   const contact = await contactService.getContactById(id)
   if (!contact) return c.json({ error: 'Not found' }, 404)
   await contactService.archiveContact(id, user.id)
   return c.json({ data: { id, archived: true } })
+})
+
+// Admin restore (undo archive)
+app.post('/:id/restore', requireRole('admin'), async (c) => {
+  const user = c.get('user')
+  const id = c.req.param('id')
+  const contact = await contactService.getContactById(id)
+  if (!contact) return c.json({ error: 'Not found' }, 404)
+  const restored = await contactService.updateContact(id, { is_archived: false }, user.id)
+  return c.json({ data: restored })
 })
 
 export default app
