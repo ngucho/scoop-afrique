@@ -23,7 +23,9 @@ export async function listContacts(params: {
 
   const conditions: ReturnType<typeof eq>[] = []
   if (params.type) conditions.push(eq(crmContacts.type, params.type as any))
-  if (params.archived !== undefined) conditions.push(eq(crmContacts.isArchived, params.archived))
+  // Soft-delete: hide archived contacts by default
+  if (params.archived === true) conditions.push(eq(crmContacts.isArchived, true))
+  else conditions.push(eq(crmContacts.isArchived, false))
   if (params.search) {
     const s = `%${params.search}%`
     conditions.push(or(

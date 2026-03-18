@@ -16,8 +16,13 @@ export async function crmFetchServer<T>(
   const token = await getToken()
   if (!token) return null
 
+  const method = String(init?.method ?? 'GET').toUpperCase()
+  const isGet = method === 'GET'
+
   const res = await fetch(`${API_URL}/api/v1/crm/${path}`, {
     ...init,
+    // Next.js can cache server component fetches; disable caching so edits are reflected immediately.
+    ...(isGet ? { cache: 'no-store', next: { revalidate: 0 } } : null),
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',

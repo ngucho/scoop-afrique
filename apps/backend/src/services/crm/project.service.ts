@@ -16,6 +16,7 @@ import * as expenseService from './expense.service.js'
 export async function listProjects(params?: {
   contactId?: string
   status?: string
+  archived?: boolean
   limit?: number
   offset?: number
   withContact?: boolean
@@ -24,6 +25,9 @@ export async function listProjects(params?: {
   const conditions = []
   if (params?.contactId) conditions.push(eq(crmProjects.contactId, params.contactId))
   if (params?.status) conditions.push(eq(crmProjects.status, params.status as typeof crmProjects.status.enumValues[number]))
+  // Soft-delete: hide archived projects by default
+  if (params?.archived === true) conditions.push(eq(crmProjects.isArchived, true))
+  else conditions.push(eq(crmProjects.isArchived, false))
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const limit = params?.limit ?? 50
@@ -229,6 +233,46 @@ export async function updateProject(
     action: 'updated',
     createdBy: updatedBy ?? undefined,
   })
+  return toSnakeRecord(project as Record<string, unknown>)
+}
+
+export async function archiveProject(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [project] = await db
+    .update(crmProjects)
+    .set({ isArchived: true })
+    .where(eq(crmProjects.id, id))
+    .returning()
+  if (!project) throw new Error('Failed to archive project')
+
+  await logActivity({
+    entityType: 'project',
+    entityId: id,
+    action: 'archived',
+    description: `Projet ${project.reference} archivé`,
+    createdBy: archivedBy ?? undefined,
+  })
+
+  return toSnakeRecord(project as Record<string, unknown>)
+}
+
+export async function restoreProject(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const [project] = await db
+    .update(crmProjects)
+    .set({ isArchived: false })
+    .where(eq(crmProjects.id, id))
+    .returning()
+  if (!project) throw new Error('Failed to restore project')
+
+  await logActivity({
+    entityType: 'project',
+    entityId: id,
+    action: 'restored',
+    description: `Projet ${project.reference} restauré`,
+    createdBy: restoredBy ?? undefined,
+  })
+
   return toSnakeRecord(project as Record<string, unknown>)
 }
 

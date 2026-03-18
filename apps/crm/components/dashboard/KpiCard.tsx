@@ -22,25 +22,65 @@ const ICON_MAP: Record<string, LucideIcon> = {
   alert: AlertTriangle,
 }
 
-const COLOR_MAP: Record<string, { bg: string; icon: string; accent: string }> = {
-  dollar:    { bg: 'oklch(0.94 0.08 145 / 0.12)', icon: 'oklch(0.42 0.14 145)', accent: 'oklch(0.42 0.14 145)' },
-  file:      { bg: 'oklch(0.93 0.08 260 / 0.12)', icon: 'oklch(0.42 0.16 260)', accent: 'oklch(0.42 0.16 260)' },
-  clipboard: { bg: 'oklch(0.93 0.08 200 / 0.12)', icon: 'oklch(0.42 0.14 200)', accent: 'oklch(0.42 0.14 200)' },
-  receipt:   { bg: 'oklch(0.93 0.1 40 / 0.12)',   icon: 'oklch(0.5 0.2 40)',    accent: 'oklch(0.5 0.2 40)' },
-  inbox:     { bg: 'oklch(0.93 0.08 280 / 0.12)', icon: 'oklch(0.42 0.16 280)', accent: 'oklch(0.42 0.16 280)' },
-  alert:     { bg: 'oklch(0.94 0.1 60 / 0.12)',   icon: 'oklch(0.5 0.2 60)',    accent: 'oklch(0.5 0.2 60)' },
+const COLOR_MAP: Record<
+  string,
+  { cardBg: string; cardBorder: string; iconBg: string; icon: string; accent: string }
+> = {
+  // Make KPI cards clearly visible by basing accent on primary/secondary tokens.
+  dollar: {
+    cardBg: 'color-mix(in oklab, var(--primary) 8%, var(--card))',
+    cardBorder: 'color-mix(in oklab, var(--primary) 45%, var(--border))',
+    iconBg: 'color-mix(in oklab, var(--primary) 14%, transparent)',
+    icon: 'var(--primary)',
+    accent: 'var(--primary)',
+  },
+  file: {
+    cardBg: 'color-mix(in oklab, var(--secondary) 8%, var(--card))',
+    cardBorder: 'color-mix(in oklab, var(--secondary) 45%, var(--border))',
+    iconBg: 'color-mix(in oklab, var(--secondary) 14%, transparent)',
+    icon: 'var(--secondary)',
+    accent: 'var(--secondary)',
+  },
+  clipboard: {
+    cardBg: 'color-mix(in oklab, var(--primary) 8%, var(--card))',
+    cardBorder: 'color-mix(in oklab, var(--primary) 45%, var(--border))',
+    iconBg: 'color-mix(in oklab, var(--primary) 14%, transparent)',
+    icon: 'var(--primary)',
+    accent: 'var(--primary)',
+  },
+  receipt: {
+    cardBg: 'color-mix(in oklab, var(--secondary) 8%, var(--card))',
+    cardBorder: 'color-mix(in oklab, var(--secondary) 45%, var(--border))',
+    iconBg: 'color-mix(in oklab, var(--secondary) 14%, transparent)',
+    icon: 'var(--secondary)',
+    accent: 'var(--secondary)',
+  },
+  inbox: {
+    cardBg: 'color-mix(in oklab, var(--primary) 8%, var(--card))',
+    cardBorder: 'color-mix(in oklab, var(--primary) 45%, var(--border))',
+    iconBg: 'color-mix(in oklab, var(--primary) 14%, transparent)',
+    icon: 'var(--primary)',
+    accent: 'var(--primary)',
+  },
+  alert: {
+    cardBg: 'color-mix(in oklab, var(--state-warning) 10%, var(--card))',
+    cardBorder: 'color-mix(in oklab, var(--state-warning) 45%, var(--border))',
+    iconBg: 'color-mix(in oklab, var(--state-warning) 14%, transparent)',
+    icon: 'var(--state-warning)',
+    accent: 'var(--state-warning)',
+  },
 }
 
 function TrendBadge({ trend }: { trend: 'up' | 'down' | 'neutral'; value?: string }) {
   if (trend === 'up') return (
     <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: 'oklch(0.9 0.1 145 / 0.15)', color: 'oklch(0.4 0.12 145)' }}>
+      style={{ background: 'color-mix(in oklab, var(--state-success) 15%, transparent)', color: 'var(--state-success)' }}>
       <TrendingUp className="h-3 w-3" />
     </span>
   )
   if (trend === 'down') return (
     <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-      style={{ background: 'oklch(0.9 0.12 20 / 0.15)', color: 'oklch(0.5 0.18 20)' }}>
+      style={{ background: 'color-mix(in oklab, var(--state-error) 15%, transparent)', color: 'var(--state-error)' }}>
       <TrendingDown className="h-3 w-3" />
     </span>
   )
@@ -73,6 +113,11 @@ export function KpiCard({
   return (
     <div
       className={`crm-card crm-kpi p-5 crm-fade-in crm-stagger-${Math.min(index + 1, 4) as 1 | 2 | 3 | 4}`}
+      style={
+        colors
+          ? { background: colors.cardBg, borderColor: colors.cardBorder }
+          : undefined
+      }
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -98,7 +143,7 @@ export function KpiCard({
           {Icon && colors && (
             <div
               className="flex h-9 w-9 items-center justify-center rounded-xl"
-              style={{ background: colors.bg }}
+              style={{ background: colors.iconBg }}
             >
               <Icon className="h-4 w-4" style={{ color: colors.icon }} strokeWidth={2} />
             </div>
