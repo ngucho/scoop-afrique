@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createInvoiceSchema, updateInvoiceSchema } from '../../schemas/crm/invoice.schema.js'
-import { createPaymentSchema } from '../../schemas/crm/payment.schema.js'
+import { createPaymentSchema, updatePaymentSchema } from '../../schemas/crm/payment.schema.js'
 import * as invoiceService from '../../services/crm/invoice.service.js'
 import * as paymentService from '../../services/crm/payment.service.js'
 import type { AppEnv } from '../../types.js'
@@ -81,7 +81,39 @@ app.patch('/:id', async (c) => {
     const first = parsed.error.errors[0]
     return c.json({ error: first?.message ?? 'Validation error' }, 400)
   }
-  const updated = await invoiceService.updateInvoice(id, parsed.data, user.id)
+
+  const amountPaid = Number((invoice as Record<string, unknown>).amount_paid ?? 0)
+  const invStatus = String((invoice as Record<string, unknown>).status ?? '')
+  const hasPayment = amountPaid > 0 || invStatus === 'paid' || invStatus === 'partial'
+  const privileged = user.role === 'manager' || user.role === 'admin'
+
+  let payload = parsed.data
+  if (hasPayment && !privileged) {
+    const {
+      line_items: _l,
+      tax_rate: _t,
+      discount_amount: _d,
+      currency: _c,
+      ...rest
+    } = payload
+    payload = rest
+    const triedFinancial =
+      parsed.data.line_items !== undefined ||
+      parsed.data.tax_rate !== undefined ||
+      parsed.data.discount_amount !== undefined ||
+      parsed.data.currency !== undefined
+    if (triedFinancial) {
+      return c.json(
+        {
+          error:
+            'Modification des montants/lignes interdite : paiements enregistrés. Demandez un manager ou un admin.',
+        },
+        403
+      )
+    }
+  }
+
+  const updated = await invoiceService.updateInvoice(id, payload, user.id)
   return c.json({ data: updated })
 })
 
@@ -195,6 +227,37 @@ app.get('/:id/payments', async (c) => {
   if (!invoice) return c.json({ error: 'Not found' }, 404)
   const payments = await paymentService.listPaymentsByInvoice(id)
   return c.json({ data: payments })
+})
+
+app.patch('/:id/payments/:paymentId', async (c) => {
+  const user = c.get('user')
+  const invoiceId = c.req.param('id')
+  const paymentId = c.req.param('paymentId')
+  const invoice = await invoiceService.getInvoiceById(invoiceId)
+  if (!invoice) return c.json({ error: 'Not found' }, 404)
+  const payment = await paymentService.getPaymentById(paymentId)
+  if (!payment || String(payment.invoice_id) !== invoiceId) {
+    return c.json({ error: 'Not found' }, 404)
+  }
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON' }, 400)
+  }
+  const parsed = updatePaymentSchema.safeParse(body)
+  if (!parsed.success) {
+    const first = parsed.error.errors[0]
+    return c.json({ error: first?.message ?? 'Validation error' }, 400)
+  }
+  try {
+    const data = await paymentService.updatePayment(paymentId, parsed.data, user.id)
+    return c.json({ data })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : ''
+    if (msg === 'Not found') return c.json({ error: 'Not found' }, 404)
+    throw e
+  }
 })
 
 export default app

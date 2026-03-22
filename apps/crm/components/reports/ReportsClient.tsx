@@ -3,7 +3,13 @@
 import { useMemo, useState } from 'react'
 
 type ReportSummary = {
-  revenueByMonth: Array<{ month: string; revenue: number; count: number }>
+  revenueByMonth: Array<{
+    month: string
+    revenue: number
+    treasuryIncome?: number
+    totalCashIn?: number
+    count: number
+  }>
   devisByStatus: Array<{ status: string; count: number; total: number }>
   pipelineFunnel: { draft: number; sent: number; accepted: number; rejected: number; expired: number }
   conversionRates: {
@@ -60,7 +66,14 @@ export function ReportsClient({ initialData }: { initialData: ReportSummary | nu
 
   const maxRevenue = useMemo(() => {
     if (!initialData?.revenueByMonth?.length) return 1
-    return Math.max(...initialData.revenueByMonth.map((r) => r.revenue), 1)
+    return Math.max(
+      ...initialData.revenueByMonth.map((r) => {
+        const t = Number(r.treasuryIncome) || 0
+        const total = r.totalCashIn != null ? Number(r.totalCashIn) : Number(r.revenue) + t
+        return total
+      }),
+      1
+    )
   }, [initialData])
 
   const maxDevisCount = useMemo(() => {
@@ -79,7 +92,11 @@ export function ReportsClient({ initialData }: { initialData: ReportSummary | nu
 
   const { revenueByMonth, devisByStatus, pipelineFunnel, conversionRates } = initialData
 
-  const totalRevenue = revenueByMonth.reduce((sum, r) => sum + r.revenue, 0)
+  const totalRevenue = revenueByMonth.reduce((sum, r) => {
+    const t = Number(r.treasuryIncome) || 0
+    const inc = r.totalCashIn != null ? Number(r.totalCashIn) : Number(r.revenue) + t
+    return sum + inc
+  }, 0)
   const totalDevis = devisByStatus.reduce((sum, d) => sum + d.count, 0)
 
   return (
@@ -113,8 +130,11 @@ export function ReportsClient({ initialData }: { initialData: ReportSummary | nu
       <div className="crm-card p-6">
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-sm font-semibold">Chiffre d&apos;affaires</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">12 derniers mois</p>
+            <h2 className="text-sm font-semibold">Entrées encaissées</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Factures payées / partielles + revenus{' '}
+              <span className="font-medium text-foreground/80">hors facture</span> (trésorerie)
+            </p>
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold tracking-tight" style={{ color: 'oklch(0.42 0.14 145)' }}>
@@ -125,7 +145,10 @@ export function ReportsClient({ initialData }: { initialData: ReportSummary | nu
         </div>
         <div className="flex items-end gap-1.5 h-44">
           {revenueByMonth.map((r) => {
-            const pct = Math.max((r.revenue / maxRevenue) * 100, r.revenue > 0 ? 2 : 0)
+            const treas = Number(r.treasuryIncome) || 0
+            const inv = Number(r.revenue) || 0
+            const total = r.totalCashIn != null ? Number(r.totalCashIn) : inv + treas
+            const pct = Math.max((total / maxRevenue) * 100, total > 0 ? 2 : 0)
             const isHovered = hoveredBar === r.month
             return (
               <div
@@ -135,24 +158,31 @@ export function ReportsClient({ initialData }: { initialData: ReportSummary | nu
                 onMouseLeave={() => setHoveredBar(null)}
               >
                 {/* Tooltip */}
-                {isHovered && r.revenue > 0 && (
+                {isHovered && total > 0 && (
                   <div
                     className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
                     style={{ background: 'var(--foreground)' }}
                   >
-                    {formatMoney(r.revenue)}
+                    Total {formatMoney(total)}
                     <br />
-                    <span className="opacity-70">{r.count} facture{r.count !== 1 ? 's' : ''}</span>
+                    <span className="opacity-70">
+                      Factures {formatMoney(inv)}
+                      {treas > 0 ? ` · Trésor. ${formatMoney(treas)}` : ''}
+                    </span>
+                    <br />
+                    <span className="opacity-70">
+                      {r.count} paiement{r.count !== 1 ? 's' : ''} (factures)
+                    </span>
                   </div>
                 )}
                 <div
                   className="w-full rounded-t transition-all duration-200"
                   style={{
                     height: `${pct}%`,
-                    minHeight: r.revenue > 0 ? '4px' : '2px',
+                    minHeight: total > 0 ? '4px' : '2px',
                     background: isHovered
                       ? 'var(--primary)'
-                      : r.revenue > 0
+                      : total > 0
                         ? 'oklch(0.52 0.22 25 / 0.7)'
                         : 'var(--muted)',
                   }}

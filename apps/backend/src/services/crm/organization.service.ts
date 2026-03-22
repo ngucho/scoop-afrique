@@ -1,7 +1,7 @@
 /**
  * CRM organization service
  */
-import { eq, and, or, ilike, inArray, sql } from 'drizzle-orm'
+import { eq, and, or, ilike, inArray, sql, desc, asc } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmOrganizations, crmContactOrganization, crmContacts } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
@@ -9,6 +9,10 @@ import type { CreateOrganizationInput, UpdateOrganizationInput } from '../../sch
 
 export async function listOrganizations(params?: {
   search?: string
+  type?: string
+  country?: string
+  sort?: 'name' | 'created_at'
+  order?: 'asc' | 'desc'
   limit?: number
   offset?: number
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
@@ -16,19 +20,37 @@ export async function listOrganizations(params?: {
   const conditions = []
   if (params?.search) {
     const pattern = `%${params.search}%`
-    conditions.push(or(ilike(crmOrganizations.name, pattern), ilike(crmOrganizations.email, pattern))!)
+    conditions.push(
+      or(
+        ilike(crmOrganizations.name, pattern),
+        ilike(crmOrganizations.email ?? '', pattern),
+        ilike(crmOrganizations.website ?? '', pattern),
+        ilike(crmOrganizations.phone ?? '', pattern),
+        ilike(crmOrganizations.address ?? '', pattern)
+      )!
+    )
   }
+  if (params?.type?.trim()) {
+    const t = `%${params.type.trim()}%`
+    conditions.push(ilike(crmOrganizations.type, t))
+  }
+  if (params?.country) conditions.push(eq(crmOrganizations.country, params.country))
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const limit = params?.limit ?? 50
   const offset = params?.offset ?? 0
+
+  const sortKey = params?.sort ?? 'name'
+  const orderFn = params?.order === 'desc' ? desc : asc
+  const orderCol =
+    sortKey === 'created_at' ? crmOrganizations.createdAt : crmOrganizations.name
 
   const [rows, [{ count }]] = await Promise.all([
     db
       .select()
       .from(crmOrganizations)
       .where(whereClause)
-      .orderBy(crmOrganizations.name)
+      .orderBy(orderFn(orderCol), asc(crmOrganizations.id))
       .limit(limit)
       .offset(offset),
     db

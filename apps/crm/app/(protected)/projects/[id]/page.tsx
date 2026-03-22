@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Button } from 'scoop'
 import { ProjectCloseButton } from '@/components/projects/ProjectCloseButton'
+import { ProjectStatusActions } from '@/components/projects/ProjectStatusActions'
 import { ProjectContactsWidget } from '@/components/projects/ProjectContactsWidget'
 import { crmGetServer } from '@/lib/api-server'
 import { ActivityClient } from '@/components/activity/ActivityClient'
@@ -22,6 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
   active: 'Actif',
   confirmed: 'Confirmé',
   in_progress: 'En cours',
+  paused: 'En pause',
   review: 'Revue',
   delivered: 'Livré',
   on_hold: 'En attente',
@@ -61,6 +63,15 @@ export default async function ProjectDetailPage({
   const activity = activityRes?.data ?? []
   const status = String(project.status ?? 'draft')
   const isActive = !['closed', 'cancelled', 'completed'].includes(status)
+  const statusForActions = status as
+    | 'draft'
+    | 'confirmed'
+    | 'in_progress'
+    | 'paused'
+    | 'review'
+    | 'delivered'
+    | 'closed'
+    | 'cancelled'
 
   const SUB_TABS = [
     { href: `/projects/${id}/tasks`, label: 'Tâches', icon: ClipboardList },
@@ -85,7 +96,9 @@ export default async function ProjectDetailPage({
             <p className="crm-page-subtitle mt-1 line-clamp-2">{String(project.description)}</p>
           ) : null}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <ProjectStatusActions projectId={id} status={statusForActions} />
+          <div className="flex items-center gap-2">
           <Link href={`/projects/${id}/edit`}>
             <button className="crm-quick-action">
               <Edit className="h-4 w-4 text-muted-foreground" />
@@ -99,6 +112,7 @@ export default async function ProjectDetailPage({
             isAdmin={isAdmin}
           />
           {isActive && <ProjectCloseButton projectId={id} />}
+          </div>
         </div>
       </div>
 

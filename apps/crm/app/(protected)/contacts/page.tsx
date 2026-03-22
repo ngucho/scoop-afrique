@@ -1,34 +1,91 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
-import { Plus, User, Mail, Building2, Phone } from 'lucide-react'
+import { Plus, User, Mail, Building2, Phone, ArrowUpDown } from 'lucide-react'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
+import { ContactsListToolbar } from '@/components/contacts/ContactsListToolbar'
+import { buildContactsQuery, sortToggleHref, type ContactsListParams } from '@/lib/crm-list-query'
 
 const TYPE_COLORS: Record<string, string> = {
   prospect: 'crm-pill crm-pill-sent',
   client: 'crm-pill crm-pill-accepted',
   partner: 'crm-pill crm-pill-confirmed',
   influencer: 'crm-pill crm-pill-draft',
-  supplier: 'crm-pill crm-pill-partial',
+  sponsor: 'crm-pill crm-pill-partial',
+  other: 'crm-pill crm-pill-draft',
 }
 
-export default async function ContactsPage() {
+function SortTh({
+  label,
+  column,
+  base,
+  className = '',
+}: {
+  label: string
+  column: 'last_name' | 'email' | 'company' | 'created_at'
+  base: ContactsListParams
+  className?: string
+}) {
+  const active = base.sort === column
+  const href = sortToggleHref(base, column)
+  return (
+    <th className={className}>
+      <Link
+        href={href}
+        className="inline-flex items-center gap-1 font-medium hover:text-primary transition-colors"
+      >
+        {label}
+        <ArrowUpDown
+          className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-primary' : 'opacity-40'}`}
+        />
+        {active ? (
+          <span className="sr-only">{base.order === 'asc' ? 'croissant' : 'décroissant'}</span>
+        ) : null}
+      </Link>
+    </th>
+  )
+}
+
+export default async function ContactsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
+  const raw = (k: string) => {
+    const v = sp[k]
+    return Array.isArray(v) ? v[0] : v
+  }
+
+  const listBase: ContactsListParams = {
+    search: raw('search') || undefined,
+    type: raw('type') || undefined,
+    country: raw('country') || undefined,
+    city: raw('city') || undefined,
+    sort: raw('sort') || 'created_at',
+    order: raw('order') || 'desc',
+    limit: 100,
+  }
+
   const isAdmin = await getCrmIsAdmin()
 
-  const activeRes = await crmGetServer<Array<Record<string, unknown>>>('contacts?limit=100')
+  const activeQ = buildContactsQuery(listBase)
+  const archivedQ = buildContactsQuery({ ...listBase, archived: true })
+
+  const activeRes = await crmGetServer<Array<Record<string, unknown>>>(`contacts?${activeQ}`)
   const activeContacts = activeRes?.data ?? []
   const activeTotal = activeRes?.total ?? activeContacts.length
 
   const archivedRes = isAdmin
-    ? await crmGetServer<Array<Record<string, unknown>>>('contacts?limit=100&archived=true')
+    ? await crmGetServer<Array<Record<string, unknown>>>(`contacts?${archivedQ}`)
     : null
   const archivedContacts = archivedRes?.data ?? []
   const archivedTotal = archivedRes?.total ?? archivedContacts.length
 
   return (
     <div className="space-y-6 max-w-[1200px] crm-fade-in">
-      {/* Header */}
       <div className="crm-page-header">
         <div>
           <h1 className="crm-page-title">Contacts</h1>
@@ -45,12 +102,23 @@ export default async function ContactsPage() {
         </Link>
       </div>
 
+      <Suspense fallback={<div className="crm-card p-4 text-muted-foreground text-sm">Chargement des filtres…</div>}>
+        <ContactsListToolbar
+          initialSearch={listBase.search ?? ''}
+          initialType={listBase.type ?? ''}
+          initialCountry={listBase.country ?? ''}
+          initialCity={listBase.city ?? ''}
+        />
+      </Suspense>
+
       {activeContacts.length === 0 ? (
         <div className="crm-card">
           <div className="crm-empty py-16">
             <User className="crm-empty-icon h-12 w-12" />
             <p className="crm-empty-title">Aucun contact actif</p>
-            <p className="text-sm text-muted-foreground">Commencez par ajouter votre premier contact</p>
+            <p className="text-sm text-muted-foreground">
+              Ajustez les filtres ou ajoutez votre premier contact
+            </p>
             <Link href="/contacts/new">
               <Button className="mt-4 rounded-full px-5">Créer un contact</Button>
             </Link>
@@ -61,12 +129,13 @@ export default async function ContactsPage() {
           <table className="crm-table">
             <thead>
               <tr>
-                <th>Nom</th>
-                <th>Email</th>
-                <th className="hidden md:table-cell">Entreprise</th>
+                <SortTh label="Nom" column="last_name" base={listBase} />
+                <SortTh label="Email" column="email" base={listBase} />
+                <SortTh label="Entreprise" column="company" base={listBase} className="hidden md:table-cell" />
                 <th className="hidden lg:table-cell">Téléphone</th>
                 <th>Type</th>
                 <th className="hidden sm:table-cell">Ville</th>
+                <SortTh label="Créé" column="created_at" base={listBase} />
                 <th className="w-8" />
               </tr>
             </thead>
@@ -78,9 +147,9 @@ export default async function ContactsPage() {
                     ? `${String(c.first_name ?? '').charAt(0)}${String(c.last_name ?? '').charAt(0)}`.toUpperCase()
                     : '?'
                 const type = String(c.type ?? 'prospect')
-                const isArchived = Boolean((c as Record<string, unknown>)['is_archived'])
+                const isArchivedRow = Boolean((c as Record<string, unknown>)['is_archived'])
                 return (
-                  <tr key={c.id as string} className={`crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1|2|3|4}`}>
+                  <tr key={c.id as string} className={`crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1 | 2 | 3 | 4}`}>
                     <td>
                       <Link href={`/contacts/${c.id}`} className="flex items-center gap-3 group">
                         <div
@@ -120,11 +189,16 @@ export default async function ContactsPage() {
                     <td className="hidden sm:table-cell text-muted-foreground text-xs">
                       {String(c.city ?? c.country ?? '—')}
                     </td>
+                    <td className="text-xs text-muted-foreground whitespace-nowrap">
+                      {c.created_at
+                        ? new Date(c.created_at as string).toLocaleDateString('fr-FR')
+                        : '—'}
+                    </td>
                     <td className="text-right">
                       <AdminArchiveRestoreActions
                         resource="contacts"
                         id={c.id as string}
-                        isArchived={isArchived}
+                        isArchived={isArchivedRow}
                         isAdmin={isAdmin}
                       />
                     </td>
@@ -159,9 +233,9 @@ export default async function ContactsPage() {
                     ? `${String(c.first_name ?? '').charAt(0)}${String(c.last_name ?? '').charAt(0)}`.toUpperCase()
                     : '?'
                 const type = String(c.type ?? 'prospect')
-                const isArchived = Boolean((c as Record<string, unknown>)['is_archived'])
+                const isArchivedRow = Boolean((c as Record<string, unknown>)['is_archived'])
                 return (
-                  <tr key={c.id as string} className={`crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1|2|3|4}`}>
+                  <tr key={c.id as string} className={`crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1 | 2 | 3 | 4}`}>
                     <td>
                       <Link href={`/contacts/${c.id}`} className="flex items-center gap-3 group">
                         <div
@@ -205,7 +279,7 @@ export default async function ContactsPage() {
                       <AdminArchiveRestoreActions
                         resource="contacts"
                         id={c.id as string}
-                        isArchived={isArchived}
+                        isArchived={isArchivedRow}
                         isAdmin={isAdmin}
                       />
                     </td>

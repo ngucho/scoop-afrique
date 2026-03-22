@@ -9,9 +9,12 @@ const app = new Hono<AppEnv>()
 app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
-  const user = c.get('user')
   const type = c.req.query('type')
   const search = c.req.query('search')
+  const country = c.req.query('country')
+  const city = c.req.query('city')
+  const sort = c.req.query('sort') as 'created_at' | 'last_name' | 'email' | 'company' | undefined
+  const order = c.req.query('order') as 'asc' | 'desc' | undefined
   const archived = c.req.query('archived')
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
@@ -19,6 +22,10 @@ app.get('/', async (c) => {
   const { data, total } = await contactService.listContacts({
     type: type || undefined,
     search: search || undefined,
+    country: country || undefined,
+    city: city || undefined,
+    sort: sort || undefined,
+    order: order || undefined,
     archived: archived === 'true' ? true : archived === 'false' ? false : undefined,
     limit,
     offset,

@@ -1,12 +1,15 @@
 'use client'
 
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 type FinancialSummary = {
   period: { start: string; end: string }
   revenue: number
+  treasuryIncome?: number
   expenses: number
+  treasuryExpense?: number
   grossProfit: number
   grossMargin: number
   invoicesIssued: number
@@ -82,7 +85,9 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
 
   const {
     revenue,
+    treasuryIncome = 0,
     expenses,
+    treasuryExpense = 0,
     grossProfit,
     grossMargin,
     invoicesIssued,
@@ -94,24 +99,49 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
     topClients,
   } = initialData
 
+  const periodLabel =
+    initialData.period?.start && initialData.period?.end
+      ? `${initialData.period.start} → ${initialData.period.end}`
+      : null
+
   return (
     <div className="space-y-6">
+      {periodLabel && (
+        <p className="text-xs text-muted-foreground -mt-1">
+          Période analysée : <span className="font-medium text-foreground">{periodLabel}</span> — factures
+          filtrées par <span className="font-medium">date d&apos;échéance</span> (ou date de création si pas
+          d&apos;échéance), encaissements par <span className="font-medium">date de paiement</span>, dépenses
+          projet et{' '}
+          <Link href="/treasury" className="text-primary hover:underline">
+            mouvements de trésorerie
+          </Link>
+          )
+        </p>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <FinancialKpi
-          label="Chiffre d'affaires"
+          label="Revenus (factures)"
           value={formatMoney(revenue)}
-          sub="Encaissé sur la période"
+          sub={
+            treasuryIncome > 0
+              ? `+ ${formatMoney(treasuryIncome)} autres revenus (trésorerie)`
+              : 'Encaissé sur la période'
+          }
           color="oklch(0.42 0.14 145)"
           trend="up"
         />
         <FinancialKpi
-          label="Dépenses"
-          value={formatMoney(expenses)}
-          sub="Total charges"
+          label="Charges"
+          value={formatMoney(expenses + treasuryExpense)}
+          sub={
+            treasuryExpense > 0
+              ? `${formatMoney(expenses)} projets · ${formatMoney(treasuryExpense)} trésorerie`
+              : 'Dépenses projet'
+          }
           color="oklch(0.5 0.18 20)"
-          trend={expenses > revenue ? 'down' : 'neutral'}
+          trend={expenses + treasuryExpense > revenue ? 'down' : 'neutral'}
         />
         <FinancialKpi
           label="Marge brute"
@@ -151,7 +181,9 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-sm font-semibold">Flux de trésorerie</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Revenus vs Dépenses par mois</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Par mois : encaissements factures + entrées trésorerie vs dépenses projet + sorties trésorerie
+            </p>
           </div>
           <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'var(--muted)' }}>
             {(['all', 'revenue', 'expenses'] as const).map((v) => (

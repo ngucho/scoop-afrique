@@ -1,10 +1,26 @@
 import { crmGetServer } from '@/lib/api-server'
 import { ReportsClient } from '@/components/reports/ReportsClient'
 import { FinancialReportClient } from '@/components/reports/FinancialReportClient'
+import { CrmDateRangeBar } from '@/components/analytics/CrmDateRangeBar'
 import { TrendingUp, DollarSign } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
+function rawDate(sp: Record<string, string | string[] | undefined>, k: string): string | undefined {
+  const v = sp[k]
+  const s = Array.isArray(v) ? v[0] : v
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined
+  return s
+}
+
 type ReportSummary = {
-  revenueByMonth: Array<{ month: string; revenue: number; count: number }>
+  revenueByMonth: Array<{
+    month: string
+    revenue: number
+    treasuryIncome?: number
+    totalCashIn?: number
+    count: number
+  }>
   devisByStatus: Array<{ status: string; count: number; total: number }>
   pipelineFunnel: { draft: number; sent: number; accepted: number; rejected: number; expired: number }
   conversionRates: {
@@ -17,7 +33,9 @@ type ReportSummary = {
 type FinancialSummary = {
   period: { start: string; end: string }
   revenue: number
+  treasuryIncome?: number
   expenses: number
+  treasuryExpense?: number
   grossProfit: number
   grossMargin: number
   invoicesIssued: number
@@ -30,10 +48,38 @@ type FinancialSummary = {
   topClients: Array<{ contact_id: string; name: string; revenue: number; invoiceCount: number }>
 }
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
+  let from = rawDate(sp, 'from')
+  let to = rawDate(sp, 'to')
+  const end = new Date()
+  const start = new Date()
+  start.setMonth(start.getMonth() - 12)
+  if (!from) from = start.toISOString().slice(0, 10)
+  if (!to) to = end.toISOString().slice(0, 10)
+  if (from > to) {
+    const x = from
+    from = to
+    to = x
+  }
+
+  const qReports = new URLSearchParams()
+  qReports.set('from', from)
+  qReports.set('to', to)
+  qReports.set('months', '24')
+
+  const qFin = new URLSearchParams()
+  qFin.set('start', from)
+  qFin.set('end', to)
+  qFin.set('months', '24')
+
   const [reportRes, financialRes] = await Promise.all([
-    crmGetServer<ReportSummary>('reports?months=12'),
-    crmGetServer<FinancialSummary>('reports/financial?months=12'),
+    crmGetServer<ReportSummary>(`reports?${qReports.toString()}`),
+    crmGetServer<FinancialSummary>(`reports/financial?${qFin.toString()}`),
   ])
 
   const reportData = reportRes?.data ?? null
@@ -48,6 +94,8 @@ export default async function ReportsPage() {
           <p className="crm-page-subtitle">Vue d&apos;ensemble de votre performance commerciale</p>
         </div>
       </div>
+
+      <CrmDateRangeBar from={from} to={to} basePath="/reports" />
 
       {/* Financial overview */}
       <div>

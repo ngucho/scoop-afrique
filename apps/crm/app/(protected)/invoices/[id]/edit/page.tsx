@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { InvoiceBuilder } from '@/components/invoices/InvoiceBuilder'
+import { getCrmRole } from '@/lib/crm-admin'
 
 export default async function InvoiceEditPage({
   params,
@@ -23,14 +24,22 @@ export default async function InvoiceEditPage({
   })) as Array<{ description: string; quantity: number; unit_price: number; unit: string; tax_rate: number }>
 
   const defaultValues = {
-    contact_id: invoice.contact_id as string,
-    project_id: invoice.project_id as string,
+    contact_id: (invoice.contact_id as string) ?? undefined,
+    project_id: (invoice.project_id as string) ?? undefined,
     line_items: lineItems.length > 0 ? lineItems : [{ description: '', quantity: 1, unit_price: 0, unit: 'unité', tax_rate: 0 }],
     tax_rate: (invoice.tax_rate as number) ?? 0,
     discount_amount: (invoice.discount_amount as number) ?? 0,
     due_date: invoice.due_date ? (invoice.due_date as string).slice(0, 10) : undefined,
-    notes: invoice.notes as string,
+    notes: (invoice.notes as string) ?? undefined,
+    internal_notes: (invoice.internal_notes as string) ?? undefined,
   }
+
+  const role = await getCrmRole()
+  const amountPaid = Number(invoice.amount_paid ?? 0)
+  const invStatus = String(invoice.status ?? '')
+  const hasPayment = amountPaid > 0 || invStatus === 'paid' || invStatus === 'partial'
+  const privileged = role === 'manager' || role === 'admin'
+  const canEditFinancialLines = !hasPayment || privileged
 
   const [contactsRes, projectsRes] = await Promise.all([
     crmGetServer<Array<Record<string, unknown>>>('contacts?limit=100'),
@@ -57,6 +66,7 @@ export default async function InvoiceEditPage({
         defaultValues={defaultValues}
         contacts={contacts}
         projects={projects}
+        canEditFinancialLines={canEditFinancialLines}
       />
     </div>
   )

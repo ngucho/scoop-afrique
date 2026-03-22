@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button, Input, Label, Select, Textarea } from 'scoop'
-import { CONTRACT_MODELS } from '@/lib/contract-models'
+import { CONTRACT_MODELS, CONTRACT_TYPE_SELECT_OPTIONS } from '@/lib/contract-models'
 
 const schema = z
   .object({
@@ -47,7 +47,7 @@ export function ContractForm({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues ?? { type: 'service' },
+    defaultValues: defaultValues ?? { type: 'prest' },
   })
 
   const type = watch('type')
@@ -114,12 +114,10 @@ export function ContractForm({
           <Select
             id="type"
             {...register('type')}
-            options={[
-              { value: 'service', label: 'Prestation de services' },
-              { value: 'partenariat', label: 'Partenariat' },
-              { value: 'nda', label: 'NDA (Confidentialité)' },
-              { value: 'autre', label: 'Autre' },
-            ]}
+            options={CONTRACT_TYPE_SELECT_OPTIONS.map((o) => ({
+              value: o.value,
+              label: `${o.label} (${o.ref})`,
+            }))}
             className="flex-1"
           />
           {type && type !== 'autre' && CONTRACT_MODELS[type] && (
@@ -189,7 +187,9 @@ export function ContractForm({
           className="font-mono text-sm"
         />
         <p className="text-xs text-muted-foreground mt-1">
-          Utilisez &quot;Charger le modèle&quot; pour pré-remplir avec un contrat type.
+          Utilisez « Charger le modèle » pour pré-remplir depuis les templates pro (réf. SA-PREST …
+          SA-APPORT). Modifiez le JSON pour clauses particulières, avenants ou exigences d’un
+          interlocuteur.
         </p>
       </div>
       <Button type="submit" disabled={isSubmitting}>
