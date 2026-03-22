@@ -321,7 +321,14 @@ export async function updateInvoiceAmountPaid(
     .set({
       amountPaid,
       status: status as typeof crmInvoices.status.enumValues[number],
-      paidAt: amountPaid >= total ? (paidAt ? new Date(paidAt) : new Date()) : null,
+      paidAt:
+        amountPaid >= total
+          ? paidAt
+            ? new Date(paidAt)
+            : new Date()
+          : amountPaid > 0 && paidAt
+            ? new Date(paidAt)
+            : null,
     })
     .where(eq(crmInvoices.id, id))
 }

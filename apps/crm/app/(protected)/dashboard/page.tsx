@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { KpiCard } from '@/components/dashboard/KpiCard'
+import { CrmDateRangeBar } from '@/components/analytics/CrmDateRangeBar'
 import {
-  Plus,
   FileText,
   Users,
   ClipboardList,
@@ -16,20 +16,44 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
-async function getDashboardData() {
+export const dynamic = 'force-dynamic'
+
+function rawDate(sp: Record<string, string | string[] | undefined>, k: string): string | undefined {
+  const v = sp[k]
+  const s = Array.isArray(v) ? v[0] : v
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined
+  return s
+}
+
+async function getDashboardData(from?: string, to?: string) {
   try {
     const { getAccessToken } = await import('@/lib/auth0')
     const token = await getAccessToken()
     if (!token?.accessToken) return null
 
+    const dashQs = new URLSearchParams()
+    if (from && to) {
+      dashQs.set('from', from)
+      dashQs.set('to', to)
+    }
+    const dashUrl = `${API_URL}/api/v1/crm/dashboard${dashQs.toString() ? `?${dashQs}` : ''}`
+
+    const repQs = new URLSearchParams()
+    if (from && to) {
+      repQs.set('from', from)
+      repQs.set('to', to)
+    }
+    repQs.set('months', '12')
+    const repUrl = `${API_URL}/api/v1/crm/reports?${repQs}`
+
     const [dashRes, reportsRes] = await Promise.all([
-      fetch(`${API_URL}/api/v1/crm/dashboard`, {
+      fetch(dashUrl, {
         headers: { Authorization: `Bearer ${token.accessToken}` },
-        next: { revalidate: 60 },
+        cache: 'no-store',
       }),
-      fetch(`${API_URL}/api/v1/crm/reports`, {
+      fetch(repUrl, {
         headers: { Authorization: `Bearer ${token.accessToken}` },
-        next: { revalidate: 60 },
+        cache: 'no-store',
       }),
     ])
 
@@ -88,11 +112,51 @@ const QUICK_ACTIONS = [
   { href: '/invoices/new', label: 'Nouvelle facture', icon: Receipt, color: 'oklch(0.5 0.2 40)' },
 ]
 
-export default async function DashboardPage() {
-  const data = await getDashboardData()
+function formatMonthLabel(month: string): string {
+  const [y, m] = month.split('-')
+  const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1)
+  return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
+  let from = rawDate(sp, 'from')
+  let to = rawDate(sp, 'to')
+  const end = new Date()
+  const defaultTo = end.toISOString().slice(0, 10)
+  const defaultFrom = new Date(end.getFullYear(), end.getMonth(), 1).toISOString().slice(0, 10)
+  if (!from) from = defaultFrom
+  if (!to) to = defaultTo
+  if (from > to) {
+    const x = from
+    from = to
+    to = x
+  }
+
+  const data = await getDashboardData(from, to)
   const kpis = data?.dashboard?.kpis ?? {}
   const activity = data?.dashboard?.activity ?? []
-  const conversionRate = data?.reports?.conversionRates?.devisToProject ?? null
+  const conversionRate = data?.reports?.conversionRates?.devisAcceptedToProject ?? null
+
+  const cashFlowByMonth = Array.isArray(kpis.cashFlowByMonth) ? kpis.cashFlowByMonth : []
+  const maxCf = Math.max(
+    ...cashFlowByMonth.flatMap((r: { cashIn?: number; cashOut?: number }) => [
+      Number(r.cashIn) || 0,
+      Number(r.cashOut) || 0,
+    ]),
+    1
+  )
+
+  const invRev = Number(kpis.invoiceRevenueInPeriod ?? 0)
+  const trev = Number(kpis.treasuryIncomeInPeriod ?? 0)
+  const periodLabel =
+    kpis.period?.from && kpis.period?.to
+      ? `${kpis.period.from} → ${kpis.period.to}`
+      : 'Période sélectionnée'
 
   const today = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long',
@@ -135,12 +199,18 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
+      <CrmDateRangeBar from={from} to={to} basePath="/dashboard" />
+
       {/* KPI Row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
-          title="Chiffre d'affaires"
+          title="Entrées (période)"
           value={formatMoney(kpis.revenueThisMonth ?? 0)}
-          subtitle="Ce mois-ci"
+          subtitle={
+            trev > 0
+              ? `${formatMoney(invRev)} factures · ${formatMoney(trev)} trésorerie`
+              : `${formatMoney(invRev)} factures encaissées`
+          }
           icon="dollar"
           trend="up"
           index={0}
@@ -170,6 +240,66 @@ export default async function DashboardPage() {
           index={3}
         />
       </div>
+
+      {/* Flux de trésorerie (factures + trésorerie + charges) */}
+      {cashFlowByMonth.length > 0 && (
+        <div className="crm-card p-6 crm-fade-in">
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-4">
+            <div>
+              <h2 className="text-sm font-semibold">Flux encaissements / décaissements</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {periodLabel} — inclut la{' '}
+                <Link href="/treasury" className="text-primary hover:underline">
+                  trésorerie
+                </Link>
+              </p>
+            </div>
+            <div className="text-right text-xs text-muted-foreground">
+              <span className="block font-medium text-foreground">
+                Net : {formatMoney(Number(kpis.netCashFlow ?? 0))}
+              </span>
+              Sorties : {formatMoney(Number(kpis.totalCashOut ?? 0))}
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mb-3 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Entrées
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-red-500/80" />
+              Sorties
+            </span>
+          </div>
+          <div className="flex items-end gap-1 h-40">
+            {cashFlowByMonth.map((row: { month: string; cashIn?: number; cashOut?: number }) => {
+              const cin = Number(row.cashIn) || 0
+              const cout = Number(row.cashOut) || 0
+              const inPct = (cin / maxCf) * 100
+              const outPct = (cout / maxCf) * 100
+              return (
+                <div key={row.month} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                  <div className="w-full flex items-end justify-center gap-0.5 h-32">
+                    <div
+                      className="flex-1 rounded-t bg-emerald-500/80 min-h-[2px] transition-all"
+                      style={{ height: `${Math.max(inPct, cin > 0 ? 4 : 0)}%` }}
+                      title={`${formatMonthLabel(row.month)} : +${formatMoney(cin)}`}
+                    />
+                    <div
+                      className="flex-1 rounded-t bg-red-500/70 min-h-[2px] transition-all"
+                      style={{ height: `${Math.max(outPct, cout > 0 ? 4 : 0)}%` }}
+                      title={`${formatMonthLabel(row.month)} : −${formatMoney(cout)}`}
+                    />
+                  </div>
+                  <span className="text-[9px] text-muted-foreground font-medium truncate w-full text-center">
+                    {formatMonthLabel(row.month)}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Middle row: Quick actions + Conversion + Alerts */}
       <div className="grid gap-6 lg:grid-cols-3">

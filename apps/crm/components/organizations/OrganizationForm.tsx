@@ -77,7 +77,19 @@ export function OrganizationForm({
       </div>
       <div>
         <Label htmlFor="type">Type</Label>
-        <Input id="type" {...register('type')} placeholder="PME, startup, label..." />
+        <Input
+          id="type"
+          list="org-form-type-suggestions"
+          {...register('type')}
+          placeholder="Saisie libre : PME, label, ONG, média…"
+        />
+        <datalist id="org-form-type-suggestions">
+          {['media', 'marque', 'agence', 'ONG', 'startup', 'institution', 'PME', 'label', 'autre'].map(
+            (s) => (
+              <option key={s} value={s} />
+            )
+          )}
+        </datalist>
       </div>
       <div>
         <Label htmlFor="email">Email</Label>

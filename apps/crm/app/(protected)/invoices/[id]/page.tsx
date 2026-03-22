@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Heading } from 'scoop'
+import { Heading, Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { InvoiceActions } from '@/components/invoices/InvoiceActions'
-import { PaymentForm } from '@/components/invoices/PaymentForm'
+import { InvoicePaymentsSection } from '@/components/invoices/InvoicePaymentsSection'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { ActivityClient } from '@/components/activity/ActivityClient'
@@ -43,11 +43,16 @@ export default async function InvoiceDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <Heading as="h1" level="h1">
           {invoice.reference as string}
         </Heading>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/invoices/${id}/edit`}>
+            <Button variant="secondary" size="sm" className="rounded-full">
+              Modifier la facture
+            </Button>
+          </Link>
           <InvoiceActions invoiceId={id} status={invoice.status as string} />
           <AdminArchiveRestoreActions
             resource="invoices"
@@ -56,12 +61,6 @@ export default async function InvoiceDetailPage({
             isAdmin={isAdmin}
           />
         </div>
-      </div>
-
-      <div className="flex gap-4">
-        <Link href={`/invoices/${id}/edit`}>
-          <span className="text-sm text-primary hover:underline">Modifier</span>
-        </Link>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -186,51 +185,7 @@ export default async function InvoiceDetailPage({
         ) : null}
       </div>
 
-      <section>
-        <h2 className="font-semibold mb-3">Paiements</h2>
-        {payments.length > 0 && (
-          <div className="rounded-lg border border-border overflow-hidden mb-4">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="text-left p-3">Date</th>
-                  <th className="text-left p-3">Méthode</th>
-                  <th className="text-right p-3">Montant</th>
-                  <th className="text-left p-3">Reçu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((p) => (
-                  <tr key={p.id as string} className="border-t border-border">
-                    <td className="p-3">
-                      {p.paid_at
-                        ? new Date(p.paid_at as string).toLocaleDateString('fr-FR')
-                        : '—'}
-                    </td>
-                    <td className="p-3 capitalize">{String(p.method ?? '—').replace('_', ' ')}</td>
-                    <td className="p-3 text-right">
-                      {((p.amount as number) ?? 0).toLocaleString('fr-FR')} FCFA
-                    </td>
-                    <td className="p-3">
-                      <a
-                        href={`/api/crm/payments/${p.id}/receipt/pdf`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline text-sm"
-                      >
-                        PDF
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {balance > 0 && (
-          <PaymentForm invoiceId={id} />
-        )}
-      </section>
+      <InvoicePaymentsSection invoiceId={id} payments={payments} balance={balance} />
 
       <div className="space-y-2">
         <p className="crm-section-title mb-0">Journal d&apos;activité</p>

@@ -23,6 +23,9 @@
     { "idx": 18, "version": "7", "when": 1742432400000, "tag": "0018_devis_requests_project_id", "breakpoints": true },
     { "idx": 19, "version": "7", "when": 1742432500000, "tag": "0019_crm_devis_project_id_ensure", "breakpoints": true },
     { "idx": 20, "version": "7", "when": 1742519000000, "tag": "0020_crm_devis_discount", "breakpoints": true },
-    { "idx": 21, "version": "7", "when": 1742605400000, "tag": "0021_devis_requests_archived", "breakpoints": true }
+    { "idx": 21, "version": "7", "when": 1742605400000, "tag": "0021_devis_requests_archived", "breakpoints": true },
+    { "idx": 22, "version": "7", "when": 1742691800000, "tag": "0024_crm_reminders_status", "breakpoints": true },
+    { "idx": 23, "version": "7", "when": 1742778200000, "tag": "0025_crm_treasury_movements", "breakpoints": true },
+    { "idx": 24, "version": "7", "when": 1742864600000, "tag": "0026_crm_project_status_paused", "breakpoints": true }
   ]
 }
