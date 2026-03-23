@@ -12,7 +12,7 @@ async function getToken(): Promise<string | null> {
 export async function crmFetchServer<T>(
   path: string,
   init?: RequestInit
-): Promise<{ data: T; total?: number } | null> {
+): Promise<{ data: T; total?: number; counts?: Record<string, number> } | null> {
   const token = await getToken()
   if (!token) return null
 
@@ -35,9 +35,12 @@ export async function crmFetchServer<T>(
   return {
     data: json.data ?? json,
     total: json.total,
+    counts: json.counts,
   }
 }
 
-export async function crmGetServer<T>(path: string): Promise<{ data: T; total?: number } | null> {
+export async function crmGetServer<T>(
+  path: string
+): Promise<{ data: T; total?: number; counts?: Record<string, number> } | null> {
   return crmFetchServer<T>(path, { method: 'GET' })
 }

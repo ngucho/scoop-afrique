@@ -6,15 +6,28 @@ import type { AppEnv } from '../../types.js'
 const app = new Hono<AppEnv>()
 app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
+function parseDateRange(c: { req: { query: (k: string) => string | undefined } }): {
+  from: string
+  to: string
+} | undefined {
+  const from = c.req.query('from')?.slice(0, 10)
+  const to = c.req.query('to')?.slice(0, 10)
+  const re = /^\d{4}-\d{2}-\d{2}$/
+  if (!from || !to || !re.test(from) || !re.test(to)) return undefined
+  return from <= to ? { from, to } : { from: to, to: from }
+}
+
 app.get('/', async (c) => {
-  const months = Math.min(Math.max(Number(c.req.query('months')) || 12, 1), 24)
-  const summary = await reportsService.getReportsSummary(months)
+  const months = Math.min(Math.max(Number(c.req.query('months')) || 12, 1), 36)
+  const range = parseDateRange(c)
+  const summary = await reportsService.getReportsSummary(months, range)
   return c.json({ data: summary })
 })
 
 app.get('/revenue', async (c) => {
-  const months = Math.min(Math.max(Number(c.req.query('months')) || 12, 1), 24)
-  const data = await reportsService.getRevenueByMonth(months)
+  const months = Math.min(Math.max(Number(c.req.query('months')) || 12, 1), 36)
+  const range = parseDateRange(c)
+  const data = await reportsService.getRevenueByMonth(months, range)
   return c.json({ data })
 })
 

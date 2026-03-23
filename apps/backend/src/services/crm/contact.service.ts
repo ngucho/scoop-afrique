@@ -1,7 +1,7 @@
 /**
  * CRM contact service
  */
-import { eq, and, desc, or, ilike, count, sql } from 'drizzle-orm'
+import { eq, and, desc, asc, or, ilike, count, sql } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmContacts } from '../../db/schema.js'
 import { config } from '../../config/env.js'
@@ -11,7 +11,11 @@ import type { CreateContactInput, UpdateContactInput } from '../../schemas/crm/c
 
 export async function listContacts(params: {
   type?: string
+  country?: string
+  city?: string
   search?: string
+  sort?: 'created_at' | 'last_name' | 'email' | 'company'
+  order?: 'asc' | 'desc'
   limit?: number
   offset?: number
   archived?: boolean
@@ -21,30 +25,48 @@ export async function listContacts(params: {
   const limit = params.limit ?? 50
   const offset = params.offset ?? 0
 
-  const conditions: ReturnType<typeof eq>[] = []
+  const conditions: Parameters<typeof and>[number][] = []
   if (params.type) conditions.push(eq(crmContacts.type, params.type as any))
+  if (params.country) conditions.push(eq(crmContacts.country, params.country))
+  if (params.city) conditions.push(ilike(crmContacts.city, `%${params.city}%`))
   // Soft-delete: hide archived contacts by default
   if (params.archived === true) conditions.push(eq(crmContacts.isArchived, true))
   else conditions.push(eq(crmContacts.isArchived, false))
   if (params.search) {
     const s = `%${params.search}%`
-    conditions.push(or(
-      ilike(crmContacts.firstName, s),
-      ilike(crmContacts.lastName, s),
-      ilike(crmContacts.email ?? '', s),
-      ilike(crmContacts.company ?? '', s)
-    )!)
+    conditions.push(
+      or(
+        ilike(crmContacts.firstName, s),
+        ilike(crmContacts.lastName, s),
+        ilike(crmContacts.email ?? '', s),
+        ilike(crmContacts.company ?? '', s),
+        ilike(crmContacts.phone ?? '', s),
+        ilike(crmContacts.whatsapp ?? '', s),
+        ilike(crmContacts.city ?? '', s)
+      )!
+    )
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
 
   const [countRow] = await db.select({ count: count() }).from(crmContacts).where(whereClause)
   const total = countRow?.count ?? 0
 
+  const sortKey = params.sort ?? 'created_at'
+  const orderFn = params.order === 'asc' ? asc : desc
+  const orderCol =
+    sortKey === 'last_name'
+      ? crmContacts.lastName
+      : sortKey === 'email'
+        ? crmContacts.email
+        : sortKey === 'company'
+          ? crmContacts.company
+          : crmContacts.createdAt
+
   const rows = await db
     .select()
     .from(crmContacts)
     .where(whereClause)
-    .orderBy(desc(crmContacts.createdAt))
+    .orderBy(orderFn(orderCol), asc(crmContacts.id))
     .limit(limit)
     .offset(offset)
 

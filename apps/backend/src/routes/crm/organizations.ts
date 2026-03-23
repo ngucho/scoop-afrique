@@ -9,11 +9,19 @@ app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const search = c.req.query('search')
+  const type = c.req.query('type')
+  const country = c.req.query('country')
+  const sort = c.req.query('sort') as 'name' | 'created_at' | undefined
+  const order = c.req.query('order') as 'asc' | 'desc' | undefined
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
 
   const { data, total } = await organizationService.listOrganizations({
     search: search || undefined,
+    type: type || undefined,
+    country: country || undefined,
+    sort: sort || undefined,
+    order: order || undefined,
     limit,
     offset,
   })
