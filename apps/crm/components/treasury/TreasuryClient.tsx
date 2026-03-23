@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
 import { Pencil, Trash2, Plus } from 'lucide-react'
+import {
+  CashFlowByMonthChart,
+  type CashFlowMonthRow,
+} from '@/components/analytics/CashFlowByMonthChart'
 
 const INCOME_CATS = [
   { value: 'monetization', label: 'Monétisation (pub, partenariats)' },
@@ -46,6 +50,7 @@ export function TreasuryClient({
   rangeFrom,
   rangeTo,
   projects,
+  cashFlow = [],
 }: {
   initialMovements: Movement[]
   initialTotal: number
@@ -53,6 +58,7 @@ export function TreasuryClient({
   rangeFrom: string
   rangeTo: string
   projects: Array<{ id: string; reference: string; title: string }>
+  cashFlow?: CashFlowMonthRow[]
 }) {
   const router = useRouter()
   const [periodFrom, setPeriodFrom] = useState(rangeFrom)
@@ -226,6 +232,11 @@ export function TreasuryClient({
           </p>
         </div>
       </div>
+
+      <CashFlowByMonthChart
+        cashFlow={cashFlow}
+        emptyMessage="Aucune donnée sur cette période. Enregistrez des factures, paiements, dépenses projet ou mouvements de trésorerie pour alimenter le graphique."
+      />
 
       <div className="flex flex-wrap gap-2">
         {!showForm ? (

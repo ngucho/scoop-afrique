@@ -37,7 +37,12 @@ export default async function TreasuryPage({
     to = tmp
   }
 
-  const [summaryRes, movementsRes, projectsRes] = await Promise.all([
+  const qFin = new URLSearchParams()
+  qFin.set('start', from)
+  qFin.set('end', to)
+  qFin.set('months', '24')
+
+  const [summaryRes, movementsRes, projectsRes, financialRes] = await Promise.all([
     crmGetServer<{ income: number; expense: number; from: string; to: string }>(
       `treasury/summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
     ),
@@ -45,6 +50,9 @@ export default async function TreasuryPage({
       `treasury?limit=500&sort=occurred_at&order=desc&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
     ),
     crmGetServer<Array<Record<string, unknown>>>('projects?limit=100'),
+    crmGetServer<{ cashFlow?: Array<{ month: string; revenue: number; expenses: number; net: number }> }>(
+      `reports/financial?${qFin.toString()}`
+    ),
   ])
 
   const summary = summaryRes?.data ?? { income: 0, expense: 0, from, to }
@@ -55,6 +63,7 @@ export default async function TreasuryPage({
     reference: String(p.reference ?? ''),
     title: String(p.title ?? ''),
   }))
+  const cashFlow = financialRes?.data?.cashFlow ?? []
 
   return (
     <div className="space-y-6 crm-fade-in">
@@ -74,6 +83,7 @@ export default async function TreasuryPage({
         rangeFrom={from}
         rangeTo={to}
         projects={projects}
+        cashFlow={cashFlow}
       />
     </div>
   )
