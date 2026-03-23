@@ -1,12 +1,15 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { CashFlowByMonthChart } from '@/components/analytics/CashFlowByMonthChart'
 
 type FinancialSummary = {
   period: { start: string; end: string }
   revenue: number
+  treasuryIncome?: number
   expenses: number
+  treasuryExpense?: number
   grossProfit: number
   grossMargin: number
   invoicesIssued: number
@@ -60,17 +63,6 @@ function FinancialKpi({
 }
 
 export function FinancialReportClient({ initialData }: { initialData: FinancialSummary | null }) {
-  const [hoveredMonth, setHoveredMonth] = useState<string | null>(null)
-  const [cashFlowView, setCashFlowView] = useState<'all' | 'revenue' | 'expenses'>('all')
-
-  const maxCashFlow = useMemo(() => {
-    if (!initialData?.cashFlow?.length) return 1
-    return Math.max(
-      ...initialData.cashFlow.flatMap((cf) => [cf.revenue, cf.expenses]),
-      1
-    )
-  }, [initialData])
-
   if (!initialData) {
     return (
       <div className="crm-card crm-empty py-12">
@@ -82,7 +74,9 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
 
   const {
     revenue,
+    treasuryIncome = 0,
     expenses,
+    treasuryExpense = 0,
     grossProfit,
     grossMargin,
     invoicesIssued,
@@ -94,24 +88,49 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
     topClients,
   } = initialData
 
+  const periodLabel =
+    initialData.period?.start && initialData.period?.end
+      ? `${initialData.period.start} → ${initialData.period.end}`
+      : null
+
   return (
     <div className="space-y-6">
+      {periodLabel && (
+        <p className="text-xs text-muted-foreground -mt-1">
+          Période analysée : <span className="font-medium text-foreground">{periodLabel}</span> — factures
+          filtrées par <span className="font-medium">date d&apos;échéance</span> (ou date de création si pas
+          d&apos;échéance), encaissements par <span className="font-medium">date de paiement</span>, dépenses
+          projet et{' '}
+          <Link href="/treasury" className="text-primary hover:underline">
+            mouvements de trésorerie
+          </Link>
+          )
+        </p>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <FinancialKpi
-          label="Chiffre d'affaires"
+          label="Revenus (factures)"
           value={formatMoney(revenue)}
-          sub="Encaissé sur la période"
+          sub={
+            treasuryIncome > 0
+              ? `+ ${formatMoney(treasuryIncome)} autres revenus (trésorerie)`
+              : 'Encaissé sur la période'
+          }
           color="oklch(0.42 0.14 145)"
           trend="up"
         />
         <FinancialKpi
-          label="Dépenses"
-          value={formatMoney(expenses)}
-          sub="Total charges"
+          label="Charges"
+          value={formatMoney(expenses + treasuryExpense)}
+          sub={
+            treasuryExpense > 0
+              ? `${formatMoney(expenses)} projets · ${formatMoney(treasuryExpense)} trésorerie`
+              : 'Dépenses projet'
+          }
           color="oklch(0.5 0.18 20)"
-          trend={expenses > revenue ? 'down' : 'neutral'}
+          trend={expenses + treasuryExpense > revenue ? 'down' : 'neutral'}
         />
         <FinancialKpi
           label="Marge brute"
@@ -146,102 +165,7 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
         </div>
       </div>
 
-      {/* Cash Flow chart */}
-      <div className="crm-card p-6">
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <h3 className="text-sm font-semibold">Flux de trésorerie</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Revenus vs Dépenses par mois</p>
-          </div>
-          <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'var(--muted)' }}>
-            {(['all', 'revenue', 'expenses'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setCashFlowView(v)}
-                className="px-3 py-1 rounded-md text-xs font-medium transition-all"
-                style={cashFlowView === v ? { background: 'var(--card)', boxShadow: 'var(--shadow-sm)' } : { color: 'var(--muted-foreground)' }}
-              >
-                {v === 'all' ? 'Tout' : v === 'revenue' ? 'Revenus' : 'Dépenses'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center gap-4 mb-4">
-          {cashFlowView !== 'expenses' && (
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full" style={{ background: 'oklch(0.42 0.14 145)' }} />
-              <span className="text-xs text-muted-foreground">Revenus</span>
-            </div>
-          )}
-          {cashFlowView !== 'revenue' && (
-            <div className="flex items-center gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full" style={{ background: 'oklch(0.5 0.18 20)' }} />
-              <span className="text-xs text-muted-foreground">Dépenses</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-end gap-1.5 h-48 relative">
-          {cashFlow.map((cf) => {
-            const isHovered = hoveredMonth === cf.month
-            const revPct = (cf.revenue / maxCashFlow) * 100
-            const expPct = (cf.expenses / maxCashFlow) * 100
-
-            return (
-              <div
-                key={cf.month}
-                className="flex-1 flex flex-col items-center gap-1 relative group"
-                onMouseEnter={() => setHoveredMonth(cf.month)}
-                onMouseLeave={() => setHoveredMonth(null)}
-              >
-                {isHovered && (
-                  <div
-                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-10 rounded-xl px-3 py-2 text-xs shadow-xl whitespace-nowrap"
-                    style={{ background: 'var(--popover)', border: '1px solid var(--border)' }}
-                  >
-                    <p className="font-semibold text-foreground mb-0.5">{formatMonthLabel(cf.month)}</p>
-                    {cashFlowView !== 'expenses' && (
-                      <p style={{ color: 'oklch(0.42 0.14 145)' }}>↑ {formatMoney(cf.revenue)}</p>
-                    )}
-                    {cashFlowView !== 'revenue' && (
-                      <p style={{ color: 'oklch(0.5 0.18 20)' }}>↓ {formatMoney(cf.expenses)}</p>
-                    )}
-                    <p className="font-semibold mt-0.5" style={{ color: cf.net >= 0 ? 'oklch(0.42 0.14 145)' : 'oklch(0.5 0.18 20)' }}>
-                      Net: {formatMoney(cf.net)}
-                    </p>
-                  </div>
-                )}
-
-                <div className="w-full h-full flex items-end justify-center gap-0.5">
-                  {cashFlowView !== 'expenses' && (
-                    <div
-                      className="flex-1 rounded-t transition-all duration-200"
-                      style={{
-                        height: `${Math.max(revPct, cf.revenue > 0 ? 2 : 0)}%`,
-                        background: isHovered ? 'oklch(0.42 0.14 145)' : 'oklch(0.42 0.14 145 / 0.7)',
-                      }}
-                    />
-                  )}
-                  {cashFlowView !== 'revenue' && (
-                    <div
-                      className="flex-1 rounded-t transition-all duration-200"
-                      style={{
-                        height: `${Math.max(expPct, cf.expenses > 0 ? 2 : 0)}%`,
-                        background: isHovered ? 'oklch(0.5 0.18 20)' : 'oklch(0.5 0.18 20 / 0.6)',
-                      }}
-                    />
-                  )}
-                </div>
-                <span className="text-[9px] text-muted-foreground font-medium">
-                  {formatMonthLabel(cf.month)}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <CashFlowByMonthChart cashFlow={cashFlow} />
 
       {/* Bottom row: expenses by category + top clients */}
       <div className="grid gap-6 lg:grid-cols-2">

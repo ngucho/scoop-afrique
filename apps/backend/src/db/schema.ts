@@ -61,6 +61,7 @@ export const crmProjectStatusEnum = pgEnum('crm_project_status', [
   'draft',
   'confirmed',
   'in_progress',
+  'paused',
   'review',
   'delivered',
   'closed',
@@ -107,6 +108,16 @@ export const crmReminderChannelEnum = pgEnum('crm_reminder_channel', [
   'whatsapp',
   'both',
 ])
+export const crmReminderStatusEnum = pgEnum('crm_reminder_status', [
+  'draft',
+  'scheduled',
+  'sent',
+  'replied',
+  'successful',
+  'closed',
+  'cancelled',
+])
+export const crmTreasuryDirectionEnum = pgEnum('crm_treasury_direction', ['income', 'expense'])
 export const crmDeliverableTypeEnum = pgEnum('crm_deliverable_type', [
   'video_short',
   'video_long',
@@ -521,6 +532,22 @@ export const crmExpenses = pgTable('crm_expenses', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const crmTreasuryMovements = pgTable('crm_treasury_movements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  direction: crmTreasuryDirectionEnum('direction').notNull(),
+  category: text('category').notNull(),
+  amount: integer('amount').notNull(),
+  currency: text('currency').notNull().default('FCFA'),
+  occurredAt: date('occurred_at').notNull().default(sql`CURRENT_DATE`),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  metadata: jsonb('metadata').default({}),
+  projectId: uuid('project_id'),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
 export const crmReminders = pgTable('crm_reminders', {
   id: uuid('id').primaryKey().defaultRandom(),
   contactId: uuid('contact_id'),
@@ -531,8 +558,10 @@ export const crmReminders = pgTable('crm_reminders', {
   message: text('message').notNull(),
   scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
   sentAt: timestamp('sent_at', { withTimezone: true }),
+  status: crmReminderStatusEnum('status').notNull().default('draft'),
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const crmActivityLog = pgTable('crm_activity_log', {

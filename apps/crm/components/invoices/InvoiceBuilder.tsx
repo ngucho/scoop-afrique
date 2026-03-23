@@ -53,6 +53,8 @@ interface InvoiceBuilderProps {
   projects?: Array<{ id: string; reference: string; title: string }>
   defaultProjectId?: string
   lineItemsFromProject?: Array<LineItemInput>
+  /** When false, lines / TVA / réduction are read-only (paiements enregistrés, rôle éditeur). */
+  canEditFinancialLines?: boolean
 }
 
 function normalizeLineItem(item: LineItemInput): { description: string; quantity: number; unit_price: number; unit: string; tax_rate: number } {
@@ -72,6 +74,7 @@ export function InvoiceBuilder({
   projects = [],
   defaultProjectId,
   lineItemsFromProject,
+  canEditFinancialLines = true,
 }: InvoiceBuilderProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -115,21 +118,32 @@ export function InvoiceBuilder({
   const taxAmount = Math.round(taxable * (taxRate / 100))
   const total = taxable + taxAmount
 
+  const financialLocked = Boolean(invoiceId) && !canEditFinancialLines
+  const lineItemsReadOnly = useProjectLineItems || financialLocked
+
   async function onSubmit(data: FormData) {
     setIsSubmitting(true)
-    const body = {
-      ...data,
-      contact_id: data.contact_id || undefined,
-      project_id: data.project_id || undefined,
-      line_items: data.line_items.map((i) => ({
-        ...i,
-        quantity: Number(i.quantity),
-        unit_price: Number(i.unit_price),
-        // Avoid NaN when tax_rate is missing
-        tax_rate: Number(i.tax_rate ?? 0),
-      })),
-      discount_amount: data.discount_amount ?? 0,
-    }
+    const body =
+      financialLocked && invoiceId
+        ? {
+            contact_id: data.contact_id || undefined,
+            project_id: data.project_id || undefined,
+            due_date: data.due_date,
+            notes: data.notes,
+            internal_notes: data.internal_notes,
+          }
+        : {
+            ...data,
+            contact_id: data.contact_id || undefined,
+            project_id: data.project_id || undefined,
+            line_items: data.line_items.map((i) => ({
+              ...i,
+              quantity: Number(i.quantity),
+              unit_price: Number(i.unit_price),
+              tax_rate: Number(i.tax_rate ?? 0),
+            })),
+            discount_amount: data.discount_amount ?? 0,
+          }
     const url = invoiceId ? `/api/crm/invoices/${invoiceId}` : '/api/crm/invoices'
     const res = await fetch(url, {
       method: invoiceId ? 'PATCH' : 'POST',
@@ -151,6 +165,16 @@ export function InvoiceBuilder({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">
+      {financialLocked && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm">
+          <p className="font-medium text-amber-800 dark:text-amber-200">Montants verrouillés</p>
+          <p className="text-amber-700 dark:text-amber-300 mt-1">
+            Cette facture a des paiements enregistrés. Seuls les notes, l&apos;échéance et le rattachement
+            contact/projet sont modifiables. Pour corriger les lignes ou la TVA, un rôle manager ou admin est
+            requis.
+          </p>
+        </div>
+      )}
       {defaultProjectId && !lineItemsFromProject?.length && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 text-sm">
           <p className="font-medium text-amber-800 dark:text-amber-200">Projet sans devis</p>
@@ -208,7 +232,7 @@ export function InvoiceBuilder({
 
       <div>
         <Label>Lignes {useProjectLineItems && '(du devis du projet)'}</Label>
-        {useProjectLineItems ? (
+        {lineItemsReadOnly ? (
           <div className="mt-2 rounded-lg border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
@@ -307,6 +331,7 @@ export function InvoiceBuilder({
             max={100}
             step={0.01}
             className="w-24"
+            disabled={financialLocked}
           />
         </div>
         <div>
@@ -318,6 +343,7 @@ export function InvoiceBuilder({
             min={0}
             className="w-28"
             placeholder="0"
+            disabled={financialLocked}
           />
         </div>
         <div>

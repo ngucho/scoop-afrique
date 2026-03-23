@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
-import { Plus, Receipt, ArrowRight, AlertCircle } from 'lucide-react'
+import { Plus, Receipt, ArrowRight, AlertCircle, Pencil } from 'lucide-react'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 
@@ -94,6 +94,7 @@ export default async function InvoicesPage() {
                 <th className="hidden md:table-cell">Échéance</th>
                 <th className="text-right">Total</th>
                 <th className="text-right hidden sm:table-cell">Payé</th>
+                <th className="w-10 text-center">Éditer</th>
                 <th className="w-8" />
                 <th className="w-8" />
               </tr>
@@ -136,6 +137,15 @@ export default async function InvoicesPage() {
                         {formatMoney(paid, currency)}
                       </span>
                     </td>
+                    <td className="text-center">
+                      <Link
+                        href={`/invoices/${inv.id}/edit`}
+                        className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
+                        title="Modifier"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
+                    </td>
                     <td>
                       <AdminArchiveRestoreActions
                         resource="invoices"
@@ -169,6 +179,7 @@ export default async function InvoicesPage() {
                 <th className="hidden md:table-cell">Échéance</th>
                 <th className="text-right">Total</th>
                 <th className="text-right hidden sm:table-cell">Payé</th>
+                <th className="w-10 text-center">Éditer</th>
                 <th className="w-8" />
                 <th className="w-8" />
               </tr>
@@ -210,6 +221,15 @@ export default async function InvoicesPage() {
                       <span className="text-xs" style={{ color: paid >= total ? 'oklch(0.42 0.14 145)' : 'var(--muted-foreground)' }}>
                         {formatMoney(paid, currency)}
                       </span>
+                    </td>
+                    <td className="text-center">
+                      <Link
+                        href={`/invoices/${inv.id}/edit`}
+                        className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
+                        title="Modifier"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Link>
                     </td>
                     <td>
                       <AdminArchiveRestoreActions

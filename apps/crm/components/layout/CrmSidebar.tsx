@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Inbox,
   TrendingUp,
+  Wallet,
 } from 'lucide-react'
 
 const CRM_NAV_GROUPS = [
@@ -53,6 +54,7 @@ const CRM_NAV_GROUPS = [
       { href: '/invoices', label: 'Factures', icon: Receipt },
       { href: '/contracts', label: 'Contrats', icon: FileSignature },
       { href: '/reminders', label: 'Relances', icon: Bell },
+      { href: '/treasury', label: 'Trésorerie', icon: Wallet },
     ],
   },
   {

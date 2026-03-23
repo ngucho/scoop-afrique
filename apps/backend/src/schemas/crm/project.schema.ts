@@ -4,6 +4,7 @@ export const crmProjectStatusEnum = z.enum([
   'draft',
   'confirmed',
   'in_progress',
+  'paused',
   'review',
   'delivered',
   'closed',
