@@ -22,6 +22,8 @@ import articlesRoutes from './routes/articles.js'
 import categoriesRoutes from './routes/categories.js'
 import commentsRoutes from './routes/comments.js'
 import newsletterRoutes from './routes/newsletter.js'
+import readerRoutes from './routes/reader.js'
+import digestRoutes from './routes/digest.js'
 import announcementsRoutes from './routes/announcements.js'
 import adsRoutes from './routes/ads.js'
 import devisRoutes from './routes/devis.js'
@@ -60,6 +62,8 @@ const prefix = config.apiPrefix // /api/v1
 app.route(`${prefix}/articles`, articlesRoutes)
 app.route(`${prefix}/categories`, categoriesRoutes)
 app.route(`${prefix}/newsletter`, newsletterRoutes)
+app.route(`${prefix}/reader`, readerRoutes)
+app.route(`${prefix}/digest`, digestRoutes)
 app.route(`${prefix}/announcements`, announcementsRoutes)
 app.route(`${prefix}/ads`, adsRoutes)
 app.route(`${prefix}/devis`, devisRoutes)

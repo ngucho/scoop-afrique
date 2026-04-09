@@ -42,6 +42,17 @@ export const newsletterStatusEnum = pgEnum('newsletter_status', [
   'confirmed',
   'unsubscribed',
 ])
+
+export const digestFrequencyEnum = pgEnum('digest_frequency', ['daily', 'weekly', 'monthly', 'off'])
+
+export const emailDeliveryStatusEnum = pgEnum('email_delivery_status', [
+  'queued',
+  'sent',
+  'delivered',
+  'bounced',
+  'failed',
+  'complained',
+])
 export const announcementAudienceEnum = pgEnum('announcement_audience', ['all', 'subscribers', 'guests'])
 export const adCampaignStatusEnum = pgEnum('ad_campaign_status', ['draft', 'active', 'paused', 'ended'])
 export const adEventTypeEnum = pgEnum('ad_event_type', ['impression', 'click'])
@@ -53,6 +64,7 @@ export const newsletterCampaignCadenceEnum = pgEnum('newsletter_campaign_cadence
 export const newsletterCampaignStatusEnum = pgEnum('newsletter_campaign_status', [
   'draft',
   'scheduled',
+  'sending',
   'sent',
   'cancelled',
 ])
@@ -163,20 +175,11 @@ export const announcementPlacementEnum = pgEnum('announcement_placement', [
   'inline',
   'footer',
 ])
-export const adCampaignStatusEnum = pgEnum('ad_campaign_status', ['draft', 'active', 'paused', 'ended'])
-export const digestFrequencyEnum = pgEnum('digest_frequency', ['daily', 'weekly', 'monthly'])
 export const digestJobStatusEnum = pgEnum('digest_job_status', [
   'pending',
   'processing',
   'sent',
   'failed',
-])
-export const newsletterCampaignStatusEnum = pgEnum('newsletter_campaign_status', [
-  'draft',
-  'scheduled',
-  'sending',
-  'sent',
-  'cancelled',
 ])
 
 // -----------------------------------------------------------------------------
@@ -350,6 +353,43 @@ export const adminAuditLog = pgTable('admin_audit_log', {
   reason: text('reason'),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Reader-facing Auth0 accounts: preferences + digest schedule (separate from staff profiles). */
+export const readerSubscribers = pgTable('reader_subscribers', {
+  auth0Sub: text('auth0_sub').primaryKey(),
+  email: text('email').notNull(),
+  emailNormalized: text('email_normalized').notNull().unique(),
+  topicCategoryIds: uuid('topic_category_ids').array().notNull().default([]),
+  digestFrequency: digestFrequencyEnum('digest_frequency').notNull().default('weekly'),
+  unsubscribedAt: timestamp('unsubscribed_at', { withTimezone: true }),
+  unsubscribeToken: text('unsubscribe_token').notNull().unique(),
+  nextDigestAt: timestamp('next_digest_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const emailOutbound = pgTable('email_outbound', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  kind: text('kind').notNull(),
+  toEmail: text('to_email').notNull(),
+  resendMessageId: text('resend_message_id'),
+  status: emailDeliveryStatusEnum('status').notNull().default('queued'),
+  metadata: jsonb('metadata').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const digestJobRuns = pgTable('digest_job_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  frequency: digestFrequencyEnum('frequency').notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+  articleIds: uuid('article_ids').array().notNull().default([]),
+  recipientsAttempted: integer('recipients_attempted').notNull().default(0),
+  recipientsSent: integer('recipients_sent').notNull().default(0),
+  recipientsFailed: integer('recipients_failed').notNull().default(0),
+  error: text('error'),
 })
 
 export const media = pgTable('media', {
@@ -745,7 +785,7 @@ export const announcements = pgTable('announcements', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const adSlots = pgTable('ad_slots', {
+export const mediaAdSlots = pgTable('ad_slots', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
@@ -757,7 +797,7 @@ export const adSlots = pgTable('ad_slots', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const adCampaigns = pgTable('ad_campaigns', {
+export const mediaAdCampaigns = pgTable('ad_campaigns', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   status: adCampaignStatusEnum('status').notNull().default('draft'),
@@ -770,7 +810,7 @@ export const adCampaigns = pgTable('ad_campaigns', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const adCreatives = pgTable('ad_creatives', {
+export const mediaAdCreatives = pgTable('ad_creatives', {
   id: uuid('id').primaryKey().defaultRandom(),
   campaignId: uuid('campaign_id').notNull(),
   slotId: uuid('slot_id').notNull(),
@@ -828,7 +868,7 @@ export const subscriberSegments = pgTable('subscriber_segments', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const newsletterCampaigns = pgTable('newsletter_campaigns', {
+export const digestNewsletterCampaigns = pgTable('newsletter_campaigns', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   segmentId: uuid('segment_id'),

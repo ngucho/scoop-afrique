@@ -7,15 +7,18 @@ const STORAGE_KEY = 'scoop_cookie_consent'
 type Consent = 'accepted' | 'rejected'
 
 export function CookieConsentBanner() {
-  const [visible, setVisible] = useState(false)
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY) as Consent | null
+      return stored !== 'accepted' && stored !== 'rejected'
+    } catch {
+      return true
+    }
+  })
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Consent | null
-      if (stored !== 'accepted' && stored !== 'rejected') setVisible(true)
-    } catch {
-      setVisible(true)
-    }
+    // Keep hook ordering explicit; visibility is initialized lazily above.
   }, [])
 
   const save = (value: Consent) => {

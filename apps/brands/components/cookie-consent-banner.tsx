@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from 'scoop'
 
@@ -8,16 +8,15 @@ const STORAGE_KEY = 'scoop_cookie_consent'
 type Consent = 'accepted' | 'rejected'
 
 export function CookieConsentBanner() {
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined') return false
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Consent | null
-      if (stored !== 'accepted' && stored !== 'rejected') setVisible(true)
+      return stored !== 'accepted' && stored !== 'rejected'
     } catch {
-      setVisible(true)
+      return true
     }
-  }, [])
+  })
 
   const save = (value: Consent) => {
     try {

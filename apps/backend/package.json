@@ -17,9 +17,9 @@
     "db:bootstrap": "tsx scripts/bootstrap-drizzle-migrations.ts"
   },
   "dependencies": {
-    "@scoop-afrique/api-logger": "workspace:*",
     "@hono/node-server": "^1.13.0",
     "@react-pdf/renderer": "^4.3.2",
+    "@scoop-afrique/api-logger": "workspace:*",
     "@supabase/supabase-js": "^2.47.0",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.45.1",
@@ -28,9 +28,11 @@
     "postgres": "^3.4.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "svix": "^1.90.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.0",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
@@ -39,6 +41,7 @@
     "drizzle-kit": "^0.31.9",
     "eslint": "^9.17.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.58.1"
   }
 }

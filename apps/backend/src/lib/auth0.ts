@@ -97,6 +97,81 @@ export function verifyAuth0Token(accessToken: string): Auth0UserInfo | null {
   const permissions = (payload.permissions as string[] | undefined) ?? []
   const role = roleFromPermissions(permissions)
 
+  const azp = typeof payload.azp === 'string' ? payload.azp : undefined
+  if (config.auth0Reader && azp === config.auth0Reader.clientId) {
+    logger.jwtInvalid('Reader app token cannot access staff APIs')
+    return null
+  }
+
+  const email =
+    (payload.email as string) ??
+    (payload[`https://${domain}/email`] as string) ??
+    ''
+
+  return {
+    sub,
+    email,
+    role,
+  }
+}
+
+/**
+ * Verify access token for the reader Auth0 application only (JWT `azp` must match).
+ * Used for subscriber account APIs; staff tokens are rejected.
+ */
+export function verifyReaderAuth0Token(accessToken: string): Auth0UserInfo | null {
+  if (!config.auth0 || !config.auth0Reader) return null
+  const { domain, audience } = config.auth0
+  const expectedIssuer = `https://${domain}/`
+
+  const payload = decodeJwtPayload(accessToken)
+  if (!payload) {
+    logger.jwtInvalid('Invalid JWT format (decode failed)')
+    return null
+  }
+
+  const sub = payload.sub
+  if (!sub || typeof sub !== 'string') {
+    logger.jwtInvalid('Missing or invalid sub claim')
+    return null
+  }
+
+  const iss = payload.iss
+  if (iss !== expectedIssuer) {
+    logger.jwtInvalid(`Issuer mismatch: expected ${expectedIssuer}, got ${String(iss)}`)
+    return null
+  }
+
+  const aud = payload.aud
+  const audMatch =
+    aud === audience ||
+    (Array.isArray(aud) && aud.includes(audience))
+  if (!audMatch) {
+    logger.jwtInvalid(`Audience mismatch: expected ${audience}, got ${JSON.stringify(aud)}`)
+    return null
+  }
+
+  const exp = payload.exp
+  if (typeof exp !== 'number') {
+    logger.jwtInvalid('Missing exp claim')
+    return null
+  }
+  const now = Math.floor(Date.now() / 1000)
+  const clockTolerance = 30
+  if (exp < now - clockTolerance) {
+    logger.jwtInvalid('Token expired')
+    return null
+  }
+
+  const azp = typeof payload.azp === 'string' ? payload.azp : undefined
+  if (azp !== config.auth0Reader.clientId) {
+    logger.jwtInvalid('Not a reader application token')
+    return null
+  }
+
+  const permissions = (payload.permissions as string[] | undefined) ?? []
+  const role = roleFromPermissions(permissions)
+
   const email =
     (payload.email as string) ??
     (payload[`https://${domain}/email`] as string) ??

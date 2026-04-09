@@ -102,8 +102,12 @@ export interface AdCreative {
   body: string | null
   image_url: string | null
   link_url: string
+  alt?: string | null
+  weight?: number
+  is_active?: boolean
   sort_order: number
   created_at: string
+  updated_at?: string
 }
 
 export interface AdCampaign {
@@ -173,4 +177,29 @@ export interface ReaderDashboardKpis {
     category_slug: string | null
   }[]
   newsletterTotals: { confirmed: number; pending: number; unsubscribed: number }
+}
+
+/* Reader public announcement + ad placements */
+
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  placement: 'banner' | 'modal' | 'inline' | 'footer'
+  priority: number
+  link_url: string | null
+  is_active: boolean
+  starts_at: string | null
+  ends_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AnnouncementsResponse = ApiResponse<Announcement[]>
+
+export interface AdPlacementsResponse {
+  data: {
+    slots: AdSlot[]
+    creatives_by_slot: Record<string, AdCreative[]>
+  }
 }
