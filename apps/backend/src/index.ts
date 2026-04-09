@@ -22,6 +22,8 @@ import articlesRoutes from './routes/articles.js'
 import categoriesRoutes from './routes/categories.js'
 import commentsRoutes from './routes/comments.js'
 import newsletterRoutes from './routes/newsletter.js'
+import readerRoutes from './routes/reader.js'
+import digestRoutes from './routes/digest.js'
 import devisRoutes from './routes/devis.js'
 import adminArticlesRoutes from './routes/admin/articles.js'
 import adminCommentsRoutes from './routes/admin/comments.js'
@@ -53,6 +55,8 @@ const prefix = config.apiPrefix // /api/v1
 app.route(`${prefix}/articles`, articlesRoutes)
 app.route(`${prefix}/categories`, categoriesRoutes)
 app.route(`${prefix}/newsletter`, newsletterRoutes)
+app.route(`${prefix}/reader`, readerRoutes)
+app.route(`${prefix}/digest`, digestRoutes)
 app.route(`${prefix}/devis`, devisRoutes)
 
 // Comment routes use nested paths
