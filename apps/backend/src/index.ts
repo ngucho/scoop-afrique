@@ -34,6 +34,7 @@ import adminCollaboratorsRoutes from './routes/admin/collaborators.js'
 import adminEditorialCommentsRoutes from './routes/admin/editorial-comments.js'
 import adminAuth0UsersRoutes from './routes/admin/auth0-users.js'
 import adminNotificationsRoutes from './routes/admin/notifications.js'
+import adminReaderPlatformRoutes from './routes/admin/reader-platform.js'
 import crmRoutes from './routes/crm/index.js'
 
 assertConfig()
@@ -66,6 +67,7 @@ app.route(`${prefix}/admin/media`, adminMediaRoutes)
 app.route(`${prefix}/admin/profile`, adminProfileRoutes)
 app.route(`${prefix}/admin/auth0-users`, adminAuth0UsersRoutes)
 app.route(`${prefix}/admin/notifications`, adminNotificationsRoutes)
+app.route(`${prefix}/admin/reader`, adminReaderPlatformRoutes)
 
 // Nested article sub-resources (locks, revisions, collaborators, editorial-comments)
 // Routes handle /:articleId/lock, /:articleId/revisions, etc.
