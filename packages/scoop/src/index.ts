@@ -1,5 +1,23 @@
 export { cn } from './utils/cn'
 
+export { usePrefersReducedMotion } from './hooks/usePrefersReducedMotion'
+
+/* Primitives — translucent media UI */
+export { GlassCard, glassCardVariants } from './primitives/GlassCard'
+export type { GlassCardProps } from './primitives/GlassCard'
+export { StickyRail } from './primitives/StickyRail'
+export type { StickyRailProps } from './primitives/StickyRail'
+export { Ticker } from './primitives/Ticker'
+export type { TickerProps } from './primitives/Ticker'
+export { AnnouncementBar } from './primitives/AnnouncementBar'
+export type { AnnouncementBarProps } from './primitives/AnnouncementBar'
+export { AdSlotFrame } from './primitives/AdSlotFrame'
+export type { AdSlotFrameProps } from './primitives/AdSlotFrame'
+export { MotionEnter } from './primitives/MotionEnter'
+export type { MotionEnterProps } from './primitives/MotionEnter'
+export { SubtleParallax } from './primitives/SubtleParallax'
+export type { SubtleParallaxProps } from './primitives/SubtleParallax'
+
 /* Atoms */
 export { Button, buttonVariants } from './atoms/Button'
 export { Dot } from './atoms/Dot'
@@ -44,7 +62,8 @@ export type { CategoryChipItem } from './molecules/CategoryChips'
 export { AuthorBlock } from './molecules/AuthorBlock'
 export { MetaBar } from './molecules/MetaBar'
 export { Loader } from './molecules/Loader'
-export { Skeleton } from './molecules/Skeleton'
+export { Skeleton, skeletonVariants } from './molecules/Skeleton'
+export type { SkeletonProps } from './molecules/Skeleton'
 export { Alert, alertVariants } from './molecules/Alert'
 export { Dialog } from './molecules/Dialog'
 export type { DialogProps } from './molecules/Dialog'

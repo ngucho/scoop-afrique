@@ -8,13 +8,37 @@ const meta: Meta<typeof Card> = {
   component: Card,
   tags: ['autodocs'],
   argTypes: {
-    variant: { control: 'select', options: ['default', 'news', 'video', 'breaking', 'feature', 'portrait'] },
+    variant: {
+      control: 'select',
+      options: ['default', 'glass', 'surface', 'news', 'video', 'breaking', 'feature', 'portrait'],
+    },
   },
 }
 
 export default meta
 
 type Story = StoryObj<typeof Card>
+
+export const Glass: Story = {
+  render: () => (
+    <div
+      className="rounded-2xl p-8"
+      style={{
+        background:
+          'linear-gradient(140deg, oklch(0.72 0.12 260 / 0.35), oklch(0.92 0 0))',
+      }}
+    >
+      <Card variant="glass" className="w-[320px]">
+        <CardHeader>Glass</CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Uses design tokens for blur, border, and layered shadow.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  ),
+}
 
 export const Default: Story = {
   render: () => (

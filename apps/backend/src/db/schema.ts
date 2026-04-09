@@ -157,6 +157,28 @@ export const crmPlatformEnum = pgEnum('crm_platform', [
   'other',
 ])
 
+export const announcementPlacementEnum = pgEnum('announcement_placement', [
+  'banner',
+  'modal',
+  'inline',
+  'footer',
+])
+export const adCampaignStatusEnum = pgEnum('ad_campaign_status', ['draft', 'active', 'paused', 'ended'])
+export const digestFrequencyEnum = pgEnum('digest_frequency', ['daily', 'weekly', 'monthly'])
+export const digestJobStatusEnum = pgEnum('digest_job_status', [
+  'pending',
+  'processing',
+  'sent',
+  'failed',
+])
+export const newsletterCampaignStatusEnum = pgEnum('newsletter_campaign_status', [
+  'draft',
+  'scheduled',
+  'sending',
+  'sent',
+  'cancelled',
+])
+
 // -----------------------------------------------------------------------------
 // Core tables
 // -----------------------------------------------------------------------------
@@ -704,4 +726,132 @@ export const crmServices = pgTable('crm_services', {
   sortOrder: integer('sort_order').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+// -----------------------------------------------------------------------------
+// Media operations (announcements, ads, subscribers, digests)
+// -----------------------------------------------------------------------------
+export const announcements = pgTable('announcements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  placement: announcementPlacementEnum('placement').notNull().default('banner'),
+  priority: integer('priority').notNull().default(0),
+  linkUrl: text('link_url'),
+  isActive: boolean('is_active').notNull().default(true),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adSlots = pgTable('ad_slots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  name: text('name').notNull(),
+  description: text('description'),
+  format: text('format'),
+  isActive: boolean('is_active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adCampaigns = pgTable('ad_campaigns', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  status: adCampaignStatusEnum('status').notNull().default('draft'),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  priority: integer('priority').notNull().default(0),
+  budgetCents: integer('budget_cents'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adCreatives = pgTable('ad_creatives', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id').notNull(),
+  slotId: uuid('slot_id').notNull(),
+  imageUrl: text('image_url').notNull(),
+  linkUrl: text('link_url').notNull(),
+  alt: text('alt'),
+  weight: integer('weight').notNull().default(1),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adImpressions = pgTable('ad_impressions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  creativeId: uuid('creative_id').notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  sessionId: text('session_id'),
+  articleId: uuid('article_id'),
+  userAgent: text('user_agent'),
+  metadata: jsonb('metadata').notNull().default({}),
+})
+
+export const adClicks = pgTable('ad_clicks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  creativeId: uuid('creative_id').notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  sessionId: text('session_id'),
+  articleId: uuid('article_id'),
+  metadata: jsonb('metadata').notNull().default({}),
+})
+
+export const subscriberProfiles = pgTable('subscriber_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id').notNull().unique(),
+  newsletterSubscriberId: uuid('newsletter_subscriber_id').unique(),
+  displayName: text('display_name'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const subscriberPreferences = pgTable('subscriber_preferences', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  subscriberProfileId: uuid('subscriber_profile_id').notNull().unique(),
+  frequency: digestFrequencyEnum('frequency').notNull().default('weekly'),
+  categoryIds: uuid('category_ids').array().notNull().default([]),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const subscriberSegments = pgTable('subscriber_segments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  description: text('description'),
+  filter: jsonb('filter').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const newsletterCampaigns = pgTable('newsletter_campaigns', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  segmentId: uuid('segment_id'),
+  frequency: digestFrequencyEnum('frequency').notNull().default('weekly'),
+  status: newsletterCampaignStatusEnum('status').notNull().default('draft'),
+  scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  subject: text('subject'),
+  templateKey: text('template_key'),
+  stats: jsonb('stats').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const digestJobs = pgTable('digest_jobs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id'),
+  frequency: digestFrequencyEnum('frequency').notNull(),
+  status: digestJobStatusEnum('status').notNull().default('pending'),
+  scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  result: jsonb('result'),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
