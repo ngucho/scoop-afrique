@@ -65,6 +65,20 @@ export function canManageCategories(role: AppRole): boolean {
   return hasMinRole(role, 'manager')
 }
 
+/** KPIs reader + annonces (éditeur et plus). */
+export function canViewReaderInsights(role: AppRole): boolean {
+  return hasMinRole(role, 'editor')
+}
+
+/** Publicité, homepage CMS, abonnés, campagnes newsletter. */
+export function canManageReaderOperations(role: AppRole): boolean {
+  return hasMinRole(role, 'manager')
+}
+
+export function canEditAnnouncements(role: AppRole): boolean {
+  return hasMinRole(role, 'editor')
+}
+
 /** Navigation items visible per role */
 export interface NavItem {
   href: string
@@ -78,6 +92,11 @@ export const ADMIN_NAV: NavItem[] = [
   { href: '/admin/articles', label: 'Articles', icon: 'FileText', minRole: 'journalist' },
   { href: '/admin/comments', label: 'Commentaires', icon: 'MessageSquare', minRole: 'editor' },
   { href: '/admin/media', label: 'Médias', icon: 'Image', minRole: 'journalist' },
+  { href: '/admin/reader/announcements', label: 'Annonces reader', icon: 'Megaphone', minRole: 'editor' },
+  { href: '/admin/reader/ads', label: 'Publicité', icon: 'Ad', minRole: 'manager' },
+  { href: '/admin/reader/homepage', label: 'Accueil (sections)', icon: 'LayoutGrid', minRole: 'manager' },
+  { href: '/admin/reader/subscribers', label: 'Abonnés', icon: 'Mail', minRole: 'manager' },
+  { href: '/admin/reader/newsletters', label: 'Newsletters', icon: 'Calendar', minRole: 'manager' },
   { href: '/admin/categories', label: 'Catégories', icon: 'Tags', minRole: 'manager' },
   { href: '/admin/team', label: 'Équipe', icon: 'Users', minRole: 'manager' },
   { href: '/admin/users', label: 'Utilisateurs', icon: 'Shield', minRole: 'admin' },
