@@ -22,6 +22,8 @@ import articlesRoutes from './routes/articles.js'
 import categoriesRoutes from './routes/categories.js'
 import commentsRoutes from './routes/comments.js'
 import newsletterRoutes from './routes/newsletter.js'
+import announcementsRoutes from './routes/announcements.js'
+import adsRoutes from './routes/ads.js'
 import devisRoutes from './routes/devis.js'
 import adminArticlesRoutes from './routes/admin/articles.js'
 import adminCommentsRoutes from './routes/admin/comments.js'
@@ -34,6 +36,10 @@ import adminCollaboratorsRoutes from './routes/admin/collaborators.js'
 import adminEditorialCommentsRoutes from './routes/admin/editorial-comments.js'
 import adminAuth0UsersRoutes from './routes/admin/auth0-users.js'
 import adminNotificationsRoutes from './routes/admin/notifications.js'
+import adminAnnouncementsRoutes from './routes/admin/announcements.js'
+import adminAdsRoutes from './routes/admin/ads.js'
+import adminSubscribersRoutes from './routes/admin/subscribers.js'
+import adminDigestRoutes from './routes/admin/digest.js'
 import crmRoutes from './routes/crm/index.js'
 
 assertConfig()
@@ -53,6 +59,8 @@ const prefix = config.apiPrefix // /api/v1
 app.route(`${prefix}/articles`, articlesRoutes)
 app.route(`${prefix}/categories`, categoriesRoutes)
 app.route(`${prefix}/newsletter`, newsletterRoutes)
+app.route(`${prefix}/announcements`, announcementsRoutes)
+app.route(`${prefix}/ads`, adsRoutes)
 app.route(`${prefix}/devis`, devisRoutes)
 
 // Comment routes use nested paths
@@ -66,6 +74,10 @@ app.route(`${prefix}/admin/media`, adminMediaRoutes)
 app.route(`${prefix}/admin/profile`, adminProfileRoutes)
 app.route(`${prefix}/admin/auth0-users`, adminAuth0UsersRoutes)
 app.route(`${prefix}/admin/notifications`, adminNotificationsRoutes)
+app.route(`${prefix}/admin/announcements`, adminAnnouncementsRoutes)
+app.route(`${prefix}/admin/ads`, adminAdsRoutes)
+app.route(`${prefix}/admin/subscribers`, adminSubscribersRoutes)
+app.route(`${prefix}/admin/digest`, adminDigestRoutes)
 
 // Nested article sub-resources (locks, revisions, collaborators, editorial-comments)
 // Routes handle /:articleId/lock, /:articleId/revisions, etc.
