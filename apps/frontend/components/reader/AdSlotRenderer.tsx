@@ -76,7 +76,7 @@ export function AdSlotRenderer({
     </div>
   )
 
-  const inner = creative ? (
+  const inner = creative && creative.image_url ? (
     <a
       href={creative.link_url}
       target="_blank"

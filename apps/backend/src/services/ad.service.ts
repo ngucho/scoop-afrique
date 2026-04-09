@@ -1,11 +1,11 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import {
-  adCampaigns,
+  mediaAdCampaigns as adCampaigns,
   adClicks,
-  adCreatives,
+  mediaAdCreatives as adCreatives,
   adImpressions,
-  adSlots,
+  mediaAdSlots as adSlots,
 } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type {

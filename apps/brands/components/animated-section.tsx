@@ -20,17 +20,16 @@ export function AnimatedSection({
   as: Tag = 'div',
 }: AnimatedSectionProps) {
   const ref = useRef<HTMLElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (prefersReducedMotion) {
-      setIsVisible(true)
-      return
-    }
+    if (prefersReducedMotion) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {

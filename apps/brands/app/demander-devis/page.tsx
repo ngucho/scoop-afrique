@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Send, Loader2, CheckCircle } from 'lucide-react'
 import { Footer } from '@/components/footer'
@@ -29,14 +30,15 @@ function DevisFormInner() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [company, setCompany] = useState('')
-  const [serviceSlug, setServiceSlug] = useState(presetService ?? '')
+  const [serviceSlug, setServiceSlug] = useState('')
   const [budgetRange, setBudgetRange] = useState('')
   const [preferredDate, setPreferredDate] = useState<Date | undefined>()
   const [deadline, setDeadline] = useState('')
   const [description, setDescription] = useState('')
 
   useEffect(() => {
-    if (presetService) setServiceSlug(presetService)
+    if (!presetService) return
+    queueMicrotask(() => setServiceSlug(presetService))
   }, [presetService])
 
   const parseBudget = (val: string) => {
@@ -101,7 +103,7 @@ function DevisFormInner() {
               Merci ! Votre demande de devis a bien été enregistrée. Notre équipe vous répondra par email sous 24 à 48 heures ouvrées.
             </p>
             <Button asChild>
-              <a href="/">Retour à l&apos;accueil</a>
+              <Link href="/">Retour à l&apos;accueil</Link>
             </Button>
           </Card>
         </article>

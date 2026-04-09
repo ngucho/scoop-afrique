@@ -6,13 +6,19 @@ import { getDb } from '../db/index.js'
 import {
   articles,
   categories,
+  digestJobs,
   digestJobRuns,
+  digestNewsletterCampaigns as newsletterCampaigns,
   emailOutbound,
   readerSubscribers,
 } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { DigestFrequency } from './reader-subscriber.service.js'
 import { computeNextDigestAt } from './reader-subscriber.service.js'
+import type {
+  CreateNewsletterCampaignBody,
+  UpdateNewsletterCampaignBody,
+} from '../schemas/digest.js'
 
 const EDITORIAL_TAGS = ['à la une', 'editorial', 'edito', 'focus', 'investigation']
 
@@ -370,12 +376,7 @@ export async function updateEmailStatusFromWebhook(
     .update(emailOutbound)
     .set({ status, updatedAt: new Date() })
     .where(eq(emailOutbound.resendMessageId, resendMessageId))
-import { desc, eq } from 'drizzle-orm'
-import { getDb } from '../db/index.js'
-import { digestJobs, newsletterCampaigns } from '../db/schema.js'
-import { config } from '../config/env.js'
-import type { CreateNewsletterCampaignBody, UpdateNewsletterCampaignBody } from '../schemas/digest.js'
-import type { DigestFrequency } from '../schemas/subscribers.js'
+}
 
 function campaignToApi(row: typeof newsletterCampaigns.$inferSelect) {
   return {
@@ -469,7 +470,7 @@ export async function deleteNewsletterCampaign(id: string) {
 }
 
 export interface EnqueueDigestInput {
-  frequency: DigestFrequency
+  frequency: Exclude<DigestFrequency, 'off'>
   campaign_id?: string
   scheduled_for?: Date
   send_now?: boolean
