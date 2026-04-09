@@ -35,3 +35,17 @@ export const TextLines: Story = {
     </div>
   ),
 }
+
+export const Glass: Story = {
+  render: () => (
+    <div
+      className="rounded-xl p-6"
+      style={{
+        background:
+          'linear-gradient(120deg, oklch(0.75 0.08 200 / 0.3), oklch(0.9 0 0))',
+      }}
+    >
+      <Skeleton variant="glass" className="h-32 w-full max-w-md" />
+    </div>
+  ),
+}
