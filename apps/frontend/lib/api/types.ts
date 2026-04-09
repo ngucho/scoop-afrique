@@ -71,3 +71,53 @@ export type ArticlesResponse = ApiListResponse<Article>
 export type ArticleResponse = ApiResponse<Article>
 export type LikesResponse = ApiResponse<{ count: number; liked: boolean }>
 export type NewsletterResponse = ApiResponse<{ success: boolean; message?: string }>
+
+/** Active announcement (public GET /announcements) */
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  placement: 'banner' | 'modal' | 'inline' | 'footer'
+  priority: number
+  link_url: string | null
+  is_active: boolean
+  starts_at: string | null
+  ends_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AnnouncementsResponse = ApiResponse<Announcement[]>
+
+/** GET /ads/placements */
+export interface AdSlot {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  format: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AdCreative {
+  id: string
+  campaign_id: string
+  slot_id: string
+  image_url: string
+  link_url: string
+  alt: string | null
+  weight: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AdPlacementsResponse {
+  data: {
+    slots: AdSlot[]
+    creatives_by_slot: Record<string, AdCreative[]>
+  }
+}
