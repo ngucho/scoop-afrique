@@ -10,13 +10,18 @@ import {
   IconArrowRight,
   IconAlertCircle,
   IconTrendingUp,
+  IconUsers,
+  IconClick,
+  IconChartBar,
+  IconCategory,
 } from '@tabler/icons-react'
 import { getAdminSession } from '@/lib/admin/session'
-import { fetchDashboardStats, fetchAdminArticles } from '@/lib/admin/fetchers'
+import { fetchDashboardStats, fetchAdminArticles, fetchReaderKpis } from '@/lib/admin/fetchers'
 import {
   STATUS_LABELS,
   STATUS_COLORS,
   hasMinRole,
+  canViewReaderInsights,
   type AppRole,
 } from '@/lib/admin/rbac'
 
@@ -50,13 +55,15 @@ function StatCard({
 }
 
 export default async function AdminDashboardPage() {
-  const [adminSession, stats, recentArticles] = await Promise.all([
+  const [adminSession, stats, recentArticles, readerKpis] = await Promise.all([
     getAdminSession(),
     fetchDashboardStats(),
     fetchAdminArticles({ limit: 5 }),
+    fetchReaderKpis(),
   ])
 
   const role: AppRole = adminSession?.role ?? 'journalist'
+  const showReaderKpis = canViewReaderInsights(role) && readerKpis
   const greetingName =
     adminSession?.metadata?.name?.split(' ')[0] ??
     adminSession?.name?.split(' ')[0] ??
@@ -126,6 +133,199 @@ export default async function AdminDashboardPage() {
           />
         )}
       </div>
+
+      {/* Reader platform KPIs (editor+) */}
+      {showReaderKpis && readerKpis && (
+        <div className="space-y-4">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Heading as="h2" level="h4">
+                Reader & engagement
+              </Heading>
+              <p className="text-xs text-muted-foreground">
+                Abonnés newsletter, CTR publicitaire (30 j.), catégories et articles les plus lus.
+              </p>
+            </div>
+            <Link
+              href="/admin/reader/subscribers"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Gérer les abonnés
+            </Link>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Abonnés confirmés"
+              value={readerKpis.newsletterTotals.confirmed}
+              icon={IconUsers}
+              href="/admin/reader/subscribers?status=confirmed"
+              accent="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300"
+            />
+            <StatCard
+              label="En attente (double opt-in)"
+              value={readerKpis.newsletterTotals.pending}
+              icon={IconClock}
+              href="/admin/reader/subscribers?status=pending"
+            />
+            <StatCard
+              label="Désinscriptions"
+              value={readerKpis.newsletterTotals.unsubscribed}
+              icon={IconMessages}
+              href="/admin/reader/subscribers?status=unsubscribed"
+            />
+            <StatCard
+              label="Emplacements ads (CTR moy.)"
+              value={(() => {
+                const withCtr = readerKpis.adCtrBySlot.filter((x) => x.ctr != null)
+                if (withCtr.length === 0) return '—'
+                const avg =
+                  withCtr.reduce((s, x) => s + (x.ctr ?? 0), 0) / withCtr.length
+                return avg.toLocaleString('fr-FR', { style: 'percent', maximumFractionDigits: 2 })
+              })()}
+              icon={IconClick}
+              href="/admin/reader/ads"
+              accent="bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300"
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <IconChartBar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">CTR par emplacement (30 j.)</span>
+                </div>
+                {readerKpis.adCtrBySlot.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun événement — les impressions/clics sont enregistrés côté reader.
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-muted-foreground">
+                          <th className="py-2 pr-2">Slot</th>
+                          <th className="py-2 pr-2 tabular-nums">Impr.</th>
+                          <th className="py-2 pr-2 tabular-nums">Clics</th>
+                          <th className="py-2 tabular-nums">CTR</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {readerKpis.adCtrBySlot.map((row) => (
+                          <tr key={row.slot_key} className="border-b border-border/60 last:border-0">
+                            <td className="py-2 font-mono text-xs">{row.slot_key}</td>
+                            <td className="py-2 tabular-nums">{row.impressions}</td>
+                            <td className="py-2 tabular-nums">{row.clicks}</td>
+                            <td className="py-2 tabular-nums">
+                              {row.ctr != null
+                                ? row.ctr.toLocaleString('fr-FR', {
+                                    style: 'percent',
+                                    maximumFractionDigits: 2,
+                                  })
+                                : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <IconCategory className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Top catégories (vues cumulées)</span>
+                </div>
+                {readerKpis.topCategories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Pas encore de données.</p>
+                ) : (
+                  <ul className="space-y-2 text-sm">
+                    {readerKpis.topCategories.slice(0, 6).map((c) => (
+                      <li
+                        key={c.category_id ?? 'none'}
+                        className="flex items-center justify-between gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0"
+                      >
+                        <span className="font-medium">{c.name}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {c.total_views.toLocaleString('fr-FR')} vues · {c.article_count} art.
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <Heading as="h3" level="h5">
+                Articles les plus lus
+              </Heading>
+              <Link href="/admin/articles?status=published" className="text-sm font-medium text-primary hover:underline">
+                Articles
+              </Link>
+            </div>
+            {readerKpis.topArticles.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucun article publié.</p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/50">
+                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Titre</th>
+                      <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">
+                        Catégorie
+                      </th>
+                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">Vues</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {readerKpis.topArticles.map((a) => (
+                      <tr key={a.id} className="border-b border-border last:border-0 hover:bg-muted/30">
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/admin/articles/${a.id}/edit`}
+                            className="font-medium hover:text-primary"
+                          >
+                            {a.title}
+                          </Link>
+                        </td>
+                        <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                          {a.category_slug ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                          {a.view_count.toLocaleString('fr-FR')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {readerKpis.subscriberGrowth.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-2 text-sm font-medium">Inscriptions newsletter (par semaine)</div>
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                  {readerKpis.subscriberGrowth.map((g) => (
+                    <span key={g.week_start} className="rounded-md border border-border px-2 py-1">
+                      Sem. {g.week_start}:{' '}
+                      <strong className="text-foreground">{g.new_subscribers}</strong>
+                    </span>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Alert for pending reviews (editors+) */}
       {hasMinRole(role, 'editor') && stats.inReview > 0 && (

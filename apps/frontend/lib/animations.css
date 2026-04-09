@@ -166,6 +166,22 @@
 
 /* ============ Reduced Motion ============ */
 
+/* Reader ticker: show static list instead of marquee when reduced motion */
+.reader-ticker-marquee {
+  display: block;
+}
+.reader-ticker-static-list {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reader-ticker-marquee {
+    display: none;
+  }
+  .reader-ticker-static-list {
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-fade-in,
