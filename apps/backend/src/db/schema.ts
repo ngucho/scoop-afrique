@@ -64,6 +64,7 @@ export const newsletterCampaignCadenceEnum = pgEnum('newsletter_campaign_cadence
 export const newsletterCampaignStatusEnum = pgEnum('newsletter_campaign_status', [
   'draft',
   'scheduled',
+  'sending',
   'sent',
   'cancelled',
 ])
@@ -174,20 +175,11 @@ export const announcementPlacementEnum = pgEnum('announcement_placement', [
   'inline',
   'footer',
 ])
-export const adCampaignStatusEnum = pgEnum('ad_campaign_status', ['draft', 'active', 'paused', 'ended'])
-export const digestFrequencyEnum = pgEnum('digest_frequency', ['daily', 'weekly', 'monthly'])
 export const digestJobStatusEnum = pgEnum('digest_job_status', [
   'pending',
   'processing',
   'sent',
   'failed',
-])
-export const newsletterCampaignStatusEnum = pgEnum('newsletter_campaign_status', [
-  'draft',
-  'scheduled',
-  'sending',
-  'sent',
-  'cancelled',
 ])
 
 // -----------------------------------------------------------------------------
@@ -793,7 +785,7 @@ export const announcements = pgTable('announcements', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const adSlots = pgTable('ad_slots', {
+export const mediaAdSlots = pgTable('ad_slots', {
   id: uuid('id').primaryKey().defaultRandom(),
   key: text('key').notNull().unique(),
   name: text('name').notNull(),
@@ -805,7 +797,7 @@ export const adSlots = pgTable('ad_slots', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const adCampaigns = pgTable('ad_campaigns', {
+export const mediaAdCampaigns = pgTable('ad_campaigns', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   status: adCampaignStatusEnum('status').notNull().default('draft'),
@@ -818,7 +810,7 @@ export const adCampaigns = pgTable('ad_campaigns', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const adCreatives = pgTable('ad_creatives', {
+export const mediaAdCreatives = pgTable('ad_creatives', {
   id: uuid('id').primaryKey().defaultRandom(),
   campaignId: uuid('campaign_id').notNull(),
   slotId: uuid('slot_id').notNull(),
@@ -876,7 +868,7 @@ export const subscriberSegments = pgTable('subscriber_segments', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
-export const newsletterCampaigns = pgTable('newsletter_campaigns', {
+export const digestNewsletterCampaigns = pgTable('newsletter_campaigns', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   segmentId: uuid('segment_id'),

@@ -7,7 +7,6 @@ const BRAND = '#B91C1C'
 const TEXT = '#1a1a1a'
 const MUTED = '#555'
 const BORDER = '#d1d5db'
-const BORDER_DARK = '#374151'
 
 const styles = StyleSheet.create({
   page: {

@@ -8,7 +8,7 @@ import { FeaturedHero } from '@/components/reader/FeaturedHero'
 import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { apiGet } from '@/lib/api/client'
 import { config } from '@/lib/config'
-import type { ArticlesResponse, Category } from '@/lib/api/types'
+import type { Article, ArticlesResponse, Category } from '@/lib/api/types'
 import { fetchAdPlacements, pickCreativeForSlot, AD_SLOT_KEYS } from '@/lib/readerAds'
 
 export const revalidate = 60
@@ -150,7 +150,7 @@ export default async function CategoryPage({ params }: PageProps) {
           <SectionHeader label="Dans cette rubrique" className="mb-6" />
           {rest.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2">
-              {rest.map((article) => (
+              {rest.map((article: Article) => (
                 <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
                   <ArticleCard article={article} variant="row" />
                 </MotionEnter>

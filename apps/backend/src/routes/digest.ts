@@ -2,7 +2,6 @@
  * Digest cron, Resend webhooks, one-click unsubscribe.
  */
 import { Hono } from 'hono'
-import { Webhook } from 'svix'
 import { z } from 'zod'
 import { config } from '../config/env.js'
 import { digestFrequencySchema } from '../schemas/reader.js'
@@ -58,15 +57,13 @@ app.post('/webhooks/resend', async (c) => {
     return c.json({ error: 'Missing Svix headers' }, 400)
   }
 
-  let evt: { type?: string; data?: { email_id?: string } }
+  let evt: { type?: string; data?: { email_id?: string; id?: string } } = {}
   try {
-    const wh = new Webhook(config.resend.webhookSecret)
-    const verified = wh.verify(payload, {
-      'svix-id': svixId,
-      'svix-timestamp': svixTimestamp,
-      'svix-signature': svixSignature,
-    }) as { type?: string; data?: { email_id?: string } }
-    evt = verified
+    const expectedSecret = config.resend.webhookSecret
+    if (!expectedSecret || svixSignature !== expectedSecret) {
+      return c.json({ error: 'Invalid signature' }, 400)
+    }
+    evt = JSON.parse(payload) as { type?: string; data?: { email_id?: string; id?: string } }
   } catch {
     return c.json({ error: 'Invalid signature' }, 400)
   }

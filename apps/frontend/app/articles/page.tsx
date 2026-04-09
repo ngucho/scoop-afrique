@@ -7,7 +7,7 @@ import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { READER_CATEGORIES } from '@/lib/readerCategories'
 import { apiGet } from '@/lib/api/client'
 import { config } from '@/lib/config'
-import type { ArticlesResponse } from '@/lib/api/types'
+import type { Article, ArticlesResponse } from '@/lib/api/types'
 import { fetchAdPlacements, pickCreativeForSlot, AD_SLOT_KEYS } from '@/lib/readerAds'
 
 export const revalidate = 30
@@ -98,7 +98,7 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
         {articles.length > 0 ? (
           <>
             <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {articles.map((article, i) => (
+              {articles.map((article: Article, i: number) => (
                 <div key={article.id} className="animate-fade-in-up" style={{ animationDelay: `${0.04 * i}s` }}>
                   <ArticleCard article={article} />
                 </div>

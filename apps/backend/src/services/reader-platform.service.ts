@@ -10,8 +10,8 @@ import {
   adminAuditLog,
   articles,
   categories,
+  digestNewsletterCampaigns as newsletterCampaigns,
   homepageSections,
-  newsletterCampaigns,
   newsletterSubscribers,
   readerAnnouncements,
 } from '../db/schema.js'
@@ -452,11 +452,11 @@ export async function listNewsletterCampaigns() {
 
 export async function createNewsletterCampaign(data: {
   name: string
-  cadence: 'daily' | 'weekly' | 'monthly'
+  frequency: 'daily' | 'weekly' | 'monthly'
   segment_filter: Record<string, unknown>
-  subject_template: string
-  status: 'draft' | 'scheduled' | 'sent' | 'cancelled'
-  send_at: string | null
+  subject: string
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
+  scheduled_at: string | null
   userId: string
 }) {
   const db = getDb()
@@ -464,12 +464,14 @@ export async function createNewsletterCampaign(data: {
     .insert(newsletterCampaigns)
     .values({
       name: data.name,
-      cadence: data.cadence,
-      segmentFilter: data.segment_filter,
-      subjectTemplate: data.subject_template,
+      frequency: data.frequency,
+      segmentId: null,
+      stats: data.segment_filter,
+      subject: data.subject,
       status: data.status,
-      sendAt: data.send_at ? new Date(data.send_at) : null,
-      createdBy: data.userId,
+      scheduledAt: data.scheduled_at ? new Date(data.scheduled_at) : null,
+      sentAt: null,
+      templateKey: null,
     })
     .returning()
   return row
@@ -479,12 +481,12 @@ export async function updateNewsletterCampaign(
   id: string,
   data: Partial<{
     name: string
-    cadence: 'daily' | 'weekly' | 'monthly'
+    frequency: 'daily' | 'weekly' | 'monthly'
     segment_filter: Record<string, unknown>
-    subject_template: string
-    status: 'draft' | 'scheduled' | 'sent' | 'cancelled'
-    send_at: string | null
-    last_sent_at: string | null
+    subject: string
+    status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
+    scheduled_at: string | null
+    sent_at: string | null
   }>
 ) {
   const db = getDb()
@@ -492,14 +494,14 @@ export async function updateNewsletterCampaign(
     .update(newsletterCampaigns)
     .set({
       ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.cadence !== undefined ? { cadence: data.cadence } : {}),
-      ...(data.segment_filter !== undefined ? { segmentFilter: data.segment_filter } : {}),
-      ...(data.subject_template !== undefined ? { subjectTemplate: data.subject_template } : {}),
+      ...(data.frequency !== undefined ? { frequency: data.frequency } : {}),
+      ...(data.segment_filter !== undefined ? { stats: data.segment_filter } : {}),
+      ...(data.subject !== undefined ? { subject: data.subject } : {}),
       ...(data.status !== undefined ? { status: data.status } : {}),
-      ...(data.send_at !== undefined ? { sendAt: data.send_at ? new Date(data.send_at) : null } : {}),
-      ...(data.last_sent_at !== undefined
-        ? { lastSentAt: data.last_sent_at ? new Date(data.last_sent_at) : null }
+      ...(data.scheduled_at !== undefined
+        ? { scheduledAt: data.scheduled_at ? new Date(data.scheduled_at) : null }
         : {}),
+      ...(data.sent_at !== undefined ? { sentAt: data.sent_at ? new Date(data.sent_at) : null } : {}),
       updatedAt: new Date(),
     })
     .where(eq(newsletterCampaigns.id, id))
@@ -597,13 +599,12 @@ export function rowNewsletterCampaign(n: typeof newsletterCampaigns.$inferSelect
   return {
     id: n.id,
     name: n.name,
-    cadence: n.cadence,
-    segment_filter: n.segmentFilter as Record<string, unknown>,
-    subject_template: n.subjectTemplate,
+    frequency: n.frequency,
+    segment_filter: n.stats as Record<string, unknown>,
+    subject: n.subject,
     status: n.status,
-    send_at: n.sendAt?.toISOString() ?? null,
-    last_sent_at: n.lastSentAt?.toISOString() ?? null,
-    created_by: n.createdBy,
+    scheduled_at: n.scheduledAt?.toISOString() ?? null,
+    sent_at: n.sentAt?.toISOString() ?? null,
     created_at: n.createdAt.toISOString(),
     updated_at: n.updatedAt.toISOString(),
   }
