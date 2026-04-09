@@ -71,3 +71,106 @@ export type ArticlesResponse = ApiListResponse<Article>
 export type ArticleResponse = ApiResponse<Article>
 export type LikesResponse = ApiResponse<{ count: number; liked: boolean }>
 export type NewsletterResponse = ApiResponse<{ success: boolean; message?: string }>
+
+/* Reader platform / backoffice */
+
+export interface ReaderAnnouncement {
+  id: string
+  title: string
+  body: string
+  audience: 'all' | 'subscribers' | 'guests'
+  starts_at: string | null
+  ends_at: string | null
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AdSlot {
+  id: string
+  key: string
+  label: string
+  description: string | null
+  created_at: string
+}
+
+export interface AdCreative {
+  id: string
+  campaign_id: string
+  headline: string
+  body: string | null
+  image_url: string | null
+  link_url: string
+  sort_order: number
+  created_at: string
+}
+
+export interface AdCampaign {
+  id: string
+  slot_id: string
+  name: string
+  status: 'draft' | 'active' | 'paused' | 'ended'
+  start_at: string | null
+  end_at: string | null
+  weight: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  creatives: AdCreative[]
+}
+
+export interface HomepageSection {
+  id: string
+  key: string
+  title: string
+  layout: 'featured_grid' | 'list' | 'carousel'
+  sort_order: number
+  config: Record<string, unknown>
+  is_visible: boolean
+  updated_at: string
+}
+
+export interface NewsletterSubscriberRow {
+  id: string
+  email: string
+  status: 'pending' | 'confirmed' | 'unsubscribed'
+  segment_tags: string[]
+  signup_source: string | null
+  confirmed_at: string | null
+  subscribed_at: string
+}
+
+export interface NewsletterCampaignRow {
+  id: string
+  name: string
+  cadence: 'daily' | 'weekly' | 'monthly'
+  segment_filter: Record<string, unknown>
+  subject_template: string
+  status: 'draft' | 'scheduled' | 'sent' | 'cancelled'
+  send_at: string | null
+  last_sent_at: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ReaderDashboardKpis {
+  subscriberGrowth: { week_start: string; new_subscribers: number }[]
+  adCtrBySlot: { slot_key: string; impressions: number; clicks: number; ctr: number | null }[]
+  topCategories: {
+    category_id: string | null
+    name: string
+    slug: string | null
+    article_count: number
+    total_views: number
+  }[]
+  topArticles: {
+    id: string
+    title: string
+    slug: string
+    view_count: number
+    category_slug: string | null
+  }[]
+  newsletterTotals: { confirmed: number; pending: number; unsubscribed: number }
+}

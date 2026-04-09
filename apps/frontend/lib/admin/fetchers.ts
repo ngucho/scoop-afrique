@@ -14,6 +14,13 @@ import type {
   MediaRecord,
   ApiResponse,
   ApiListResponse,
+  ReaderDashboardKpis,
+  ReaderAnnouncement,
+  AdSlot,
+  AdCampaign,
+  HomepageSection,
+  NewsletterSubscriberRow,
+  NewsletterCampaignRow,
 } from '@/lib/api/types'
 
 async function getToken(): Promise<string | null> {
@@ -181,5 +188,102 @@ export async function fetchAuth0Users(
     return { data: res.data ?? [], total: res.total ?? 0 }
   } catch {
     return { data: [], total: 0 }
+  }
+}
+
+/* ---------- Reader platform ---------- */
+
+export async function fetchReaderKpis(): Promise<ReaderDashboardKpis | null> {
+  const token = await getToken()
+  if (!token) return null
+  try {
+    const res = await apiGetAuth<ApiResponse<ReaderDashboardKpis>>('/admin/reader/kpis', token)
+    return res.data
+  } catch {
+    return null
+  }
+}
+
+export async function fetchAnnouncements(): Promise<ReaderAnnouncement[]> {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await apiGetAuth<ApiListResponse<ReaderAnnouncement>>('/admin/reader/announcements', token)
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function fetchAdSlots(): Promise<AdSlot[]> {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await apiGetAuth<ApiListResponse<AdSlot>>('/admin/reader/ads/slots', token)
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function fetchAdCampaigns(): Promise<AdCampaign[]> {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await apiGetAuth<ApiListResponse<AdCampaign>>('/admin/reader/ads/campaigns', token)
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function fetchHomepageSections(): Promise<HomepageSection[]> {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await apiGetAuth<ApiListResponse<HomepageSection>>('/admin/reader/homepage-sections', token)
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function fetchSubscribers(params?: {
+  status?: string
+  tag?: string
+  source?: string
+  q?: string
+  page?: number
+}): Promise<{ data: NewsletterSubscriberRow[]; total: number }> {
+  const token = await getToken()
+  if (!token) return { data: [], total: 0 }
+  const sp = new URLSearchParams()
+  if (params?.status) sp.set('status', params.status)
+  if (params?.tag) sp.set('tag', params.tag)
+  if (params?.source) sp.set('source', params.source)
+  if (params?.q) sp.set('q', params.q)
+  sp.set('page', String(params?.page ?? 1))
+  sp.set('limit', '50')
+  try {
+    return await apiGetAuth<ApiListResponse<NewsletterSubscriberRow>>(
+      `/admin/reader/subscribers?${sp.toString()}`,
+      token,
+    )
+  } catch {
+    return { data: [], total: 0 }
+  }
+}
+
+export async function fetchNewsletterCampaigns(): Promise<NewsletterCampaignRow[]> {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await apiGetAuth<ApiListResponse<NewsletterCampaignRow>>(
+      '/admin/reader/newsletter-campaigns',
+      token,
+    )
+    return res.data
+  } catch {
+    return []
   }
 }
