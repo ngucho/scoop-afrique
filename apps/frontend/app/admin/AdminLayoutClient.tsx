@@ -19,6 +19,11 @@ import {
   IconX,
   IconChevronDown,
   IconUser,
+  IconSpeakerphone,
+  IconAd,
+  IconLayoutGrid,
+  IconMail,
+  IconCalendar,
 } from '@tabler/icons-react'
 import { type AppRole, getVisibleNav, ROLE_LABELS, ROLE_COLORS } from '@/lib/admin/rbac'
 
@@ -31,6 +36,11 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Users: IconUsers,
   Shield: IconShield,
   Settings: IconSettings,
+  Megaphone: IconSpeakerphone,
+  Ad: IconAd,
+  LayoutGrid: IconLayoutGrid,
+  Mail: IconMail,
+  Calendar: IconCalendar,
 }
 
 export function AdminLayoutClient({
