@@ -42,6 +42,25 @@ export const newsletterStatusEnum = pgEnum('newsletter_status', [
   'confirmed',
   'unsubscribed',
 ])
+export const announcementAudienceEnum = pgEnum('announcement_audience', ['all', 'subscribers', 'guests'])
+export const adCampaignStatusEnum = pgEnum('ad_campaign_status', ['draft', 'active', 'paused', 'ended'])
+export const adEventTypeEnum = pgEnum('ad_event_type', ['impression', 'click'])
+export const newsletterCampaignCadenceEnum = pgEnum('newsletter_campaign_cadence', [
+  'daily',
+  'weekly',
+  'monthly',
+])
+export const newsletterCampaignStatusEnum = pgEnum('newsletter_campaign_status', [
+  'draft',
+  'scheduled',
+  'sent',
+  'cancelled',
+])
+export const homepageSectionLayoutEnum = pgEnum('homepage_section_layout', [
+  'featured_grid',
+  'list',
+  'carousel',
+])
 export const crmContactTypeEnum = pgEnum('crm_contact_type', [
   'prospect',
   'client',
@@ -212,6 +231,103 @@ export const newsletterSubscribers = pgTable('newsletter_subscribers', {
   token: text('token'),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   subscribedAt: timestamp('subscribed_at', { withTimezone: true }).notNull().defaultNow(),
+  segmentTags: text('segment_tags').array().notNull().default([]),
+  signupSource: text('signup_source'),
+})
+
+/** In-app / reader banners (managed from backoffice). */
+export const readerAnnouncements = pgTable('reader_announcements', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  audience: announcementAudienceEnum('audience').notNull().default('all'),
+  startsAt: timestamp('starts_at', { withTimezone: true }),
+  endsAt: timestamp('ends_at', { withTimezone: true }),
+  isActive: boolean('is_active').notNull().default(true),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adSlots = pgTable('ad_slots', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adCampaigns = pgTable('ad_campaigns', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slotId: uuid('slot_id')
+    .notNull()
+    .references(() => adSlots.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  status: adCampaignStatusEnum('status').notNull().default('draft'),
+  startAt: timestamp('start_at', { withTimezone: true }),
+  endAt: timestamp('end_at', { withTimezone: true }),
+  weight: integer('weight').notNull().default(1),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adCreatives = pgTable('ad_creatives', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .references(() => adCampaigns.id, { onDelete: 'cascade' }),
+  headline: text('headline').notNull(),
+  body: text('body'),
+  imageUrl: text('image_url'),
+  linkUrl: text('link_url').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adEvents = pgTable('ad_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slotKey: text('slot_key').notNull(),
+  campaignId: uuid('campaign_id').references(() => adCampaigns.id, { onDelete: 'set null' }),
+  creativeId: uuid('creative_id').references(() => adCreatives.id, { onDelete: 'set null' }),
+  eventType: adEventTypeEnum('event_type').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const homepageSections = pgTable('homepage_sections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  key: text('key').notNull().unique(),
+  title: text('title').notNull(),
+  layout: homepageSectionLayoutEnum('layout').notNull().default('list'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  config: jsonb('config').notNull().default({}),
+  isVisible: boolean('is_visible').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const newsletterCampaigns = pgTable('newsletter_campaigns', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  cadence: newsletterCampaignCadenceEnum('cadence').notNull(),
+  segmentFilter: jsonb('segment_filter').notNull().default({}),
+  subjectTemplate: text('subject_template').notNull(),
+  status: newsletterCampaignStatusEnum('status').notNull().default('draft'),
+  sendAt: timestamp('send_at', { withTimezone: true }),
+  lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const adminAuditLog = pgTable('admin_audit_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  actorId: uuid('actor_id'),
+  entityType: text('entity_type').notNull(),
+  entityId: uuid('entity_id'),
+  action: text('action').notNull(),
+  reason: text('reason'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const media = pgTable('media', {

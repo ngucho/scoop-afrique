@@ -225,3 +225,98 @@ export async function changePassword(password: string): Promise<void> {
   const token = await getToken()
   await apiPostAuth('/admin/profile/me/password', token, { password })
 }
+
+/* ---------- Reader platform ---------- */
+
+function revReader() {
+  revalidatePath('/admin')
+  revalidatePath('/admin/reader/announcements')
+  revalidatePath('/admin/reader/ads')
+  revalidatePath('/admin/reader/homepage')
+  revalidatePath('/admin/reader/subscribers')
+  revalidatePath('/admin/reader/newsletters')
+}
+
+export async function createAnnouncement(data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPostAuth('/admin/reader/announcements', token, data)
+  revReader()
+}
+
+export async function updateAnnouncement(id: string, data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPatchAuth(`/admin/reader/announcements/${id}`, token, data)
+  revReader()
+}
+
+export async function deleteAnnouncement(id: string): Promise<void> {
+  const token = await getToken()
+  await apiDeleteAuth(`/admin/reader/announcements/${id}`, token)
+  revReader()
+}
+
+export async function createAdCampaign(data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPostAuth('/admin/reader/ads/campaigns', token, data)
+  revReader()
+}
+
+export async function updateAdCampaign(id: string, data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPatchAuth(`/admin/reader/ads/campaigns/${id}`, token, data)
+  revReader()
+}
+
+export async function deleteAdCampaign(id: string): Promise<void> {
+  const token = await getToken()
+  await apiDeleteAuth(`/admin/reader/ads/campaigns/${id}`, token)
+  revReader()
+}
+
+export async function upsertCreative(
+  campaignId: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  const token = await getToken()
+  await apiPostAuth(`/admin/reader/ads/campaigns/${campaignId}/creatives`, token, data)
+  revReader()
+}
+
+export async function deleteCreative(campaignId: string, creativeId: string): Promise<void> {
+  const token = await getToken()
+  await apiDeleteAuth(`/admin/reader/ads/campaigns/${campaignId}/creatives/${creativeId}`, token)
+  revReader()
+}
+
+export async function updateHomepageSection(id: string, data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPatchAuth(`/admin/reader/homepage-sections/${id}`, token, data)
+  revReader()
+}
+
+export async function updateSubscriberSegments(
+  id: string,
+  data: { segment_tags: string[]; reason?: string },
+): Promise<void> {
+  const token = await getToken()
+  await apiPatchAuth(`/admin/reader/subscribers/${id}`, token, data)
+  revReader()
+}
+
+export async function createNewsletterCampaign(data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPostAuth('/admin/reader/newsletter-campaigns', token, data)
+  revReader()
+}
+
+export async function updateNewsletterCampaign(id: string, data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPatchAuth(`/admin/reader/newsletter-campaigns/${id}`, token, data)
+  revReader()
+}
+
+export async function deleteNewsletterCampaign(id: string): Promise<void> {
+  const token = await getToken()
+  await apiDeleteAuth(`/admin/reader/newsletter-campaigns/${id}`, token)
+  revReader()
+}
