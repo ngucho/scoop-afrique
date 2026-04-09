@@ -1,12 +1,14 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Heading, Button, SectionHeader, CategoryChips } from 'scoop'
+import { Heading, Button, SectionHeader, CategoryChips, MotionEnter } from 'scoop'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { ArticleCard } from '@/components/reader/ArticleCard'
+import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { READER_CATEGORIES } from '@/lib/readerCategories'
 import { apiGet } from '@/lib/api/client'
 import { config } from '@/lib/config'
 import type { ArticlesResponse } from '@/lib/api/types'
+import { fetchAdPlacements, pickCreativeForSlot, AD_SLOT_KEYS } from '@/lib/readerAds'
 
 export const revalidate = 30
 
@@ -60,8 +62,12 @@ async function getArticles(
 export default async function ArticlesPage({ searchParams }: PageProps) {
   const { category, page: pageParam, q } = await searchParams
   const page = Math.max(1, Number(pageParam) || 1)
-  const { data: articles, total } = await getArticles(category, page, q)
+  const [{ data: articles, total }, placements] = await Promise.all([
+    getArticles(category, page, q),
+    fetchAdPlacements(),
+  ])
   const totalPages = Math.ceil(total / LIMIT)
+  const listTop = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, AD_SLOT_KEYS.LIST_TOP)
 
   return (
     <ReaderLayout>
@@ -82,6 +88,12 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
             activeId={category && category !== 'all' ? category : 'all'}
           />
         </nav>
+
+        {listTop ? (
+          <MotionEnter as="div" className="mb-8 flex justify-center">
+            <AdSlotSection slotKey={AD_SLOT_KEYS.LIST_TOP} creative={listTop.creative} className="w-full max-w-3xl" />
+          </MotionEnter>
+        ) : null}
 
         {articles.length > 0 ? (
           <>
