@@ -71,7 +71,7 @@ const nlCampaignBody = z.object({
   cadence: z.enum(['daily', 'weekly', 'monthly']),
   segment_filter: z.record(z.unknown()).optional(),
   subject_template: z.string().min(1).max(500),
-  status: z.enum(['draft', 'scheduled', 'sent', 'cancelled']),
+  status: z.enum(['draft', 'scheduled', 'sending', 'sent', 'cancelled']),
   send_at: z.string().datetime().nullable().optional(),
 })
 
@@ -385,9 +385,12 @@ app.post('/newsletter-campaigns', requireRole('manager', 'admin'), async (c) => 
     return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
   }
   const row = await reader.createNewsletterCampaign({
-    ...parsed.data,
+    name: parsed.data.name,
+    frequency: parsed.data.cadence,
     segment_filter: parsed.data.segment_filter ?? {},
-    send_at: parsed.data.send_at ?? null,
+    subject: parsed.data.subject_template,
+    status: parsed.data.status,
+    scheduled_at: parsed.data.send_at ?? null,
     userId: user.id,
   })
   await reader.appendAudit({
@@ -395,7 +398,7 @@ app.post('/newsletter-campaigns', requireRole('manager', 'admin'), async (c) => 
     entityType: 'newsletter_campaign',
     entityId: row.id,
     action: 'create',
-    metadata: { name: row.name, cadence: row.cadence },
+    metadata: { name: row.name, frequency: row.frequency },
   })
   return c.json({ data: reader.rowNewsletterCampaign(row) }, 201)
 })
@@ -410,10 +413,13 @@ app.patch('/newsletter-campaigns/:id', requireRole('manager', 'admin'), async (c
     return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
   }
   const row = await reader.updateNewsletterCampaign(id, {
-    ...parsed.data,
+    ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+    ...(parsed.data.cadence !== undefined ? { frequency: parsed.data.cadence } : {}),
+    ...(parsed.data.subject_template !== undefined ? { subject: parsed.data.subject_template } : {}),
+    ...(parsed.data.status !== undefined ? { status: parsed.data.status } : {}),
     segment_filter: parsed.data.segment_filter,
-    send_at: parsed.data.send_at,
-    last_sent_at: parsed.data.last_sent_at,
+    scheduled_at: parsed.data.send_at,
+    sent_at: parsed.data.last_sent_at,
   })
   if (!row) return c.json({ error: 'Not found' }, 404)
   await reader.appendAudit({

@@ -46,6 +46,8 @@ const envSchema = z.object({
         : undefined
     ),
   AUTH0_AUDIENCE: z.string().min(1).optional(),
+  /** Auth0 "Reader" SPA client ID — JWT `azp` claim; staff routes reject tokens from this app. */
+  AUTH0_READER_CLIENT_ID: z.string().min(1).optional(),
 
   // Auth0 Management API (M2M app for user_metadata, password). Either set these or AUTH0_CLIENT_ID / AUTH0_CLIENT_SECRET.
   AUTH0_MANAGEMENT_CLIENT_ID: z.string().min(1).optional(),
@@ -57,6 +59,12 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
   NOTIFICATION_EMAIL: z.string().optional(), // comma-separated emails for devis/invoice alerts
+  /** Resend webhook signing secret (Svix) for delivery events */
+  RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
+  /** Shared secret for cron / internal job HTTP triggers */
+  DIGEST_CRON_SECRET: z.string().min(1).optional(),
+  /** Public reader site base URL (for digest links, unsubscribe). */
+  PUBLIC_SITE_URL: z.string().url().optional(),
 
   // Twilio (WhatsApp + SMS for notifications)
   TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
@@ -102,6 +110,8 @@ export const config = {
       ? { domain: env.AUTH0_DOMAIN, audience: env.AUTH0_AUDIENCE }
       : null,
 
+  auth0Reader: env.AUTH0_READER_CLIENT_ID ? { clientId: env.AUTH0_READER_CLIENT_ID } : null,
+
   auth0Management:
     env.AUTH0_DOMAIN &&
     (env.AUTH0_MANAGEMENT_CLIENT_ID ?? env.AUTH0_CLIENT_ID) &&
@@ -122,8 +132,13 @@ export const config = {
           notificationEmails: env.NOTIFICATION_EMAIL
             ? env.NOTIFICATION_EMAIL.split(',').map((e) => e.trim()).filter(Boolean)
             : ['contact@scoop-afrique.com'],
+          webhookSecret: env.RESEND_WEBHOOK_SECRET ?? null,
         }
       : null,
+
+  digestCronSecret: env.DIGEST_CRON_SECRET ?? null,
+
+  publicSiteUrl: env.PUBLIC_SITE_URL ?? null,
 
   twilio:
     env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM && env.TWILIO_WHATSAPP_TO
