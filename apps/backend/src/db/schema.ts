@@ -42,6 +42,17 @@ export const newsletterStatusEnum = pgEnum('newsletter_status', [
   'confirmed',
   'unsubscribed',
 ])
+
+export const digestFrequencyEnum = pgEnum('digest_frequency', ['daily', 'weekly', 'monthly', 'off'])
+
+export const emailDeliveryStatusEnum = pgEnum('email_delivery_status', [
+  'queued',
+  'sent',
+  'delivered',
+  'bounced',
+  'failed',
+  'complained',
+])
 export const crmContactTypeEnum = pgEnum('crm_contact_type', [
   'prospect',
   'client',
@@ -212,6 +223,43 @@ export const newsletterSubscribers = pgTable('newsletter_subscribers', {
   token: text('token'),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   subscribedAt: timestamp('subscribed_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Reader-facing Auth0 accounts: preferences + digest schedule (separate from staff profiles). */
+export const readerSubscribers = pgTable('reader_subscribers', {
+  auth0Sub: text('auth0_sub').primaryKey(),
+  email: text('email').notNull(),
+  emailNormalized: text('email_normalized').notNull().unique(),
+  topicCategoryIds: uuid('topic_category_ids').array().notNull().default([]),
+  digestFrequency: digestFrequencyEnum('digest_frequency').notNull().default('weekly'),
+  unsubscribedAt: timestamp('unsubscribed_at', { withTimezone: true }),
+  unsubscribeToken: text('unsubscribe_token').notNull().unique(),
+  nextDigestAt: timestamp('next_digest_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const emailOutbound = pgTable('email_outbound', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  kind: text('kind').notNull(),
+  toEmail: text('to_email').notNull(),
+  resendMessageId: text('resend_message_id'),
+  status: emailDeliveryStatusEnum('status').notNull().default('queued'),
+  metadata: jsonb('metadata').notNull().default({}),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const digestJobRuns = pgTable('digest_job_runs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  frequency: digestFrequencyEnum('frequency').notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+  articleIds: uuid('article_ids').array().notNull().default([]),
+  recipientsAttempted: integer('recipients_attempted').notNull().default(0),
+  recipientsSent: integer('recipients_sent').notNull().default(0),
+  recipientsFailed: integer('recipients_failed').notNull().default(0),
+  error: text('error'),
 })
 
 export const media = pgTable('media', {
