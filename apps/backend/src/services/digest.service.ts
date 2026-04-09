@@ -320,7 +320,9 @@ async function sendDigestEmail(
   const base = siteBase()
   const unsubUrl = `${base}/api/v1/digest/unsubscribe?t=${encodeURIComponent(unsubscribeToken)}`
 
-  const res = await fetch('https://api.resend.com/emails', {
+  // Keep an explicit runtime response shape to avoid environment-specific `Response`
+  // typing conflicts in some build pipelines (e.g. serverless builders).
+  const res = (await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${config.resend.apiKey}`,
@@ -336,7 +338,11 @@ async function sendDigestEmail(
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       },
     }),
-  })
+  })) as unknown as {
+    ok: boolean
+    status: number
+    json: () => Promise<unknown>
+  }
 
   const body = (await res.json().catch(() => ({}))) as { id?: string; message?: string }
 
