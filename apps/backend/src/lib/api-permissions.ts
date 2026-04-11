@@ -35,3 +35,12 @@ export function hasStaffApiAccess(permissions: string[]): boolean {
 export function hasReaderAccountPermission(permissions: string[]): boolean {
   return permissions.includes(READER_ACCOUNT_PERMISSION)
 }
+
+/**
+ * Subscriber reader APIs (`/api/v1/reader/*`): token must include `access:reader` and must
+ * not include any staff permission. Users with merged staff+reader RBAC use staff tokens on
+ * staff routes only; their reader-only flows need a dedicated reader account or role layout.
+ */
+export function isReaderAccountOnly(permissions: string[]): boolean {
+  return hasReaderAccountPermission(permissions) && !hasStaffApiAccess(permissions)
+}
