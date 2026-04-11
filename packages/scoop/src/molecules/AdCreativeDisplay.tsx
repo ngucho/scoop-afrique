@@ -6,6 +6,15 @@ import { toYoutubeEmbedUrl } from '../utils/youtubeEmbed'
 
 export type AdCreativeFormat = 'image' | 'native' | 'video'
 
+/** Contenant média fixe par emplacement (IAB-like) — évite qu’une image géante casse la grille. */
+export type AdCreativeSlotLayout =
+  | 'banner-leaderboard'
+  | 'banner-billboard'
+  | 'rectangle'
+  | 'rail'
+  | 'inline-wide'
+  | 'native'
+
 export interface AdCreativeDisplayModel {
   format?: AdCreativeFormat
   headline: string
@@ -26,6 +35,8 @@ export interface AdCreativeDisplayProps {
   unsupportedVideoMessage?: string
   onLinkClick?: () => void
   className?: string
+  /** Contrainte de zone média selon la position (slot) côté reader. */
+  slotLayout?: AdCreativeSlotLayout
 }
 
 function resolveFormat(c: AdCreativeDisplayModel): AdCreativeFormat {
@@ -33,6 +44,59 @@ function resolveFormat(c: AdCreativeDisplayModel): AdCreativeFormat {
   if (c.video_url?.trim()) return 'video'
   if (c.image_url?.trim()) return 'image'
   return 'native'
+}
+
+/**
+ * Gabarits alignés sur les tailles IAB courantes (réf. LEAN / Display) :
+ * - Mobile banner 320×50, Leaderboard 728×90
+ * - Large mobile banner 320×100, Billboard 970×250
+ * - Medium rectangle (MPU) 300×250, Half-page 300×600
+ * - Super leaderboard 970×90 : en responsive 320×50 → 728×90 (sm) → 970×90 (lg)
+ * - Ratio lien / social ~1,91:1 (1200×628)
+ */
+function mediaShellClasses(layout: AdCreativeSlotLayout | undefined): string {
+  const L = layout ?? 'inline-wide'
+  switch (L) {
+    case 'banner-leaderboard':
+      return cn(
+        'relative mx-auto w-full overflow-hidden rounded-md bg-muted',
+        'max-w-[320px] aspect-[320/50]',
+        'sm:max-w-[728px] sm:aspect-[728/90]',
+      )
+    case 'banner-billboard':
+      return cn(
+        'relative mx-auto w-full overflow-hidden rounded-md bg-muted',
+        'max-w-[320px] aspect-[320/100]',
+        'md:max-w-[970px] md:aspect-[970/250]',
+      )
+    case 'rectangle':
+      return cn(
+        'relative mx-auto w-full overflow-hidden rounded-md bg-muted',
+        'max-w-[300px] aspect-[300/250]',
+      )
+    case 'rail':
+      return cn(
+        'relative mx-auto w-full overflow-hidden rounded-md bg-muted',
+        'max-w-[300px] aspect-[300/600] max-h-[600px]',
+      )
+    case 'native':
+      return cn(
+        'relative mx-auto w-full overflow-hidden rounded-md bg-muted',
+        'max-w-[600px] aspect-[1200/628] max-h-[min(314px,42vh)]',
+      )
+    case 'inline-wide':
+    default:
+      return cn(
+        'relative mx-auto w-full overflow-hidden rounded-md bg-muted',
+        'max-w-[320px] aspect-[320/50]',
+        'sm:max-w-[728px] sm:aspect-[728/90]',
+        'lg:max-w-[970px] lg:aspect-[970/90]',
+      )
+  }
+}
+
+function fillMediaClass(): string {
+  return 'absolute inset-0 h-full w-full object-cover object-center'
 }
 
 /**
@@ -46,28 +110,30 @@ export function AdCreativeDisplay({
   unsupportedVideoMessage = 'Vidéo (URL non prise en charge)',
   onLinkClick,
   className,
+  slotLayout,
 }: AdCreativeDisplayProps) {
   const fmt = resolveFormat(creative)
   const altText = creative.alt?.trim() || creative.headline || frameLabel
   const ctaLabel = creative.cta_label?.trim() || defaultCtaLabel
   const rel = 'noopener sponsored noreferrer'
+  const shell = mediaShellClasses(slotLayout)
 
   if (fmt === 'video' && creative.video_url?.trim()) {
     const embed = toYoutubeEmbedUrl(creative.video_url.trim())
     return (
       <div className={cn('flex flex-col gap-3', className)}>
         {embed ? (
-          <div className="relative aspect-video w-full overflow-hidden rounded-md bg-muted">
+          <div className={shell}>
             <iframe
               src={`${embed}?rel=0`}
               title={altText}
-              className="h-full w-full border-0"
+              className={fillMediaClass()}
               allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
           </div>
         ) : (
-          <div className="flex aspect-video items-center justify-center rounded-md bg-muted text-sm text-muted-foreground">
+          <div className={cn(shell, 'flex items-center justify-center text-sm text-muted-foreground')}>
             {unsupportedVideoMessage}
           </div>
         )}
@@ -99,13 +165,13 @@ export function AdCreativeDisplay({
         onClick={onLinkClick}
       >
         {creative.image_url ? (
-          <div className="shrink-0 overflow-hidden rounded-md sm:w-2/5">
+          <div className="relative h-[140px] w-full shrink-0 overflow-hidden rounded-md sm:h-[160px] sm:w-2/5 sm:max-w-[260px]">
             <img
               src={creative.image_url}
               alt={altText}
-              className="h-full max-h-48 w-full object-cover transition-opacity group-hover:opacity-95 sm:max-h-none"
+              className="h-full w-full object-cover transition-opacity group-hover:opacity-95"
               width={400}
-              height={240}
+              height={250}
             />
           </div>
         ) : null}
@@ -129,16 +195,20 @@ export function AdCreativeDisplay({
         href={creative.link_url}
         target="_blank"
         rel={rel}
-        className={cn('group block outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}
+        className={cn('group block w-full max-w-full outline-none focus-visible:ring-2 focus-visible:ring-ring', className)}
         onClick={onLinkClick}
       >
-        <img
-          src={creative.image_url}
-          alt={altText}
-          className="mx-auto max-h-[280px] w-auto max-w-full rounded-md object-contain transition-opacity group-hover:opacity-95"
-          width={600}
-          height={400}
-        />
+        <div className={shell}>
+          <img
+            src={creative.image_url}
+            alt={altText}
+            className={cn(fillMediaClass(), 'transition-opacity group-hover:opacity-95')}
+            width={728}
+            height={90}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
       </a>
     )
   }

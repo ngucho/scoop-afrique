@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { Heading, Button, SectionHeader, CategoryChips, MotionEnter } from 'scoop'
@@ -120,6 +121,7 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
   ])
   const totalPages = Math.ceil(total / LIMIT)
   const listTop = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, AD_SLOT_KEYS.LIST_TOP)
+  const listMid = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, AD_SLOT_KEYS.LIST_MID)
   const qTrim = q?.trim() ?? ''
   const activeCategoryLabel =
     category && category !== 'all'
@@ -166,11 +168,29 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
         {articles.length > 0 ? (
           <>
             <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {articles.map((article: Article, i: number) => (
-                <div key={article.id} className="animate-fade-in-up" style={{ animationDelay: `${0.04 * i}s` }}>
-                  <ArticleCard article={article} imagePriority={i < 3} />
-                </div>
-              ))}
+              {articles.flatMap((article: Article, i: number) => {
+                const nodes: ReactNode[] = []
+                if (i === 3 && listMid) {
+                  nodes.push(
+                    <div
+                      key="ad-list-mid"
+                      className="col-span-full flex justify-center py-2"
+                    >
+                      <AdSlotSection
+                        slotKey={AD_SLOT_KEYS.LIST_MID}
+                        creative={listMid.creative}
+                        className="w-full max-w-[300px]"
+                      />
+                    </div>
+                  )
+                }
+                nodes.push(
+                  <div key={article.id} className="animate-fade-in-up" style={{ animationDelay: `${0.04 * i}s` }}>
+                    <ArticleCard article={article} imagePriority={i < 3} />
+                  </div>
+                )
+                return nodes
+              })}
             </section>
 
             {totalPages > 1 && (

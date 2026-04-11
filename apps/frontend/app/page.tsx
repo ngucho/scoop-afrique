@@ -34,7 +34,6 @@ export const metadata: Metadata = {
 export default async function HomePage() {
   const [{ sections, titles }, placements] = await Promise.all([buildHomeSections(), fetchAdPlacements()])
   const { slots, creatives_by_slot } = placements
-  const topAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.GLOBAL_TOP_BANNER)
   const midAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_MID_1)
   const bottomAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_BOTTOM)
   const sponsorAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_HERO_SPONSOR)
@@ -66,12 +65,6 @@ export default async function HomePage() {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       ) : null}
       <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 md:pb-12 lg:px-8">
-        {topAd ? (
-          <MotionEnter as="div" className="mb-8 flex justify-center">
-            <AdSlotSection slotKey={AD_SLOT_KEYS.GLOBAL_TOP_BANNER} creative={topAd.creative} className="w-full max-w-6xl" />
-          </MotionEnter>
-        ) : null}
-
         <header className="mb-10">
           <SectionHeader label="Accueil" className="mb-4" />
           <Heading
@@ -194,7 +187,11 @@ export default async function HomePage() {
 
         {midAd ? (
           <MotionEnter as="div" className="mb-14 flex justify-center">
-            <AdSlotSection slotKey={AD_SLOT_KEYS.HOME_MID_1} creative={midAd.creative} className="w-full max-w-[320px] lg:max-w-[400px]" />
+            <AdSlotSection
+              slotKey={AD_SLOT_KEYS.HOME_MID_1}
+              creative={midAd.creative}
+              className="w-full max-w-[300px]"
+            />
           </MotionEnter>
         ) : null}
 

@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { apiGet } from '@/lib/api/client'
 import type { AdCreative, AdPlacementsResponse, AdSlot } from '@/lib/api/types'
 
@@ -19,7 +20,7 @@ export const AD_SLOT_KEYS = {
 
 export type AdSlotKey = (typeof AD_SLOT_KEYS)[keyof typeof AD_SLOT_KEYS]
 
-export async function fetchAdPlacements(): Promise<AdPlacementsResponse['data']> {
+async function fetchAdPlacementsUncached(): Promise<AdPlacementsResponse['data']> {
   try {
     const res = await apiGet<AdPlacementsResponse>('/ads/placements', { revalidate: 30 })
     return res.data ?? { slots: [], creatives_by_slot: {} }
@@ -27,6 +28,9 @@ export async function fetchAdPlacements(): Promise<AdPlacementsResponse['data']>
     return { slots: [], creatives_by_slot: {} }
   }
 }
+
+/** Une requête par rendu serveur (évite doublons layout + page). */
+export const fetchAdPlacements = cache(fetchAdPlacementsUncached)
 
 export function pickCreativeForSlot(
   slots: AdSlot[],
