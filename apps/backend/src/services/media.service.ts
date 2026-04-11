@@ -13,6 +13,7 @@ import { getDb } from '../db/index.js'
 import { media } from '../db/schema.js'
 import { getSupabase } from '../lib/supabase.js'
 import { config } from '../config/env.js'
+import type { FetchResponse } from '../lib/http.js'
 import crypto from 'node:crypto'
 
 const IMGBB_MAX_BYTES = 3 * 1024 * 1024
@@ -144,10 +145,10 @@ export async function uploadImageViaImgbb(
   form.append('image', imageBase64)
   if (options?.name) form.append('name', options.name.slice(0, 200))
 
-  const res = await fetch('https://api.imgbb.com/1/upload', {
+  const res = (await fetch('https://api.imgbb.com/1/upload', {
     method: 'POST',
     body: form,
-  })
+  })) as FetchResponse
   const json = (await res.json().catch(() => ({}))) as ImgbbApiResponse
   if (!res.ok || !json.success) {
     const msg = json.error?.message ?? `ImgBB error (${res.status})`
