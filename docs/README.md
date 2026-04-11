@@ -22,6 +22,7 @@ Bienvenue dans la documentation du monorepo **Scoop Afrique**. Tous les document
 | Document | Description |
 |----------|-------------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Schémas système, apps, packages, routes frontend/backend. |
+| [DATABASE_MIGRATIONS.md](./DATABASE_MIGRATIONS.md) | Règles migrations Drizzle, éviter dérive schéma / code, `verify:reader-ads-schema`. |
 | [API.md](./API.md) | Référence de l'API REST (endpoints, auth, formats de réponse). |
 | [RUNBOOK.md](./RUNBOOK.md) | Démarrage rapide, variables d'environnement, commandes utiles. |
 

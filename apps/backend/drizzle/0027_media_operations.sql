@@ -1,4 +1,11 @@
 -- Media operations: announcements, ads, subscriber profiles/segments, newsletter campaigns & digest jobs
+--
+-- IMPORTANT (ads): Les tables ad_slots / ad_campaigns / ad_creatives ci-dessous sont une
+-- ancienne variante. Si cette migration s'exécute avant 0027_reader_platform_admin, le
+-- CREATE TABLE IF NOT EXISTS empêche la création de la forme attendue par Drizzle
+-- (voir apps/backend/src/db/schema.ts). Les migrations 0033 et 0034 réalignent la base.
+-- Pour toute nouvelle colonne ads : une seule source de vérité — schema.ts + migration
+-- ALTER explicite, pas un second CREATE TABLE concurrent.
 
 -- Enums
 DO $$ BEGIN
