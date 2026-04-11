@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+inspirations/
 
 # Next.js (all apps)
 .next/

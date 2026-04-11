@@ -1,16 +1,18 @@
 /**
  * Reader platform backoffice — announcements, ads, homepage, subscribers, newsletter campaigns, KPIs.
  */
-import { and, asc, count, desc, eq, ilike, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, ilike, sql } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import {
   adCampaigns,
   adCreatives,
+  adClicks,
+  adImpressions,
   adSlots,
   adminAuditLog,
   articles,
   categories,
-  digestNewsletterCampaigns as newsletterCampaigns,
+  newsletterCampaigns,
   homepageSections,
   newsletterSubscribers,
   readerAnnouncements,
@@ -56,6 +58,13 @@ export interface ReaderDashboardKpis {
   newsletterTotals: { confirmed: number; pending: number; unsubscribed: number }
 }
 
+export interface ReaderAdSlotMetricsRow {
+  slot_key: string
+  impressions: number
+  clicks: number
+  ctr: number | null
+}
+
 export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
   const db = getDb()
   const since = new Date()
@@ -71,16 +80,42 @@ export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
   `)
   const growthRows = rowsFromExecute<{ week_start: string; new_subscribers: number }>(growthRaw)
 
-  const ctrRaw = await db.execute(sql`
-    SELECT slot_key,
-           COUNT(*) FILTER (WHERE event_type = 'impression')::int AS impressions,
-           COUNT(*) FILTER (WHERE event_type = 'click')::int AS clicks
-    FROM ad_events
-    WHERE created_at >= now() - interval '30 days'
-    GROUP BY slot_key
-    ORDER BY slot_key
-  `)
-  const ctrRows = rowsFromExecute<{ slot_key: string; impressions: number; clicks: number }>(ctrRaw)
+  const sinceAds = new Date()
+  sinceAds.setDate(sinceAds.getDate() - 30)
+
+  const [impAgg, clkAgg] = await Promise.all([
+    db
+      .select({
+        slot_key: adSlots.key,
+        n: count(adImpressions.id),
+      })
+      .from(adImpressions)
+      .innerJoin(adCreatives, eq(adImpressions.creativeId, adCreatives.id))
+      .innerJoin(adCampaigns, eq(adCreatives.campaignId, adCampaigns.id))
+      .innerJoin(adSlots, eq(adCampaigns.slotId, adSlots.id))
+      .where(gte(adImpressions.occurredAt, sinceAds))
+      .groupBy(adSlots.key),
+    db
+      .select({
+        slot_key: adSlots.key,
+        n: count(adClicks.id),
+      })
+      .from(adClicks)
+      .innerJoin(adCreatives, eq(adClicks.creativeId, adCreatives.id))
+      .innerJoin(adCampaigns, eq(adCreatives.campaignId, adCampaigns.id))
+      .innerJoin(adSlots, eq(adCampaigns.slotId, adSlots.id))
+      .where(gte(adClicks.occurredAt, sinceAds))
+      .groupBy(adSlots.key),
+  ])
+
+  const impMap = new Map(impAgg.map((r) => [r.slot_key, Number(r.n)]))
+  const clkMap = new Map(clkAgg.map((r) => [r.slot_key, Number(r.n)]))
+  const slotKeys = new Set([...impMap.keys(), ...clkMap.keys()])
+  const ctrRows = [...slotKeys].sort().map((slot_key) => ({
+    slot_key,
+    impressions: impMap.get(slot_key) ?? 0,
+    clicks: clkMap.get(slot_key) ?? 0,
+  }))
 
   const catRaw = await db.execute(sql`
     SELECT c.id AS category_id, c.name, c.slug,
@@ -127,8 +162,8 @@ export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
       new_subscribers: Number(r.new_subscribers),
     })),
     adCtrBySlot: ctrRows.map((r) => {
-      const imp = Number(r.impressions)
-      const clk = Number(r.clicks)
+      const imp = r.impressions
+      const clk = r.clicks
       return {
         slot_key: r.slot_key,
         impressions: imp,
@@ -154,6 +189,75 @@ export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
       confirmed: conf[0]?.c ?? 0,
       pending: pend[0]?.c ?? 0,
       unsubscribed: unsub[0]?.c ?? 0,
+    },
+  }
+}
+
+/** Impressions & clicks by placement key (`ad_impressions` / `ad_clicks`), for admin reporting. */
+export async function getReaderAdMetrics(days: number): Promise<{
+  days: number
+  by_slot: ReaderAdSlotMetricsRow[]
+  totals: { impressions: number; clicks: number; ctr: number | null }
+}> {
+  const db = getDb()
+  const d = Math.min(Math.max(days, 1), 366)
+  const since = new Date()
+  since.setDate(since.getDate() - d)
+
+  const [impAgg, clkAgg] = await Promise.all([
+    db
+      .select({
+        slot_key: adSlots.key,
+        n: count(adImpressions.id),
+      })
+      .from(adImpressions)
+      .innerJoin(adCreatives, eq(adImpressions.creativeId, adCreatives.id))
+      .innerJoin(adCampaigns, eq(adCreatives.campaignId, adCampaigns.id))
+      .innerJoin(adSlots, eq(adCampaigns.slotId, adSlots.id))
+      .where(gte(adImpressions.occurredAt, since))
+      .groupBy(adSlots.key),
+    db
+      .select({
+        slot_key: adSlots.key,
+        n: count(adClicks.id),
+      })
+      .from(adClicks)
+      .innerJoin(adCreatives, eq(adClicks.creativeId, adCreatives.id))
+      .innerJoin(adCampaigns, eq(adCreatives.campaignId, adCampaigns.id))
+      .innerJoin(adSlots, eq(adCampaigns.slotId, adSlots.id))
+      .where(gte(adClicks.occurredAt, since))
+      .groupBy(adSlots.key),
+  ])
+
+  const impMap = new Map(impAgg.map((r) => [r.slot_key, Number(r.n)]))
+  const clkMap = new Map(clkAgg.map((r) => [r.slot_key, Number(r.n)]))
+  const keys = new Set([...impMap.keys(), ...clkMap.keys()])
+  const by_slot: ReaderAdSlotMetricsRow[] = [...keys].sort().map((slot_key) => {
+    const impressions = impMap.get(slot_key) ?? 0
+    const clicks = clkMap.get(slot_key) ?? 0
+    return {
+      slot_key,
+      impressions,
+      clicks,
+      ctr: impressions > 0 ? clicks / impressions : null,
+    }
+  })
+
+  const totals = by_slot.reduce(
+    (acc, r) => {
+      acc.impressions += r.impressions
+      acc.clicks += r.clicks
+      return acc
+    },
+    { impressions: 0, clicks: 0 },
+  )
+
+  return {
+    days: d,
+    by_slot,
+    totals: {
+      ...totals,
+      ctr: totals.impressions > 0 ? totals.clicks / totals.impressions : null,
     },
   }
 }
@@ -233,6 +337,12 @@ export async function deleteAnnouncement(id: string) {
 export async function listAdSlots() {
   const db = getDb()
   return db.select().from(adSlots).orderBy(asc(adSlots.key))
+}
+
+export async function getAdCampaignById(id: string) {
+  const db = getDb()
+  const [row] = await db.select().from(adCampaigns).where(eq(adCampaigns.id, id)).limit(1)
+  return row ?? null
 }
 
 export async function listAdCampaignsWithCreatives() {
@@ -317,9 +427,16 @@ export async function upsertCreative(
     image_url: string | null
     link_url: string
     sort_order: number
-  }
+    format?: 'image' | 'native' | 'video'
+    cta_label?: string | null
+    video_url?: string | null
+    alt?: string | null
+    weight?: number
+    is_active?: boolean
+  },
 ) {
   const db = getDb()
+  const now = new Date()
   if (data.id) {
     const [row] = await db
       .update(adCreatives)
@@ -329,6 +446,13 @@ export async function upsertCreative(
         imageUrl: data.image_url,
         linkUrl: data.link_url,
         sortOrder: data.sort_order,
+        updatedAt: now,
+        ...(data.format !== undefined ? { creativeFormat: data.format } : {}),
+        ...(data.cta_label !== undefined ? { ctaLabel: data.cta_label } : {}),
+        ...(data.video_url !== undefined ? { videoUrl: data.video_url } : {}),
+        ...(data.alt !== undefined ? { alt: data.alt } : {}),
+        ...(data.weight !== undefined ? { weight: data.weight } : {}),
+        ...(data.is_active !== undefined ? { isActive: data.is_active } : {}),
       })
       .where(and(eq(adCreatives.id, data.id), eq(adCreatives.campaignId, campaignId)))
       .returning()
@@ -343,6 +467,13 @@ export async function upsertCreative(
       imageUrl: data.image_url,
       linkUrl: data.link_url,
       sortOrder: data.sort_order,
+      creativeFormat: data.format ?? 'native',
+      ctaLabel: data.cta_label ?? null,
+      videoUrl: data.video_url ?? null,
+      alt: data.alt ?? null,
+      weight: data.weight ?? 1,
+      isActive: data.is_active ?? true,
+      updatedAt: now,
     })
     .returning()
   return row
@@ -362,6 +493,16 @@ export async function deleteCreative(campaignId: string, creativeId: string) {
 export async function listHomepageSections() {
   const db = getDb()
   return db.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder))
+}
+
+/** Visible sections for public site (cached). */
+export async function listPublicHomepageSections() {
+  const db = getDb()
+  return db
+    .select()
+    .from(homepageSections)
+    .where(eq(homepageSections.isVisible, true))
+    .orderBy(asc(homepageSections.sortOrder))
 }
 
 export async function updateHomepageSection(
@@ -450,11 +591,19 @@ export async function listNewsletterCampaigns() {
   return db.select().from(newsletterCampaigns).orderBy(desc(newsletterCampaigns.updatedAt))
 }
 
+export async function getNewsletterCampaignById(id: string) {
+  const db = getDb()
+  const [row] = await db.select().from(newsletterCampaigns).where(eq(newsletterCampaigns.id, id)).limit(1)
+  return row ?? null
+}
+
 export async function createNewsletterCampaign(data: {
   name: string
   frequency: 'daily' | 'weekly' | 'monthly'
   segment_filter: Record<string, unknown>
   subject: string
+  body_html?: string | null
+  preheader?: string | null
   status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
   scheduled_at: string | null
   userId: string
@@ -464,14 +613,15 @@ export async function createNewsletterCampaign(data: {
     .insert(newsletterCampaigns)
     .values({
       name: data.name,
-      frequency: data.frequency,
-      segmentId: null,
-      stats: data.segment_filter,
-      subject: data.subject,
+      cadence: data.frequency,
+      segmentFilter: data.segment_filter,
+      subjectTemplate: data.subject,
+      bodyHtml: data.body_html ?? null,
+      preheader: data.preheader ?? null,
       status: data.status,
-      scheduledAt: data.scheduled_at ? new Date(data.scheduled_at) : null,
-      sentAt: null,
-      templateKey: null,
+      sendAt: data.scheduled_at ? new Date(data.scheduled_at) : null,
+      lastSentAt: null,
+      createdBy: data.userId,
     })
     .returning()
   return row
@@ -484,6 +634,8 @@ export async function updateNewsletterCampaign(
     frequency: 'daily' | 'weekly' | 'monthly'
     segment_filter: Record<string, unknown>
     subject: string
+    body_html: string | null
+    preheader: string | null
     status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
     scheduled_at: string | null
     sent_at: string | null
@@ -494,14 +646,18 @@ export async function updateNewsletterCampaign(
     .update(newsletterCampaigns)
     .set({
       ...(data.name !== undefined ? { name: data.name } : {}),
-      ...(data.frequency !== undefined ? { frequency: data.frequency } : {}),
-      ...(data.segment_filter !== undefined ? { stats: data.segment_filter } : {}),
-      ...(data.subject !== undefined ? { subject: data.subject } : {}),
+      ...(data.frequency !== undefined ? { cadence: data.frequency } : {}),
+      ...(data.segment_filter !== undefined ? { segmentFilter: data.segment_filter } : {}),
+      ...(data.subject !== undefined ? { subjectTemplate: data.subject } : {}),
+      ...(data.body_html !== undefined ? { bodyHtml: data.body_html } : {}),
+      ...(data.preheader !== undefined ? { preheader: data.preheader } : {}),
       ...(data.status !== undefined ? { status: data.status } : {}),
       ...(data.scheduled_at !== undefined
-        ? { scheduledAt: data.scheduled_at ? new Date(data.scheduled_at) : null }
+        ? { sendAt: data.scheduled_at ? new Date(data.scheduled_at) : null }
         : {}),
-      ...(data.sent_at !== undefined ? { sentAt: data.sent_at ? new Date(data.sent_at) : null } : {}),
+      ...(data.sent_at !== undefined
+        ? { lastSentAt: data.sent_at ? new Date(data.sent_at) : null }
+        : {}),
       updatedAt: new Date(),
     })
     .where(eq(newsletterCampaigns.id, id))
@@ -552,7 +708,14 @@ export function rowCampaign(
     image_url: cr.imageUrl,
     link_url: cr.linkUrl,
     sort_order: cr.sortOrder,
+    format: cr.creativeFormat,
+    cta_label: cr.ctaLabel ?? null,
+    video_url: cr.videoUrl ?? null,
+    alt: cr.alt ?? null,
+    weight: cr.weight,
+    is_active: cr.isActive,
     created_at: cr.createdAt.toISOString(),
+    updated_at: cr.updatedAt.toISOString(),
   }))
   const { creatives: _, ...rest } = c
   return {
@@ -599,12 +762,15 @@ export function rowNewsletterCampaign(n: typeof newsletterCampaigns.$inferSelect
   return {
     id: n.id,
     name: n.name,
-    frequency: n.frequency,
-    segment_filter: n.stats as Record<string, unknown>,
-    subject: n.subject,
+    cadence: n.cadence,
+    segment_filter: n.segmentFilter as Record<string, unknown>,
+    subject_template: n.subjectTemplate,
+    body_html: n.bodyHtml ?? null,
+    preheader: n.preheader ?? null,
     status: n.status,
-    scheduled_at: n.scheduledAt?.toISOString() ?? null,
-    sent_at: n.sentAt?.toISOString() ?? null,
+    send_at: n.sendAt?.toISOString() ?? null,
+    last_sent_at: n.lastSentAt?.toISOString() ?? null,
+    created_by: n.createdBy,
     created_at: n.createdAt.toISOString(),
     updated_at: n.updatedAt.toISOString(),
   }

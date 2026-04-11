@@ -15,7 +15,7 @@ export const revalidate = 60
 export const dynamicParams = true
 
 const LIMIT = 13
-const SITE_URL = config.siteUrl
+const SITE_URL = config.siteUrl.replace(/\/$/, '')
 
 async function getCategoryBySlug(slug: string): Promise<Category | null> {
   try {
@@ -68,6 +68,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     openGraph: {
       title,
       description,
@@ -107,11 +108,33 @@ export default async function CategoryPage({ params }: PageProps) {
     description: category.description ?? undefined,
     url,
     isPartOf: { '@type': 'WebSite', name: 'Scoop.Afrique', url: SITE_URL },
+    numberOfItems: total,
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: articles.length,
+      itemListElement: articles.slice(0, 12).map((a, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `${SITE_URL}/articles/${a.slug}`,
+        name: a.title,
+      })),
+    },
+  }
+
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Accueil', item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: 'Articles', item: `${SITE_URL}/articles` },
+      { '@type': 'ListItem', position: 3, name: category.name, item: url },
+    ],
   }
 
   return (
     <ReaderLayout>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Breadcrumb
           className="mb-6"
@@ -174,7 +197,7 @@ export default async function CategoryPage({ params }: PageProps) {
         {total > LIMIT ? (
           <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Button asChild size="lg">
-              <Link href={`/articles?category=${slug}`}>Voir plus d&apos;articles</Link>
+              <Link href={`/articles?category=${encodeURIComponent(slug)}`}>Voir plus d&apos;articles</Link>
             </Button>
             <Text variant="muted" className="text-sm">
               {total} articles au total dans cette rubrique.

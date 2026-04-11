@@ -23,6 +23,7 @@ app.get('/', async (c) => {
         : undefined
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
+  const search = (c.req.query('search') || c.req.query('q') || '').trim() || undefined
 
   const { data, total } = await devisService.listDevis({
     contactId: contactId || undefined,
@@ -31,6 +32,7 @@ app.get('/', async (c) => {
     archived,
     limit,
     offset,
+    search,
   })
   return c.json({ data, total })
 })

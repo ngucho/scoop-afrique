@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
-import { Heading, Text, Dot, SectionHeader } from 'scoop'
+import { Heading, Text, Dot, SectionHeader, MediaFeatureCard } from 'scoop'
 import { IconHeadphones, IconMicrophone } from '@tabler/icons-react'
 
 export const metadata: Metadata = {
@@ -39,29 +39,35 @@ function EpisodeCard({
   title,
   description,
   duration,
-  status,
 }: {
   title: string
   description: string
   duration: string
-  status: 'soon'
 }) {
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:bg-white/10 sm:flex-row">
-      <div className="flex aspect-square w-full shrink-0 items-center justify-center bg-primary/10 sm:w-48">
-        <IconMicrophone className="h-14 w-14 text-primary/60" aria-hidden />
-      </div>
-      <div className="flex flex-1 flex-col justify-center p-5">
-        <span className="text-xs font-medium uppercase tracking-wider text-primary">Bientôt</span>
-        <h3 className="mt-1 font-[var(--font-scoop)] text-lg font-semibold tracking-tight text-foreground group-hover:text-primary">
-          {title}
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        {duration && (
-          <p className="mt-2 text-xs text-muted-foreground">{duration}</p>
-        )}
-      </div>
-    </article>
+    <MediaFeatureCard
+      layout="horizontal"
+      className="group"
+      media={
+        <div className="flex h-full w-full items-center justify-center bg-primary/10">
+          <IconMicrophone className="h-14 w-14 text-primary/60" aria-hidden />
+        </div>
+      }
+      heading={
+        <>
+          <span className="text-xs font-medium uppercase tracking-wider text-primary">Bientôt</span>
+          <h3 className="mt-1 font-[var(--font-scoop)] text-lg font-semibold tracking-tight text-foreground group-hover:text-primary">
+            {title}
+          </h3>
+        </>
+      }
+      description={
+        <>
+          <p className="text-sm text-muted-foreground">{description}</p>
+          {duration ? <p className="mt-2 text-xs text-muted-foreground">{duration}</p> : null}
+        </>
+      }
+    />
   )
 }
 
@@ -70,7 +76,7 @@ export default function PodcastPage() {
     <ReaderLayout>
       <main className="min-h-screen">
         {/* Hero — style podcast / audio */}
-        <section className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-background via-background to-primary/5">
+        <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-background via-background to-primary/5">
           <div
             className="pointer-events-none absolute inset-0 opacity-30"
             aria-hidden
@@ -121,13 +127,7 @@ export default function PodcastPage() {
           </Heading>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {PLACEHOLDER_EPISODES.map((ep) => (
-              <EpisodeCard
-                key={ep.id}
-                title={ep.title}
-                description={ep.description}
-                duration={ep.duration}
-                status={ep.status}
-              />
+              <EpisodeCard key={ep.id} title={ep.title} description={ep.description} duration={ep.duration} />
             ))}
           </div>
           <p className="mt-10 text-center text-sm text-muted-foreground">

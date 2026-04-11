@@ -8,7 +8,7 @@
  */
 import { Hono } from 'hono'
 import { requireAuth, requireRole } from '../../middleware/auth.js'
-import { mediaUrlBodySchema } from '../../schemas/media.js'
+import { mediaImgbbBodySchema, mediaUrlBodySchema } from '../../schemas/media.js'
 import * as mediaService from '../../services/media.service.js'
 import type { AppEnv } from '../../types.js'
 
@@ -42,6 +42,27 @@ app.post('/upload', async (c) => {
 
   const media = await mediaService.uploadImage(file, file.name, user.id, { alt, caption })
   return c.json({ data: media }, 201)
+})
+
+/* --- Upload via ImgBB (base64, max 3 MiB decoded) --- */
+app.post('/imgbb', async (c) => {
+  const user = c.get('user')
+  const parsed = mediaImgbbBodySchema.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
+  }
+  try {
+    const media = await mediaService.uploadImageViaImgbb(parsed.data.image, user.id, {
+      alt: parsed.data.alt,
+      caption: parsed.data.caption,
+      name: parsed.data.name,
+    })
+    return c.json({ data: media }, 201)
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'ImgBB upload failed'
+    const status = message.includes('not configured') ? 503 : 400
+    return c.json({ error: message }, status)
+  }
 })
 
 /* --- Register external URL --- */

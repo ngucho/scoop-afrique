@@ -21,11 +21,14 @@ import healthRoutes from './routes/health.js'
 import articlesRoutes from './routes/articles.js'
 import categoriesRoutes from './routes/categories.js'
 import commentsRoutes from './routes/comments.js'
+import contributionsRoutes from './routes/contributions.js'
+import adminContributionsRoutes from './routes/admin/contributions.js'
 import newsletterRoutes from './routes/newsletter.js'
 import readerRoutes from './routes/reader.js'
 import digestRoutes from './routes/digest.js'
 import announcementsRoutes from './routes/announcements.js'
 import adsRoutes from './routes/ads.js'
+import homepagePublicRoutes from './routes/homepage.js'
 import devisRoutes from './routes/devis.js'
 import adminArticlesRoutes from './routes/admin/articles.js'
 import adminCommentsRoutes from './routes/admin/comments.js'
@@ -66,14 +69,17 @@ app.route(`${prefix}/reader`, readerRoutes)
 app.route(`${prefix}/digest`, digestRoutes)
 app.route(`${prefix}/announcements`, announcementsRoutes)
 app.route(`${prefix}/ads`, adsRoutes)
+app.route(`${prefix}/homepage`, homepagePublicRoutes)
 app.route(`${prefix}/devis`, devisRoutes)
 
 // Comment routes use nested paths
 app.route(`${prefix}`, commentsRoutes) // /api/v1/articles/:id/comments + /api/v1/comments/:id
+app.route(`${prefix}/contributions`, contributionsRoutes)
 
 /* ---- Admin API v1 ---- */
 app.route(`${prefix}/admin/articles`, adminArticlesRoutes)
 app.route(`${prefix}/admin/comments`, adminCommentsRoutes)
+app.route(`${prefix}/admin/contributions`, adminContributionsRoutes)
 app.route(`${prefix}/admin/categories`, adminCategoriesRoutes)
 app.route(`${prefix}/admin/media`, adminMediaRoutes)
 app.route(`${prefix}/admin/profile`, adminProfileRoutes)

@@ -1,68 +1,96 @@
 import React from 'react'
 import { Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer'
-import { PdfHeader } from './PdfHeader.js'
 
 const BRAND = '#B91C1C'
-const MUTED = '#555'
+const MUTED = '#444'
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontSize: 10,
+    padding: 22,
+    fontSize: 7.5,
     fontFamily: 'Helvetica',
     color: '#1a1a1a',
   },
-  subtitle: {
+  brandRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1.5,
+    borderBottomColor: BRAND,
+    paddingBottom: 8,
+    marginBottom: 10,
+  },
+  brandTitle: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: BRAND,
+    marginBottom: 2,
+  },
+  legalLine: {
+    fontSize: 6.5,
+    color: MUTED,
+    marginBottom: 1,
+  },
+  docTitle: {
     fontSize: 9,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    textAlign: 'right',
+  },
+  amountBox: {
+    marginVertical: 10,
+    padding: 12,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: BRAND,
+    borderRadius: 3,
+    alignItems: 'center',
+  },
+  amountLabel: {
+    fontSize: 7,
+    marginBottom: 4,
     color: MUTED,
   },
-  section: {
-    marginBottom: 15,
+  amountValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: BRAND,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginBottom: 5,
     color: BRAND,
   },
   row: {
     flexDirection: 'row',
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  label: { width: 120, color: MUTED },
-  value: { flex: 1, color: '#1a1a1a' },
-  amountBox: {
-    marginTop: 30,
-    marginBottom: 30,
-    padding: 20,
-    backgroundColor: '#fef2f2',
-    borderWidth: 1,
-    borderColor: BRAND,
-    borderRadius: 4,
-    alignItems: 'center',
-  },
-  amountLabel: {
-    fontSize: 11,
-    marginBottom: 8,
-    color: MUTED,
-  },
-  amountValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: BRAND,
-  },
+  label: { width: 78, color: MUTED, fontSize: 7 },
+  value: { flex: 1, fontSize: 7.5, color: '#1a1a1a' },
   footer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
-    fontSize: 8,
+    marginTop: 'auto',
+    paddingTop: 8,
+    borderTopWidth: 0.5,
+    borderTopColor: '#ccc',
+    fontSize: 6,
     color: MUTED,
     textAlign: 'center',
   },
 })
 
+export interface ReceiptIssuer {
+  legalName: string
+  legalForm: string
+  rccm: string
+  ncc?: string | null
+  address: string
+  phone: string
+  email: string
+}
+
 interface ReceiptData {
+  issuer: ReceiptIssuer
   payment: {
     id: string
     amount: number
@@ -96,65 +124,77 @@ const methodLabels: Record<string, string> = {
 }
 
 export function ReceiptTemplate({ receipt }: { receipt: ReceiptData }) {
-  const { payment, invoice, contact } = receipt
+  const { issuer, payment, invoice, contact } = receipt
   const contactName = contact
     ? `${contact.first_name || ''} ${contact.last_name || ''}`.trim()
     : ''
   const methodLabel = methodLabels[payment.method] || payment.method
+  const receiptRef = payment.id.slice(0, 8).toUpperCase()
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        <PdfHeader docTitle="Reçu de paiement" />
+      <Page size="A6" style={styles.page}>
+        <View style={styles.brandRow}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={styles.brandTitle}>{issuer.legalName}</Text>
+            <Text style={styles.legalLine}>{issuer.legalForm}</Text>
+            <Text style={styles.legalLine}>RCCM : {issuer.rccm}</Text>
+            {issuer.ncc ? <Text style={styles.legalLine}>NCC : {issuer.ncc}</Text> : null}
+            <Text style={styles.legalLine}>{issuer.address}</Text>
+            <Text style={styles.legalLine}>
+              Tél. {issuer.phone} · {issuer.email}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.docTitle}>REÇU DE PAIEMENT</Text>
+            <Text style={{ ...styles.legalLine, textAlign: 'right', marginTop: 4 }}>N° {receiptRef}</Text>
+          </View>
+        </View>
 
         <View style={styles.amountBox}>
           <Text style={styles.amountLabel}>Montant reçu</Text>
-          <Text style={styles.amountValue}>
-            {formatMoney(payment.amount, payment.currency)}
-          </Text>
+          <Text style={styles.amountValue}>{formatMoney(payment.amount, payment.currency)}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Détails du paiement</Text>
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.sectionTitle}>Détail</Text>
           <View style={styles.row}>
-            <Text style={styles.label}>Date:</Text>
-            <Text style={styles.value}>
-              {new Date(payment.paid_at).toLocaleDateString('fr-FR')}
-            </Text>
+            <Text style={styles.label}>Date :</Text>
+            <Text style={styles.value}>{new Date(payment.paid_at).toLocaleDateString('fr-FR')}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Moyen:</Text>
+            <Text style={styles.label}>Moyen :</Text>
             <Text style={styles.value}>{methodLabel}</Text>
           </View>
-          {payment.reference && (
+          {payment.reference ? (
             <View style={styles.row}>
-              <Text style={styles.label}>Référence:</Text>
+              <Text style={styles.label}>Réf. paiement :</Text>
               <Text style={styles.value}>{payment.reference}</Text>
             </View>
-          )}
-          {invoice?.reference && (
+          ) : null}
+          {invoice?.reference ? (
             <View style={styles.row}>
-              <Text style={styles.label}>Facture:</Text>
+              <Text style={styles.label}>Facture :</Text>
               <Text style={styles.value}>{invoice.reference}</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
-        {contactName && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Reçu par</Text>
+        {contactName ? (
+          <View style={{ marginBottom: 8 }}>
+            <Text style={styles.sectionTitle}>Client</Text>
             <View style={styles.row}>
-              <Text style={styles.label}>Client:</Text>
+              <Text style={styles.label}>Nom :</Text>
               <Text style={styles.value}>
                 {contactName}
-                {contact?.company ? ` (${contact.company})` : ''}
+                {contact?.company ? ` — ${contact.company}` : ''}
               </Text>
             </View>
           </View>
-        )}
+        ) : null}
 
-        <Text style={styles.footer} fixed>
-          SCOOP — Reçu de paiement — Document officiel
+        <Text style={styles.footer}>
+          Document établi pour servir et valoir ce que de droit — {issuer.legalName} — RCCM {issuer.rccm}
         </Text>
       </Page>
     </Document>

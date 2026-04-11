@@ -30,6 +30,8 @@ const treasuryMovementBase = z.object({
   occurred_at: z.string().optional(),
   title: z.string().min(1, 'Titre requis'),
   notes: z.string().optional(),
+  /** Lien vers justificatif (image / PDF hébergé) */
+  receipt_url: z.union([z.string().url(), z.literal('')]).optional(),
   metadata: z.record(z.unknown()).optional(),
   project_id: z.string().uuid().optional().nullable(),
 })

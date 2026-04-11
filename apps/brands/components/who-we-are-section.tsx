@@ -10,18 +10,30 @@ export function WhoWeAreSection() {
           Qui sommes-nous ?
         </h2>
         <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-          Scoop Afrique est un média panafricain basé en Côte d&apos;Ivoire qui allie rapidité, fiabilité et créativité
-          dans le traitement de l&apos;information. Avec plus de 300 millions de vues sur nos réseaux sociaux, nous faisons
-          partie des nouvelles voix médiatiques les plus influentes du continent.
+          Scoop Afrique est un média numérique né à Abidjan en 2024. Nous mélangeons rigueur d’information, esthétique
+          soignée et codes du divertissement pour parler à une audience majoritairement entre 18 et 34 ans, très présente en
+          Côte d’Ivoire et dans la diaspora.
+        </p>
+        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Ce que nous faisons pour les marques :</strong> couverture d’événements,
+          publications sponsorisées transparentes, campagnes artistiques, interviews et partenariats récurrents — toujours
+          intégrés à notre ligne éditoriale, avec des livrables clairs et des métriques quand vous en avez besoin.
         </p>
         <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">Vision :</strong> Devenir le média de référence de la jeunesse africaine francophone.
+          <strong className="text-foreground">Vision :</strong> être le média de référence de la jeunesse africaine
+          francophone.
           <br />
-          <strong className="text-foreground">Mission :</strong> Donner une voix et une vitrine à l&apos;Afrique en produisant des contenus audiovisuels impactants.
+          <strong className="text-foreground">Mission :</strong> donner une voix et une vitrine à l’Afrique avec des contenus
+          audiovisuels honnêtes, modernes et partageables.
         </p>
-        <CtaButton href="/a-propos" variant="outline">
-          En savoir plus
-        </CtaButton>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <CtaButton href="/a-propos" variant="outline">
+            À propos & équipe
+          </CtaButton>
+          <CtaButton href="/tarifs" variant="outline">
+            Transparence tarifaire
+          </CtaButton>
+        </div>
       </div>
     </section>
   )

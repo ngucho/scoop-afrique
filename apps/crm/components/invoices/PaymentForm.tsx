@@ -31,9 +31,12 @@ type FormData = z.infer<typeof schema>
 export function PaymentForm({
   invoiceId,
   onSuccess,
+  variant = 'default',
 }: {
   invoiceId: string
   onSuccess?: () => void
+  /** `plain` : sans carte ni titre (ex. contenu de modale). */
+  variant?: 'default' | 'plain'
 }) {
   const router = useRouter()
   const {
@@ -69,9 +72,14 @@ export function PaymentForm({
     router.refresh()
   }
 
+  const wrapClass =
+    variant === 'plain'
+      ? 'space-y-3 w-full max-w-md'
+      : 'rounded-lg border border-border p-4 max-w-md space-y-3'
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="rounded-lg border border-border p-4 max-w-md space-y-3">
-      <h3 className="font-medium">Enregistrer un paiement</h3>
+    <form onSubmit={handleSubmit(onSubmit)} className={wrapClass}>
+      {variant === 'default' ? <h3 className="font-medium">Enregistrer un paiement</h3> : null}
       <div>
         <Label htmlFor="amount">Montant (FCFA)</Label>
         <Input

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import type { NewsletterCampaignRow as Row } from '@/lib/api/types'
 import { deleteNewsletterCampaign, updateNewsletterCampaign } from '@/lib/admin/actions'
 import { IconLoader2, IconTrash } from '@tabler/icons-react'
@@ -43,6 +44,12 @@ export function NewsletterCampaignRow({
       <td className="px-4 py-3">
         <p className="font-medium">{campaign.name}</p>
         <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{campaign.subject_template}</p>
+        <Link
+          href={`/admin/reader/newsletters/${campaign.id}`}
+          className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+        >
+          Éditer le contenu (WYSIWYG)
+        </Link>
       </td>
       <td className="hidden px-4 py-3 sm:table-cell">{cadenceLabels[campaign.cadence] ?? campaign.cadence}</td>
       <td className="hidden px-4 py-3 md:table-cell">

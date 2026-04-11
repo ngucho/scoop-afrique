@@ -8,7 +8,7 @@ import {
   categories,
   digestJobs,
   digestJobRuns,
-  digestNewsletterCampaigns as newsletterCampaigns,
+  newsletterCampaigns,
   emailOutbound,
   readerSubscribers,
 } from '../db/schema.js'
@@ -388,14 +388,16 @@ function campaignToApi(row: typeof newsletterCampaigns.$inferSelect) {
   return {
     id: row.id,
     name: row.name,
-    segment_id: row.segmentId,
-    frequency: row.frequency,
+    segment_id: null as string | null,
+    frequency: row.cadence,
     status: row.status,
-    scheduled_at: row.scheduledAt?.toISOString() ?? null,
-    sent_at: row.sentAt?.toISOString() ?? null,
-    subject: row.subject,
-    template_key: row.templateKey,
-    stats: row.stats as Record<string, unknown>,
+    scheduled_at: row.sendAt?.toISOString() ?? null,
+    sent_at: row.lastSentAt?.toISOString() ?? null,
+    subject: row.subjectTemplate,
+    template_key: null as string | null,
+    stats: row.segmentFilter as Record<string, unknown>,
+    body_html: row.bodyHtml ?? null,
+    preheader: row.preheader ?? null,
     created_at: row.createdAt.toISOString(),
     updated_at: row.updatedAt.toISOString(),
   }
@@ -426,17 +428,20 @@ export async function listNewsletterCampaigns() {
 export async function createNewsletterCampaign(body: CreateNewsletterCampaignBody) {
   if (!config.database) throw new Error('Database not configured (DATABASE_URL)')
   const db = getDb()
+  const cadence = body.frequency ?? 'weekly'
   const [row] = await db
     .insert(newsletterCampaigns)
     .values({
       name: body.name,
-      segmentId: body.segment_id ?? null,
-      frequency: body.frequency ?? 'weekly',
+      cadence,
+      segmentFilter: body.stats ?? {},
+      subjectTemplate: body.subject?.trim() || 'Newsletter',
+      bodyHtml: null,
+      preheader: null,
       status: body.status ?? 'draft',
-      scheduledAt: body.scheduled_at ? new Date(body.scheduled_at) : null,
-      subject: body.subject ?? null,
-      templateKey: body.template_key ?? null,
-      stats: body.stats ?? {},
+      sendAt: body.scheduled_at ? new Date(body.scheduled_at) : null,
+      lastSentAt: null,
+      createdBy: null,
     })
     .returning()
   return campaignToApi(row!)
@@ -448,22 +453,20 @@ export async function updateNewsletterCampaign(id: string, body: UpdateNewslette
   const patch: {
     updatedAt: Date
     name?: string
-    segmentId?: string | null
-    frequency?: DigestFrequency
+    cadence?: 'daily' | 'weekly' | 'monthly'
     status?: (typeof newsletterCampaigns.$inferSelect)['status']
-    scheduledAt?: Date | null
-    subject?: string | null
-    templateKey?: string | null
-    stats?: Record<string, unknown>
+    sendAt?: Date | null
+    subjectTemplate?: string
+    segmentFilter?: Record<string, unknown>
   } = { updatedAt: new Date() }
   if (body.name !== undefined) patch.name = body.name
-  if (body.segment_id !== undefined) patch.segmentId = body.segment_id
-  if (body.frequency !== undefined) patch.frequency = body.frequency
+  if (body.frequency !== undefined) {
+    patch.cadence = body.frequency
+  }
   if (body.status !== undefined) patch.status = body.status
-  if (body.scheduled_at !== undefined) patch.scheduledAt = body.scheduled_at ? new Date(body.scheduled_at) : null
-  if (body.subject !== undefined) patch.subject = body.subject
-  if (body.template_key !== undefined) patch.templateKey = body.template_key
-  if (body.stats !== undefined) patch.stats = body.stats
+  if (body.scheduled_at !== undefined) patch.sendAt = body.scheduled_at ? new Date(body.scheduled_at) : null
+  if (body.subject !== undefined) patch.subjectTemplate = body.subject ?? 'Newsletter'
+  if (body.stats !== undefined) patch.segmentFilter = body.stats
   const [row] = await db.update(newsletterCampaigns).set(patch).where(eq(newsletterCampaigns.id, id)).returning()
   return row ? campaignToApi(row) : null
 }

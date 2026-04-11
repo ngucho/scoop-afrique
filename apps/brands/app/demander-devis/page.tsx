@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Send, Loader2, CheckCircle } from 'lucide-react'
@@ -8,19 +8,22 @@ import { Footer } from '@/components/footer'
 import { Heading, Card, Dot, Input, Label, Textarea, Button, Select, DatePicker } from 'scoop'
 import type { SelectOption } from 'scoop'
 import { serviceOffers } from '@/lib/services-data'
+import { getProgramBySlug } from '@/lib/programs-data'
 
 const BUDGET_OPTIONS: SelectOption[] = [
-  { value: '0-50000', label: 'Moins de 50 000 FCFA' },
-  { value: '50000-150000', label: '50 000 – 150 000 FCFA' },
-  { value: '150000-300000', label: '150 000 – 300 000 FCFA' },
-  { value: '300000-600000', label: '300 000 – 600 000 FCFA' },
-  { value: '600000-1500000', label: '600 000 – 1 500 000 FCFA' },
-  { value: '1500000+', label: 'Plus de 1 500 000 FCFA' },
+  { value: '50000-100000', label: '50 000 – 100 000 FCFA (ex. post classique)' },
+  { value: '100000-175000', label: '100 000 – 175 000 FCFA' },
+  { value: '175000-300000', label: '175 000 – 300 000 FCFA' },
+  { value: '300000-500000', label: '300 000 – 500 000 FCFA' },
+  { value: '500000-800000', label: '500 000 – 800 000 FCFA' },
+  { value: '800000-1200000', label: '800 000 – 1 200 000 FCFA' },
+  { value: '1200000+', label: 'Plus de 1 200 000 FCFA' },
 ]
 
 function DevisFormInner() {
   const searchParams = useSearchParams()
   const presetService = searchParams.get('service')
+  const presetProgramme = searchParams.get('programme')
 
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -35,14 +38,28 @@ function DevisFormInner() {
   const [preferredDate, setPreferredDate] = useState<Date | undefined>()
   const [deadline, setDeadline] = useState('')
   const [description, setDescription] = useState('')
+  const programmeHintDone = useRef(false)
 
   useEffect(() => {
     if (!presetService) return
     queueMicrotask(() => setServiceSlug(presetService))
   }, [presetService])
 
+  useEffect(() => {
+    if (!presetProgramme || programmeHintDone.current) return
+    const prog = getProgramBySlug(presetProgramme)
+    if (!prog) return
+    programmeHintDone.current = true
+    const prefix = `Programme / sponsoring ciblé : ${prog.title} (${presetProgramme}).\n\n`
+    setDescription((prev) => `${prefix}${prev}`)
+  }, [presetProgramme])
+
   const parseBudget = (val: string) => {
     if (!val) return { min: undefined, max: undefined }
+    if (val.endsWith('+')) {
+      const min = parseInt(val.replace(/\D/g, ''), 10)
+      return { min: isNaN(min) ? undefined : min, max: undefined }
+    }
     const [a, b] = val.split('-').map((x) => parseInt(x.replace(/\D/g, ''), 10))
     return { min: isNaN(a) ? undefined : a, max: isNaN(b) ? undefined : b }
   }
