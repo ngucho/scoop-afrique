@@ -20,8 +20,7 @@ Required:
 
 Reader-account specific:
 
-- [ ] `READER_AUTH0_CLIENT_ID`
-- [ ] `READER_AUTH0_CLIENT_SECRET`
+- [ ] Optional: `READER_AUTH0_CLIENT_ID` / `READER_AUTH0_CLIENT_SECRET` (or reuse admin `AUTH0_CLIENT_*` for reader)
 - [ ] Optional `READER_AUTH0_SECRET` (or reuse `AUTH0_SECRET`)
 
 Validation:
@@ -38,7 +37,6 @@ Required:
 - [ ] `SUPABASE_SERVICE_ROLE_KEY`
 - [ ] `AUTH0_DOMAIN`
 - [ ] `AUTH0_AUDIENCE`
-- [ ] `AUTH0_READER_CLIENT_ID`
 - [ ] `CORS_ORIGINS`
 - [ ] `API_PREFIX` (default `/api/v1`)
 
@@ -67,21 +65,17 @@ Validation:
 - [ ] API audience authorized.
 - [ ] Roles (`editor`, `manager`, `admin`) mapped correctly.
 
-## 2.2 Reader application (separate app)
+## 2.2 Reader routes (same or dedicated Auth0 app)
 
-- [ ] Create separate Auth0 application for reader accounts.
-- [ ] Callback URL includes `/reader/auth/callback`.
+- [ ] Callback URL includes `/reader/auth/callback` on the Auth0 app used for reader login.
 - [ ] Logout URL includes frontend origin.
-- [ ] API audience authorized.
-- [ ] Client ID copied to both:
-  - frontend `READER_AUTH0_CLIENT_ID`
-  - backend `AUTH0_READER_CLIENT_ID`
-- [ ] Client secret set only on frontend (`READER_AUTH0_CLIENT_SECRET`).
+- [ ] API audience authorized; **`reader`** role has **`access:reader`** only (no staff permissions).
+- [ ] Optional: dedicated app → set `READER_AUTH0_CLIENT_ID` / `READER_AUTH0_CLIENT_SECRET`; else reuse admin `AUTH0_CLIENT_*`.
 
 Validation:
 
-- [ ] Reader token can access `/api/v1/reader/me`.
-- [ ] Reader token cannot access staff-only admin routes.
+- [ ] Token with **reader-only** permissions can access `/api/v1/reader/me`.
+- [ ] Same token cannot access staff-only admin routes; staff token cannot access `/api/v1/reader/me` if it includes staff permissions.
 
 ---
 

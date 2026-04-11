@@ -2,6 +2,8 @@
   "name": "scoop-afrique-monorepo",
   "version": "1.0.0",
   "private": true,
+  "author": "Jordan Ngucho",
+  "license": "UNLICENSED",
   "scripts": {
     "dev": "pnpm run --parallel -r dev",
     "dev:brands": "pnpm --filter @scoop-afrique/brands dev",
