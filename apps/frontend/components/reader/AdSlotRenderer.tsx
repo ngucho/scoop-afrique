@@ -1,9 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { AdSlotFrame, AdCreativeDisplay, AdSlotEmptyState, type AdCreativeDisplayModel } from 'scoop'
+import {
+  AdSlotFrame,
+  AdCreativeDisplay,
+  AdSlotEmptyState,
+  type AdCreativeDisplayModel,
+  type AdCreativeSlotLayout,
+} from 'scoop'
 import { config } from '@/lib/config'
 import type { AdCreative } from '@/lib/api/types'
+import { getAdSlotLayout, adSlotFrameDensity } from '@/lib/adSlotLayouts'
 
 const API_PREFIX = '/api/v1'
 
@@ -15,6 +22,8 @@ export interface AdSlotRendererProps {
   /** Shown when no creative or before intersection (placeholder mode). */
   fallback?: React.ReactNode
   articleId?: string
+  /** Force la grille média (sinon dérivé de `slotKey`). */
+  slotLayout?: AdCreativeSlotLayout
 }
 
 function postAdEvent(path: '/ads/events/impression' | '/ads/events/click', body: Record<string, unknown>) {
@@ -58,7 +67,10 @@ export function AdSlotRenderer({
   className,
   fallback,
   articleId,
+  slotLayout: slotLayoutProp,
 }: AdSlotRendererProps) {
+  const slotLayout = slotLayoutProp ?? getAdSlotLayout(slotKey)
+  const frameDensity = adSlotFrameDensity(slotLayout)
   const rootRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   const impressionSent = useRef(false)
@@ -98,14 +110,21 @@ export function AdSlotRenderer({
   const defaultFallback = <AdSlotEmptyState slotKey={slotKey} />
 
   const content = creative ? (
-    <AdCreativeDisplay creative={toDisplayModel(creative)} frameLabel={label} onLinkClick={trackClick} />
+    <AdCreativeDisplay
+      creative={toDisplayModel(creative)}
+      frameLabel={label}
+      onLinkClick={trackClick}
+      slotLayout={slotLayout}
+    />
   ) : (
     (fallback ?? defaultFallback)
   )
 
   return (
     <div ref={rootRef} data-ad-slot={slotKey} className={className}>
-      <AdSlotFrame label={label}>{content}</AdSlotFrame>
+      <AdSlotFrame label={label} density={frameDensity}>
+        {content}
+      </AdSlotFrame>
     </div>
   )
 }

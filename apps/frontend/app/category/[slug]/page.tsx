@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
@@ -96,6 +97,7 @@ export default async function CategoryPage({ params }: PageProps) {
     fetchAdPlacements(),
   ])
   const catTop = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, AD_SLOT_KEYS.CAT_TOP)
+  const listMid = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, AD_SLOT_KEYS.LIST_MID)
 
   const featured = articles[0]
   const rest = articles.slice(1)
@@ -173,11 +175,26 @@ export default async function CategoryPage({ params }: PageProps) {
           <SectionHeader label="Dans cette rubrique" className="mb-6" />
           {rest.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2">
-              {rest.map((article: Article) => (
-                <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
-                  <ArticleCard article={article} variant="row" />
-                </MotionEnter>
-              ))}
+              {rest.flatMap((article: Article, i: number) => {
+                const out: React.ReactNode[] = []
+                if (i === 2 && listMid) {
+                  out.push(
+                    <div key="ad-cat-mid" className="col-span-full flex justify-center py-2 sm:col-span-2">
+                      <AdSlotSection
+                        slotKey={AD_SLOT_KEYS.LIST_MID}
+                        creative={listMid.creative}
+                        className="w-full max-w-[300px]"
+                      />
+                    </div>
+                  )
+                }
+                out.push(
+                  <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
+                    <ArticleCard article={article} variant="row" />
+                  </MotionEnter>
+                )
+                return out
+              })}
             </div>
           ) : articles.length === 0 ? (
             <div className="rounded-xl border border-border bg-muted/30 px-6 py-16 text-center sm:px-12">
