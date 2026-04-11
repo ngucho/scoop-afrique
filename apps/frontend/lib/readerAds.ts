@@ -37,14 +37,10 @@ export function pickCreativeForSlot(
   if (!slot) return null
   const list = creativesBySlot[slot.id] ?? []
   if (list.length === 0) return null
-  let pick = list[0]!
-  let max = pick.weight ?? 1
-  for (const c of list.slice(1)) {
-    const w = c.weight ?? 1
-    if (w > max) {
-      max = w
-      pick = c
-    }
-  }
-  return { slot, creative: pick }
+  const sorted = [...list].sort((a, b) => {
+    const so = (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    if (so !== 0) return so
+    return (b.weight ?? 1) - (a.weight ?? 1)
+  })
+  return { slot, creative: sorted[0]! }
 }

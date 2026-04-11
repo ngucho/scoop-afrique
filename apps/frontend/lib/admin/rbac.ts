@@ -11,8 +11,13 @@ export type AppRole = 'journalist' | 'editor' | 'manager' | 'admin'
  */
 export function roleFromPermissions(permissions: string[]): AppRole {
   if (permissions.includes('manage:users')) return 'admin'
-  if (permissions.includes('delete:articles')) return 'manager'
-  if (permissions.includes('publish:articles')) return 'editor'
+  if (permissions.includes('delete:articles') || permissions.includes('manage:crm')) return 'manager'
+  if (
+    permissions.includes('publish:articles') ||
+    permissions.includes('write:crm') ||
+    permissions.includes('read:crm')
+  )
+    return 'editor'
   if (
     permissions.includes('create:articles') ||
     permissions.includes('read:articles')
@@ -75,6 +80,9 @@ export function canManageReaderOperations(role: AppRole): boolean {
   return hasMinRole(role, 'manager')
 }
 
+/** Alias explicite : même garde que les opérations reader (manager+). */
+export const canManageReaderHomepage = canManageReaderOperations
+
 export function canEditAnnouncements(role: AppRole): boolean {
   return hasMinRole(role, 'editor')
 }
@@ -91,6 +99,7 @@ export const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Tableau de bord', icon: 'LayoutDashboard', minRole: 'journalist' },
   { href: '/admin/articles', label: 'Articles', icon: 'FileText', minRole: 'journalist' },
   { href: '/admin/comments', label: 'Commentaires', icon: 'MessageSquare', minRole: 'editor' },
+  { href: '/admin/contributions', label: 'Tribune lecteurs', icon: 'PenLine', minRole: 'editor' },
   { href: '/admin/media', label: 'Médias', icon: 'Image', minRole: 'journalist' },
   { href: '/admin/reader/announcements', label: 'Annonces reader', icon: 'Megaphone', minRole: 'editor' },
   { href: '/admin/reader/ads', label: 'Publicité', icon: 'Ad', minRole: 'manager' },

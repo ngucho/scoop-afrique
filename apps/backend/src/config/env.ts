@@ -72,6 +72,9 @@ const envSchema = z.object({
   TWILIO_WHATSAPP_FROM: z.string().min(1).optional(), // e.g. whatsapp:+1234567890
   TWILIO_WHATSAPP_TO: z.string().min(1).optional(),   // team WhatsApp number
   TWILIO_SMS_TO: z.string().min(1).optional(),       // team SMS number (optional, for devis alerts)
+
+  /** ImgBB API key — optional; used to host large compressed images from the media library */
+  IMGBB_API_KEY: z.string().min(1).optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -151,6 +154,8 @@ export const config = {
           smsFrom: env.TWILIO_WHATSAPP_FROM.replace(/^whatsapp:/i, ''),
         }
       : null,
+
+  imgbb: env.IMGBB_API_KEY ? { apiKey: env.IMGBB_API_KEY } : null,
 } as const
 
 export function assertConfig(): void {

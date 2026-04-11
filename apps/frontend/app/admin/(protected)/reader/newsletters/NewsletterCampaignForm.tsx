@@ -9,6 +9,7 @@ export function NewsletterCampaignForm() {
   const [name, setName] = useState('')
   const [cadence, setCadence] = useState<'daily' | 'weekly' | 'monthly'>('weekly')
   const [subject, setSubject] = useState('')
+  const [preheader, setPreheader] = useState('')
   const [filterJson, setFilterJson] = useState('{"tags_any": []}')
   const [sendAt, setSendAt] = useState('')
   const [pending, startTransition] = useTransition()
@@ -29,12 +30,14 @@ export function NewsletterCampaignForm() {
           name: name.trim(),
           cadence,
           subject_template: subject.trim(),
+          preheader: preheader.trim() || null,
           segment_filter,
           status: sendAt ? 'scheduled' : 'draft',
           send_at: sendAt ? new Date(sendAt).toISOString() : null,
         })
         setName('')
         setSubject('')
+        setPreheader('')
         setSendAt('')
       } catch {
         alert('Erreur.')
@@ -69,6 +72,14 @@ export function NewsletterCampaignForm() {
             onChange={(e) => setSubject(e.target.value)}
             placeholder="SCOOP — {{date}}"
             required
+          />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">Pré-en-tête (optionnel)</label>
+          <Input
+            value={preheader}
+            onChange={(e) => setPreheader(e.target.value)}
+            placeholder="Aperçu dans la boîte mail"
           />
         </div>
         <div className="sm:col-span-2">

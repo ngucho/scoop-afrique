@@ -9,6 +9,7 @@ import { RelatedArticles } from '@/components/reader/RelatedArticles'
 import { ArticleContentBlocks } from '@/components/reader/ArticleContentBlocks'
 import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { ArticleContextRail } from '@/components/reader/ArticleContextRail'
+import { ArticleCommentsSection } from '@/components/reader/ArticleCommentsSection'
 import { Heading, Text, MetaBar, Thumbnail, StickyRail } from 'scoop'
 import { apiGet } from '@/lib/api/client'
 import type { ArticleResponse, LikesResponse } from '@/lib/api/types'
@@ -56,6 +57,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     : image
       ? `${config.siteUrl}${image.startsWith('/') ? '' : '/'}${image}`
       : undefined
+  const ogImage = imageUrl ?? `${config.siteUrl}/opengraph-image`
 
   return {
     title,
@@ -66,7 +68,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url,
       siteName: 'Scoop.Afrique',
-      images: imageUrl ? [{ url: imageUrl, width: 1200, height: 630, alt: title }] : undefined,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
       locale: 'fr_FR',
       type: 'article',
       publishedTime: article.published_at ?? undefined,
@@ -79,7 +81,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       card: 'summary_large_image',
       title,
       description,
-      images: imageUrl ? [imageUrl] : undefined,
+      images: [ogImage],
     },
     alternates: { canonical: url },
   }
@@ -127,7 +129,7 @@ function ArticleJsonLd({
       '@type': 'Organization',
       name: 'Scoop.Afrique',
       url: config.siteUrl,
-      logo: { '@type': 'ImageObject', url: `${config.siteUrl}/og-image.png` },
+      logo: { '@type': 'ImageObject', url: `${config.siteUrl}/brand-logo.svg` },
     },
     isAccessibleForFree: true,
     copyrightHolder: { '@type': 'Organization', name: 'Scoop.Afrique' },
@@ -172,12 +174,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   return (
     <ReaderLayout>
       <ArticleJsonLd article={article} shareUrl={shareUrl} />
-      <div className="mx-auto max-w-6xl px-4 py-8 lg:px-8">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] lg:gap-10 xl:gap-12">
-          <article className="min-w-0 max-w-3xl lg:max-w-none">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="lg:grid lg:grid-cols-12 lg:gap-12">
+          <article className="min-w-0 lg:col-span-8">
             <Link
               href="/articles"
-              className="mb-6 inline-block text-sm font-medium text-primary transition-colors hover:underline"
+              className="mb-6 inline-block text-xs font-semibold uppercase tracking-wider text-primary transition-opacity hover:opacity-80"
             >
               ← Retour aux articles
             </Link>
@@ -193,34 +195,21 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               </div>
             ) : null}
 
-            {hasCoverImage && (
-              <div className="mb-8 overflow-hidden rounded-xl">
-                <Thumbnail src={coverImageUrl} alt="" aspectRatio="video" className="w-full" />
-              </div>
-            )}
-            {hasCoverVideo && videoEmbedUrl && (
-              <div className="mb-8 aspect-video overflow-hidden rounded-xl">
-                <iframe
-                  src={videoEmbedUrl}
-                  className="h-full w-full"
-                  allowFullScreen
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  title="Vidéo de couverture"
-                  loading="lazy"
-                />
-              </div>
-            )}
-
-            <header className="mb-6">
-              <Heading as="h1" level="h1" className="mt-2">
+            <header className="mb-8">
+              <Heading
+                as="h1"
+                level="h1"
+                className="text-4xl font-extrabold leading-[1.1] tracking-tight md:text-5xl lg:text-6xl"
+                style={{ fontFamily: 'var(--font-headline)' }}
+              >
                 {article.title}
               </Heading>
               {article.excerpt ? (
-                <Text variant="lead" className="mt-2">
+                <Text variant="lead" className="mt-4 text-lg text-editorial-secondary md:text-xl">
                   {article.excerpt}
                 </Text>
               ) : null}
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-editorial-outline-variant/15 py-6">
                 <div className="flex flex-wrap items-center gap-4">
                   <MetaBar
                     dateTime={article.published_at ?? undefined}
@@ -247,6 +236,24 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               <p className="sr-only">Publié le {formatDate(article.published_at)}</p>
             </header>
 
+            {hasCoverImage && (
+              <div className="relative -mx-4 mb-12 overflow-hidden rounded-xl sm:mx-0 md:-mx-6">
+                <Thumbnail src={coverImageUrl} alt="" aspectRatio="video" className="w-full rounded-xl shadow-[var(--shadow-lg)]" />
+              </div>
+            )}
+            {hasCoverVideo && videoEmbedUrl && (
+              <div className="mb-8 aspect-video overflow-hidden rounded-xl">
+                <iframe
+                  src={videoEmbedUrl}
+                  className="h-full w-full"
+                  allowFullScreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  title="Vidéo de couverture"
+                  loading="lazy"
+                />
+              </div>
+            )}
+
             <ArticleContentBlocks
               content={article.content}
               articleId={article.id}
@@ -267,7 +274,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            <footer className="border-t border-border pt-6">
+            <footer className="border-t border-editorial-outline-variant/15 pt-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <ShareButtons url={shareUrl} title={article.title} />
                 <LikeButton
@@ -283,16 +290,18 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <AdSlotSection slotKey={AD_SLOT_KEYS.ARTICLE_BOTTOM} creative={bottomAd.creative} articleId={article.id} />
               </div>
             ) : null}
+
+            <ArticleCommentsSection articleId={article.id} />
           </article>
 
-          <div className="mt-10 hidden lg:mt-0 lg:block">
-            <StickyRail offset="6rem" className="space-y-6">
+          <aside className="mt-10 space-y-8 lg:col-span-4 lg:mt-0">
+            <StickyRail offset="6rem" className="space-y-8">
               <ArticleContextRail title={railTitle} articles={contextArticles} />
               {railAd ? (
                 <AdSlotSection slotKey={AD_SLOT_KEYS.ARTICLE_RAIL} creative={railAd.creative} articleId={article.id} />
               ) : null}
             </StickyRail>
-          </div>
+          </aside>
         </div>
       </div>
 

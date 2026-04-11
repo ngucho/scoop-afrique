@@ -13,3 +13,13 @@ export const mediaUrlBodySchema = z.object({
 })
 
 export type MediaUrlBody = z.infer<typeof mediaUrlBodySchema>
+
+/** Base64 image (no data: prefix), max 3 MiB decoded — enforced server-side */
+export const mediaImgbbBodySchema = z.object({
+  image: z.string().min(20).max(5_500_000),
+  alt: z.string().max(500).optional(),
+  caption: z.string().max(1000).optional(),
+  name: z.string().max(200).optional(),
+})
+
+export type MediaImgbbBody = z.infer<typeof mediaImgbbBodySchema>

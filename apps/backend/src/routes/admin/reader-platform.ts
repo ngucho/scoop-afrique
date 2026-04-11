@@ -35,14 +35,36 @@ const announcementBody = z.object({
   is_active: z.boolean(),
 })
 
-const campaignBody = z.object({
+const optionalIsoDatetime = z
+  .string()
+  .optional()
+  .nullable()
+  .transform((v) => {
+    if (v == null || String(v).trim() === '') return null
+    const d = new Date(v)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  })
+
+const campaignBodyShape = {
   slot_id: z.string().uuid(),
   name: z.string().min(1).max(300),
   status: z.enum(['draft', 'active', 'paused', 'ended']),
-  start_at: z.string().datetime().nullable().optional(),
-  end_at: z.string().datetime().nullable().optional(),
+  start_at: optionalIsoDatetime,
+  end_at: optionalIsoDatetime,
   weight: z.number().int().min(0).max(100).optional(),
-})
+}
+
+const campaignBody = z
+  .object(campaignBodyShape)
+  .refine(
+    (d) => {
+      if (!d.start_at || !d.end_at) return true
+      return new Date(d.end_at).getTime() >= new Date(d.start_at).getTime()
+    },
+    { message: 'end_before_start', path: ['end_at'] },
+  )
+
+const campaignPatchBody = z.object(campaignBodyShape).partial()
 
 const creativeBody = z.object({
   id: z.string().uuid().optional(),
@@ -51,6 +73,12 @@ const creativeBody = z.object({
   image_url: z.string().url().nullable().optional(),
   link_url: z.string().url(),
   sort_order: z.number().int().min(0).optional(),
+  format: z.enum(['image', 'native', 'video']).optional(),
+  cta_label: z.string().max(120).nullable().optional(),
+  video_url: z.string().url().nullable().optional(),
+  alt: z.string().max(500).nullable().optional(),
+  weight: z.number().int().min(1).max(100).optional(),
+  is_active: z.boolean().optional(),
 })
 
 const homepagePatch = z.object({
@@ -71,7 +99,9 @@ const nlCampaignBody = z.object({
   cadence: z.enum(['daily', 'weekly', 'monthly']),
   segment_filter: z.record(z.unknown()).optional(),
   subject_template: z.string().min(1).max(500),
-  status: z.enum(['draft', 'scheduled', 'sending', 'sent', 'cancelled']),
+  body_html: z.string().max(500000).nullable().optional(),
+  preheader: z.string().max(300).nullable().optional(),
+  status: z.enum(['draft', 'scheduled', 'sending', 'sent', 'cancelled']).default('draft'),
   send_at: z.string().datetime().nullable().optional(),
 })
 
@@ -177,13 +207,26 @@ app.get('/ads/campaigns', requireRole('manager', 'admin'), async (c) => {
   return c.json({ data: rows.map(reader.rowCampaign) })
 })
 
+app.get('/ads/metrics', requireRole('manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const days = Math.min(366, Math.max(1, Number(c.req.query('days')) || 30))
+  const data = await reader.getReaderAdMetrics(days)
+  return c.json({ data })
+})
+
 app.post('/ads/campaigns', requireRole('manager', 'admin'), async (c) => {
   const dbErr = requireDatabase(c)
   if (dbErr) return dbErr
   const user = c.get('user')
   const parsed = campaignBody.safeParse(await c.req.json().catch(() => ({})))
   if (!parsed.success) {
-    return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
+    const flat = parsed.error.flatten()
+    const endOrder = parsed.error.issues.find((i) => i.path.includes('end_at'))?.message === 'end_before_start'
+    const msg = endOrder
+      ? 'La date de fin doit être postérieure ou égale à la date de début.'
+      : parsed.error.issues[0]?.message ?? 'Invalid body'
+    return c.json({ error: msg, code: 'VALIDATION_ERROR', details: flat }, 400)
   }
   const row = await reader.createAdCampaign({
     ...parsed.data,
@@ -207,9 +250,23 @@ app.patch('/ads/campaigns/:id', requireRole('manager', 'admin'), async (c) => {
   if (dbErr) return dbErr
   const user = c.get('user')
   const id = c.req.param('id')
-  const parsed = campaignBody.partial().safeParse(await c.req.json().catch(() => ({})))
+  const parsed = campaignPatchBody.safeParse(await c.req.json().catch(() => ({})))
   if (!parsed.success) {
-    return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
+    const flat = parsed.error.flatten()
+    const msg = parsed.error.issues[0]?.message ?? 'Invalid body'
+    return c.json({ error: msg, code: 'VALIDATION_ERROR', details: flat }, 400)
+  }
+  const existing = await reader.getAdCampaignById(id)
+  if (!existing) return c.json({ error: 'Not found' }, 404)
+  const mergedStart =
+    parsed.data.start_at !== undefined ? parsed.data.start_at : existing.startAt ? existing.startAt.toISOString() : null
+  const mergedEnd =
+    parsed.data.end_at !== undefined ? parsed.data.end_at : existing.endAt ? existing.endAt.toISOString() : null
+  if (mergedStart && mergedEnd && new Date(mergedEnd).getTime() < new Date(mergedStart).getTime()) {
+    return c.json(
+      { error: 'La date de fin doit être postérieure ou égale à la date de début.', code: 'INVALID_RANGE' },
+      400,
+    )
   }
   const row = await reader.updateAdCampaign(id, {
     ...parsed.data,
@@ -256,6 +313,12 @@ app.post('/ads/campaigns/:id/creatives', requireRole('manager', 'admin'), async 
     image_url: parsed.data.image_url ?? null,
     link_url: parsed.data.link_url,
     sort_order: parsed.data.sort_order ?? 0,
+    format: parsed.data.format,
+    cta_label: parsed.data.cta_label,
+    video_url: parsed.data.video_url,
+    alt: parsed.data.alt,
+    weight: parsed.data.weight,
+    is_active: parsed.data.is_active,
   })
   if (!row) return c.json({ error: 'Not found' }, 404)
   await reader.appendAudit({
@@ -274,7 +337,14 @@ app.post('/ads/campaigns/:id/creatives', requireRole('manager', 'admin'), async 
       image_url: row.imageUrl,
       link_url: row.linkUrl,
       sort_order: row.sortOrder,
+      format: row.creativeFormat,
+      cta_label: row.ctaLabel ?? null,
+      video_url: row.videoUrl ?? null,
+      alt: row.alt ?? null,
+      weight: row.weight,
+      is_active: row.isActive,
       created_at: row.createdAt.toISOString(),
+      updated_at: row.updatedAt.toISOString(),
     },
   })
 })
@@ -369,6 +439,15 @@ app.patch('/subscribers/:id', requireRole('manager', 'admin'), async (c) => {
 })
 
 /* --- Newsletter campaigns (manager+) --- */
+app.get('/newsletter-campaigns/:id', requireRole('manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const id = c.req.param('id')
+  const row = await reader.getNewsletterCampaignById(id)
+  if (!row) return c.json({ error: 'Not found' }, 404)
+  return c.json({ data: reader.rowNewsletterCampaign(row) })
+})
+
 app.get('/newsletter-campaigns', requireRole('manager', 'admin'), async (c) => {
   const dbErr = requireDatabase(c)
   if (dbErr) return dbErr
@@ -389,6 +468,8 @@ app.post('/newsletter-campaigns', requireRole('manager', 'admin'), async (c) => 
     frequency: parsed.data.cadence,
     segment_filter: parsed.data.segment_filter ?? {},
     subject: parsed.data.subject_template,
+    body_html: parsed.data.body_html ?? null,
+    preheader: parsed.data.preheader ?? null,
     status: parsed.data.status,
     scheduled_at: parsed.data.send_at ?? null,
     userId: user.id,
@@ -398,7 +479,7 @@ app.post('/newsletter-campaigns', requireRole('manager', 'admin'), async (c) => 
     entityType: 'newsletter_campaign',
     entityId: row.id,
     action: 'create',
-    metadata: { name: row.name, frequency: row.frequency },
+    metadata: { name: row.name, cadence: row.cadence },
   })
   return c.json({ data: reader.rowNewsletterCampaign(row) }, 201)
 })
@@ -416,6 +497,8 @@ app.patch('/newsletter-campaigns/:id', requireRole('manager', 'admin'), async (c
     ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
     ...(parsed.data.cadence !== undefined ? { frequency: parsed.data.cadence } : {}),
     ...(parsed.data.subject_template !== undefined ? { subject: parsed.data.subject_template } : {}),
+    ...(parsed.data.body_html !== undefined ? { body_html: parsed.data.body_html } : {}),
+    ...(parsed.data.preheader !== undefined ? { preheader: parsed.data.preheader } : {}),
     ...(parsed.data.status !== undefined ? { status: parsed.data.status } : {}),
     segment_filter: parsed.data.segment_filter,
     scheduled_at: parsed.data.send_at,

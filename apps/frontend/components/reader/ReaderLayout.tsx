@@ -1,6 +1,7 @@
-import { ReaderSidebar } from './ReaderSidebar'
 import { ReaderFooter } from './ReaderFooter'
 import { ReaderChrome } from './ReaderChrome'
+import { ReaderHeader } from './ReaderHeader'
+import { ReaderMobileDock } from './ReaderMobileDock'
 import { apiGet } from '@/lib/api/client'
 import type { Category } from '@/lib/api/types'
 import { fetchAnnouncements, announcementTickerItems, splitAnnouncementsForChrome } from '@/lib/readerAnnouncements'
@@ -20,27 +21,20 @@ export async function ReaderLayout({ children }: { children: React.ReactNode }) 
   const tickerItems = announcementTickerItems(tickerSource)
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-editorial-surface text-editorial-on-surface">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
         Aller au contenu principal
       </a>
-      <ReaderSidebar categories={categories} />
-      <div className="flex min-h-screen flex-col pt-14 md:pt-0 md:pl-64 lg:pl-72">
-        <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
-          {bar || tickerItems.length > 0 ? (
-            <ReaderChrome
-              bannerAnnouncements={bar ? [bar] : []}
-              tickerItems={tickerItems}
-              urgentBar={urgentBar}
-            />
-          ) : null}
-          {children}
-        </main>
-        <ReaderFooter />
-      </div>
+      <ReaderHeader bannerAnnouncement={bar} urgentBar={urgentBar} categories={categories} />
+      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col pb-24 outline-none md:pb-12">
+        {tickerItems.length > 0 ? <ReaderChrome tickerItems={tickerItems} /> : null}
+        {children}
+      </main>
+      <ReaderFooter />
+      <ReaderMobileDock />
     </div>
   )
 }

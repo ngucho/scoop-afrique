@@ -46,6 +46,20 @@ export interface Comment {
   author?: { email: string | null } | null
 }
 
+export interface ReaderContribution {
+  id: string
+  user_id: string
+  kind: 'writing' | 'event'
+  title: string
+  body: string
+  event_location: string | null
+  event_starts_at: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  created_at: string
+  updated_at: string
+  author?: { email: string | null } | null
+}
+
 export interface MediaRecord {
   id: string
   url: string
@@ -103,6 +117,9 @@ export interface AdCreative {
   image_url: string | null
   link_url: string
   alt?: string | null
+  cta_label?: string | null
+  video_url?: string | null
+  format?: 'image' | 'native' | 'video'
   weight?: number
   is_active?: boolean
   sort_order: number
@@ -151,12 +168,20 @@ export interface NewsletterCampaignRow {
   cadence: 'daily' | 'weekly' | 'monthly'
   segment_filter: Record<string, unknown>
   subject_template: string
-  status: 'draft' | 'scheduled' | 'sent' | 'cancelled'
+  body_html: string | null
+  preheader: string | null
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'cancelled'
   send_at: string | null
   last_sent_at: string | null
   created_by: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ReaderAdMetrics {
+  days: number
+  by_slot: { slot_key: string; impressions: number; clicks: number; ctr: number | null }[]
+  totals: { impressions: number; clicks: number; ctr: number | null }
 }
 
 export interface ReaderDashboardKpis {

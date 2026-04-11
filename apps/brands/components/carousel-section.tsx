@@ -6,8 +6,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 const slides = [
   { src: '/images/carousel-1.jpg', title: 'Couverture événement', caption: 'Événements & lancements' },
-  { src: '/images/carousel-2.jpg', title: 'Contenu viral', caption: 'TikTok, Instagram, Facebook' },
-  { src: '/images/carousel-3.jpg', title: 'Reportages', caption: 'Interviews & documentaires' },
+  { src: '/images/carousel-2.png', title: 'Contenu viral', caption: 'TikTok, Instagram, Facebook' },
+  { src: '/images/carousel-3.png', title: 'Reportages', caption: 'Interviews & documentaires' },
   { src: '/images/carousel-4.jpg', title: 'Partenariats', caption: 'Marques & artistes' },
   { src: '/images/carousel-5.jpg', title: 'Audience panafricaine', caption: '12+ pays' },
 ]

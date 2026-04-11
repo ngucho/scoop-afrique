@@ -7,7 +7,14 @@
 import { redirect } from 'next/navigation'
 import { getAccessToken } from '@/lib/auth0'
 import { apiGetAuth, apiPostAuth, apiPatchAuth, apiDeleteAuth } from '@/lib/api/adminClient'
-import type { Article, Comment, Category, MediaRecord, ApiResponse } from '@/lib/api/types'
+import type {
+  Article,
+  Comment,
+  Category,
+  MediaRecord,
+  ApiResponse,
+  ReaderContribution,
+} from '@/lib/api/types'
 import { revalidatePath } from 'next/cache'
 
 const ADMIN_LOGIN = '/admin/login'
@@ -74,6 +81,30 @@ export async function deleteComment(id: string): Promise<void> {
   const token = await getToken()
   await apiDeleteAuth(`/admin/comments/${id}`, token)
   revalidatePath('/admin/comments')
+}
+
+/* ---------- Reader contributions (tribune) ---------- */
+
+export async function moderateReaderContribution(
+  id: string,
+  status: 'approved' | 'rejected',
+): Promise<ReaderContribution> {
+  const token = await getToken()
+  const res = await apiPatchAuth<ApiResponse<ReaderContribution>>(
+    `/admin/contributions/${id}`,
+    token,
+    { status },
+  )
+  revalidatePath('/admin/contributions')
+  revalidatePath('/tribune')
+  return res.data
+}
+
+export async function deleteReaderContribution(id: string): Promise<void> {
+  const token = await getToken()
+  await apiDeleteAuth(`/admin/contributions/${id}`, token)
+  revalidatePath('/admin/contributions')
+  revalidatePath('/tribune')
 }
 
 /* ---------- Categories ---------- */
@@ -313,6 +344,7 @@ export async function updateNewsletterCampaign(id: string, data: Record<string, 
   const token = await getToken()
   await apiPatchAuth(`/admin/reader/newsletter-campaigns/${id}`, token, data)
   revReader()
+  revalidatePath(`/admin/reader/newsletters/${id}`)
 }
 
 export async function deleteNewsletterCampaign(id: string): Promise<void> {

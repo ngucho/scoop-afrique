@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { CtaButton } from '@/components/cta-button'
 
-const HERO_IMAGE = '/images/hero-brands.jpg'
+const HERO_IMAGE = '/images/hero-brands.png'
 
 export function HeroBrands() {
   return (

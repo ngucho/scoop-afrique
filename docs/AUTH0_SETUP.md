@@ -100,6 +100,7 @@ Click **Create**.
 | `read:crm` | Read all CRM objects (contacts, projects, invoices, etc.). |
 | `write:crm` | Create and update CRM objects. |
 | `manage:crm` | Delete, close, full CRM access. |
+| `access:reader` | **Subscriber / reader app only** — account, preferences, digest; **never** combine with staff permissions on the same Auth0 role. |
 
 3. Go to **Settings** → **RBAC Settings**:
    - Turn **Enable RBAC** **On**.
@@ -130,15 +131,17 @@ Auth0 RBAC is **permission-based**; roles are a way to **group permissions** and
 | `editor` | All journalist + review, publish, edit any article; moderate comments. |
 | `manager` | All editor + delete articles, schedule, manage ads. |
 | `admin` | Full access; user/role management, settings. |
+| `reader` | **Public / subscriber accounts** — only `access:reader` (no article, media, CRM, or user-admin permissions). |
 
 ### 4.2 Assign permissions to roles
 
 In each **Role** → **Permissions**:
 
+- **reader:** `access:reader` **only** (do not add staff scopes; the backend rejects reader app tokens on employee routes and rejects tokens that only carry reader permission on staff APIs).
 - **journalist:** `read:articles`, `create:articles`, `update:articles` (own only is enforced in backend), `read:media`, `create:media` — no CRM access
 - **editor:** journalist + `publish:articles`, `delete:media` (if you added it), `read:crm`, `write:crm`
 - **manager:** editor + `delete:articles`, `manage:crm`
-- **admin:** all permissions including `read:users`, `manage:users`, `read:crm`, `write:crm`, `manage:crm`
+- **admin:** all **staff** permissions including `read:users`, `manage:users`, `read:crm`, `write:crm`, `manage:crm` — **exclude** `access:reader` from admin unless you intentionally use a separate test user.
 
 (Exact list should match the permissions you created in the API and how your backend maps them — see section 6.)
 
@@ -218,6 +221,8 @@ NEXT_PUBLIC_SITE_URL="http://localhost:3001"
 # Auth0 (for JWT validation)
 AUTH0_DOMAIN="scoop-afrique.auth0.com"
 AUTH0_AUDIENCE="https://api.scoop-afrique.com"
+# Client ID of the Reader SPA — required in production to enforce `azp` (section 13)
+AUTH0_READER_CLIENT_ID="..."
 
 # Existing
 PORT=4000
@@ -307,11 +312,13 @@ If the backoffice shows "no permissions" or users are redirected to the reader p
 
 ### 10.3 Roles and permissions
 
-1. **User Management → Roles**: create roles (e.g. *journalist*, *editor*, *manager*, *admin*) if needed.
-2. For each role, open **Permissions**: add the API permissions that role should have (e.g. *admin* → `manage:users`, `read:users`, plus all article/media permissions).
+1. **User Management → Roles**: create roles (e.g. *reader*, *journalist*, *editor*, *manager*, *admin*) if needed.
+2. For each role, open **Permissions**: add the API permissions that role should have (e.g. *admin* → `manage:users`, `read:users`, plus all article/media permissions; *reader* → `access:reader` only).
 3. **User Management → Users**: for each backoffice user, open the user → **Roles** → **Assign Roles** and assign at least one role.
 
 A user’s access token will contain the **union of permissions** from all their assigned roles. If a user has no roles, `permissions` will be empty and the app will redirect them to the reader.
+
+**Separation employés / lecteurs:** le backend n’accepte les routes « employé » que si le JWT contient **au moins une permission staff** (articles, médias, CRM, `manage:users`, etc.). Le rôle **reader** ne doit avoir que **`access:reader`** ; les jetons émis par l’application Auth0 « reader » sont en plus refusés sur les routes staff (claim `azp`). Voir la section **13**.
 
 ### 10.4 Frontend audience
 
@@ -385,7 +392,44 @@ AUTH0_AUDIENCE=https://api.scoop-afrique.com
 
 ---
 
-## 13. References
+## 13. Application Auth0 « Reader » (comptes abonnés / lecteurs)
+
+Les lecteurs se connectent via une **deuxième application** Regular Web (chemins `/reader/auth/*`, cookie de session séparé). Elle utilise le **même identifiant d’API** (`AUTH0_AUDIENCE`) que le backoffice pour que les access tokens restent des JWT pour votre API Resource Server.
+
+### 13.1 Créer l’application
+
+1. **Applications** → **Create Application** → type **Regular Web Application** (ex. `Scoop Afrique Reader`).
+2. **Allowed Callback URLs:** `http://localhost:3001/reader/auth/callback` (et l’équivalent production).
+3. **Allowed Logout URLs** / **Allowed Web Origins:** base du site reader (même host que le frontend).
+4. Dans **APIs** → votre API Scoop Afrique → **Machine to Machine** / **Applications**: **autoriser** cette application et lui accorder la permission **`access:reader`** (pas besoin d’accorder toutes les permissions staff).
+
+### 13.2 Rôle et utilisateurs
+
+1. Créer le rôle **`reader`** (section 4) avec la permission **`access:reader` uniquement**.
+2. Assigner ce rôle aux comptes « grand public » (abonnés, compte préférences, digest). Ne pas leur assigner *journalist* / *editor* / etc.
+
+### 13.3 Variables d’environnement
+
+**Frontend** (`apps/frontend/.env.local`), en plus des variables Auth0 admin :
+
+- `READER_AUTH0_CLIENT_ID` / `READER_AUTH0_CLIENT_SECRET` — credentials de l’application Reader.
+- Optionnel: `READER_AUTH0_DOMAIN` si différent du tenant admin.
+- `AUTH0_AUDIENCE` — **identique** à l’API (pour inclure `permissions` dans le token).
+
+**Backend** (`apps/backend/.env`) :
+
+- `AUTH0_READER_CLIENT_ID` — **Client ID** de l’application Reader (utilisé pour vérifier le claim JWT `azp` : les routes employés refusent ce client ; les routes reader l’exigent).
+
+Sans `AUTH0_READER_CLIENT_ID`, le backend ne peut pas distinguer `azp` ; en production, configurez-le toujours. La vérification « au moins une permission staff » sur les routes employé limite toutefois les comptes qui n’ont que `access:reader`.
+
+### 13.4 Comportement côté code
+
+- **`verifyAuth0Token`** (routes employés) : refuse les jetons dont `azp` est le client Reader ; refuse les jetons qui n’ont **aucune** permission listée dans `STAFF_API_PERMISSIONS` (`apps/backend/src/lib/api-permissions.ts`).
+- **`verifyReaderAuth0Token`** (routes `/reader/*` backend) : exige `azp` = client Reader **et** la permission **`access:reader`**.
+
+---
+
+## 14. References
 
 - [Auth0 Next.js SDK](https://github.com/auth0/nextjs-auth0)
 - [Next.js Authentication (Auth0)](https://developer.auth0.com/resources/guides/web-app/nextjs/basic-authentication)
