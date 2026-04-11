@@ -20,6 +20,7 @@ export type {
   AdCreativeDisplayProps,
   AdCreativeDisplayModel,
   AdCreativeFormat,
+  AdCreativeSlotLayout,
 } from './molecules/AdCreativeDisplay'
 export { MotionEnter } from './primitives/MotionEnter'
 export type { MotionEnterProps } from './primitives/MotionEnter'
