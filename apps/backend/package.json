@@ -11,11 +11,13 @@
     "lint": "eslint src --ext .ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:verify": "drizzle-kit migrate && tsx scripts/verify-reader-ads-schema.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "db:bootstrap": "tsx scripts/bootstrap-drizzle-migrations.ts",
-    "verify:ad-slots": "tsx scripts/verify-ad-slot-keys.ts"
+    "verify:ad-slots": "tsx scripts/verify-ad-slot-keys.ts",
+    "verify:reader-ads-schema": "tsx scripts/verify-reader-ads-schema.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
