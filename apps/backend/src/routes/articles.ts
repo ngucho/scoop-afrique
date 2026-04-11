@@ -11,6 +11,7 @@ import * as articleService from '../services/article.service.js'
 import * as likeService from '../services/like.service.js'
 import { getAuthUser } from '../lib/auth.js'
 import { config } from '../config/env.js'
+import { normalizePublicSearchQuery } from '../lib/search-query.js'
 
 const app = new Hono()
 
@@ -18,7 +19,7 @@ const app = new Hono()
 app.get('/', async (c) => {
   if (!config.database) return c.json({ data: [], total: 0 })
   const category = c.req.query('category')
-  const q = c.req.query('q')
+  const q = normalizePublicSearchQuery(c.req.query('q'))
   const tag = c.req.query('tag')
   const page = Number(c.req.query('page')) || 1
   const limit = Math.min(Number(c.req.query('limit')) || 20, 100)

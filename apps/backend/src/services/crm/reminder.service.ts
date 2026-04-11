@@ -1,7 +1,7 @@
 /**
  * CRM reminder service
  */
-import { eq, and, desc, asc, sql, isNull, isNotNull, inArray } from 'drizzle-orm'
+import { eq, and, desc, asc, sql, isNull, isNotNull, inArray, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmReminders } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
@@ -44,6 +44,7 @@ export async function listReminders(params?: {
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number
+  search?: string
 }): Promise<{
   data: Array<Record<string, unknown>>
   total: number
@@ -53,6 +54,11 @@ export async function listReminders(params?: {
   const baseConditions = []
   if (params?.contactId) baseConditions.push(eq(crmReminders.contactId, params.contactId))
   if (params?.invoiceId) baseConditions.push(eq(crmReminders.invoiceId, params.invoiceId))
+  const q = params?.search?.trim()
+  if (q) {
+    const pat = `%${q}%`
+    baseConditions.push(or(ilike(crmReminders.message, pat), ilike(crmReminders.type, pat))!)
+  }
   const baseWhereClause = baseConditions.length > 0 ? and(...baseConditions) : undefined
 
   const statusConditions = []

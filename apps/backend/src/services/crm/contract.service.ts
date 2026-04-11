@@ -1,7 +1,7 @@
 /**
  * CRM contract service
  */
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { eq, and, desc, sql, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmContracts, crmContacts } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
@@ -16,6 +16,7 @@ export async function listContracts(params?: {
   archived?: boolean
   limit?: number
   offset?: number
+  search?: string
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
   const db = getDb()
   const conditions = []
@@ -26,26 +27,60 @@ export async function listContracts(params?: {
   if (params?.archived === true) conditions.push(eq(crmContracts.isArchived, true))
   else conditions.push(eq(crmContracts.isArchived, false))
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const baseWhere = conditions.length > 0 ? and(...conditions) : undefined
+  const q = params?.search?.trim()
+  const searchWhere = q
+    ? or(
+        ilike(crmContracts.title, `%${q}%`),
+        ilike(crmContracts.reference, `%${q}%`),
+        ilike(crmContacts.firstName, `%${q}%`),
+        ilike(crmContacts.lastName, `%${q}%`),
+        ilike(crmContacts.company, `%${q}%`)
+      )
+    : undefined
+  const fullWhere =
+    baseWhere && searchWhere ? and(baseWhere, searchWhere) : (searchWhere ?? baseWhere)
+
   const limit = params?.limit ?? 50
   const offset = params?.offset ?? 0
+  const useJoin = Boolean(q)
 
-  const [rows, [{ count }]] = await Promise.all([
-    db
-      .select()
-      .from(crmContracts)
-      .where(whereClause)
-      .orderBy(desc(crmContracts.createdAt))
-      .limit(limit)
-      .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(crmContracts)
-      .where(whereClause),
-  ])
+  const countQuery = useJoin
+    ? db
+        .select({ count: sql<number>`count(distinct ${crmContracts.id})::int` })
+        .from(crmContracts)
+        .leftJoin(crmContacts, eq(crmContracts.contactId, crmContacts.id))
+        .where(fullWhere)
+    : db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(crmContracts)
+        .where(fullWhere)
+
+  const rowsQuery = useJoin
+    ? db
+        .select({ contract: crmContracts })
+        .from(crmContracts)
+        .leftJoin(crmContacts, eq(crmContracts.contactId, crmContacts.id))
+        .where(fullWhere)
+        .orderBy(desc(crmContracts.createdAt))
+        .limit(limit)
+        .offset(offset)
+    : db
+        .select()
+        .from(crmContracts)
+        .where(fullWhere)
+        .orderBy(desc(crmContracts.createdAt))
+        .limit(limit)
+        .offset(offset)
+
+  const [rows, [{ count }]] = await Promise.all([rowsQuery, countQuery])
 
   return {
-    data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)),
+    data: rows.map((r) =>
+      toSnakeRecord(
+        (useJoin ? (r as { contract: typeof crmContracts.$inferSelect }).contract : r) as Record<string, unknown>
+      )
+    ),
     total: count ?? 0,
   }
 }

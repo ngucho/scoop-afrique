@@ -17,6 +17,7 @@ const FOOTER_LINKS = {
   ],
   /** Pages institutionnelles (mêmes contenus que le landing enrichi) */
   about: [
+    { label: 'Annonceurs & partenariats', href: 'https://brands.scoop-afrique.com', external: true },
     { label: 'À propos', href: '/a-propos' },
     { label: 'Vidéo', href: '/video' },
     { label: 'Podcast', href: '/podcast' },
@@ -28,7 +29,7 @@ const FOOTER_LINKS = {
 
 const SOCIAL: NavLinkItem[] = [
   { label: 'TikTok', href: 'https://tiktok.com/@Scoop.Afrique', external: true },
-  { label: 'Facebook', href: 'https://facebook.com/scoop.afrique', external: true },
+  { label: 'Facebook', href: 'https://facebook.com/profile.php?id=61568464568442', external: true },
   { label: 'Instagram', href: 'https://instagram.com/Scoop.Afrique', external: true },
   { label: 'YouTube', href: 'https://youtube.com/@Scoop.Afrique', external: true },
   { label: 'Threads', href: 'https://threads.net/@Scoop.Afrique', external: true },

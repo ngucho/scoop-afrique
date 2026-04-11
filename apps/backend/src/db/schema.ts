@@ -755,6 +755,7 @@ export const crmTreasuryMovements = pgTable('crm_treasury_movements', {
   occurredAt: date('occurred_at').notNull().default(sql`CURRENT_DATE`),
   title: text('title').notNull(),
   notes: text('notes'),
+  receiptUrl: text('receipt_url'),
   metadata: jsonb('metadata').default({}),
   projectId: uuid('project_id'),
   createdBy: uuid('created_by'),

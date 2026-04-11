@@ -118,7 +118,7 @@ export default async function HomePage() {
             <div className="grid gap-10 sm:grid-cols-2">
               {latest.map((article, i) => (
                 <MotionEnter key={article.id} disabled={i > 5}>
-                  <ArticleCard article={article} variant="row" />
+                  <ArticleCard article={article} variant="row" imagePriority={i < 2} />
                 </MotionEnter>
               ))}
             </div>
@@ -143,7 +143,7 @@ export default async function HomePage() {
                   className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]"
                 >
                   <MotionEnter disabled={i > 4}>
-                    <ArticleCard article={article} variant="compact" emphasizeVideo />
+                    <ArticleCard article={article} variant="compact" emphasizeVideo imagePriority={i === 0} />
                   </MotionEnter>
                 </div>
               ))}
@@ -183,9 +183,9 @@ export default async function HomePage() {
           <MotionEnter as="section" className="mb-14">
             <SectionHeader label={titles.editors} className="mb-6" />
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {editorsPicks.map((article) => (
+              {editorsPicks.map((article, i) => (
                 <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
-                  <ArticleCard article={article} />
+                  <ArticleCard article={article} imagePriority={i < 2} />
                 </MotionEnter>
               ))}
             </div>

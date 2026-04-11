@@ -12,12 +12,14 @@ app.get('/', async (c) => {
   const category = c.req.query('category')
   const limit = Math.min(Number(c.req.query('limit')) || 100, 200)
   const offset = Number(c.req.query('offset')) || 0
+  const search = (c.req.query('search') || c.req.query('q') || '').trim() || undefined
 
   const { data, total } = await serviceService.listServices({
     active: active === 'true' ? true : active === 'false' ? false : undefined,
     category: category || undefined,
     limit,
     offset,
+    search,
   })
   return c.json({ data, total })
 })

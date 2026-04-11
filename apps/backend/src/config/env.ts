@@ -75,6 +75,15 @@ const envSchema = z.object({
 
   /** ImgBB API key — optional; used to host large compressed images from the media library */
   IMGBB_API_KEY: z.string().min(1).optional(),
+
+  /** PDF reçus / mentions légales (optionnel — défauts Scoop Afrique) */
+  CRM_COMPANY_LEGAL_NAME: z.string().optional(),
+  CRM_COMPANY_FORM: z.string().optional(),
+  CRM_COMPANY_RCCM: z.string().optional(),
+  CRM_COMPANY_NCC: z.string().optional(),
+  CRM_COMPANY_ADDRESS: z.string().optional(),
+  CRM_COMPANY_PHONE: z.string().optional(),
+  CRM_COMPANY_EMAIL: z.string().optional(),
 })
 
 const parsed = envSchema.safeParse(process.env)
@@ -156,6 +165,19 @@ export const config = {
       : null,
 
   imgbb: env.IMGBB_API_KEY ? { apiKey: env.IMGBB_API_KEY } : null,
+
+  /** Émetteur sur reçus PDF (CRM) */
+  crmCompany: {
+    legalName: env.CRM_COMPANY_LEGAL_NAME ?? 'SCOOP AFRIQUE',
+    legalForm: env.CRM_COMPANY_FORM ?? 'SARL au capital de 1 000 000 FCFA',
+    rccm: env.CRM_COMPANY_RCCM ?? 'CI-ABJ-03-2025-B12-05806',
+    ncc: env.CRM_COMPANY_NCC?.trim() || null,
+    address:
+      env.CRM_COMPANY_ADDRESS ??
+      "Abidjan Cocody Riviera Faya — 01 BP 130 Abidjan 01, Côte d'Ivoire",
+    phone: env.CRM_COMPANY_PHONE ?? '+225 07 02 90 79 49',
+    email: env.CRM_COMPANY_EMAIL?.trim() || 'contact@scoop-afrique.com',
+  },
 } as const
 
 export function assertConfig(): void {

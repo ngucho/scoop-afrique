@@ -1,5 +1,25 @@
 /** Build query string for CRM list pages (contacts, organizations). */
 
+export type CrmListViewMode = 'list' | 'cards'
+
+export function parseListView(
+  raw: string | string[] | undefined,
+  defaultView: CrmListViewMode = 'list'
+): CrmListViewMode {
+  const v = Array.isArray(raw) ? raw[0] : raw
+  if (v === 'cards') return 'cards'
+  if (v === 'list') return 'list'
+  return defaultView
+}
+
+export function listSearchFromParams(sp: Record<string, string | string[] | undefined>): string | undefined {
+  const a = sp.search
+  const b = sp.q
+  const s = (Array.isArray(a) ? a[0] : a) || (Array.isArray(b) ? b[0] : b)
+  const t = s?.trim()
+  return t || undefined
+}
+
 export type ContactsListParams = {
   search?: string
   type?: string

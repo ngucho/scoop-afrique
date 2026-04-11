@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Edit, Package, Tag, DollarSign, CheckCircle, XCircle } from 'lucide-react'
+import type { CrmListViewMode } from '@/lib/crm-list-query'
 
 const CATEGORY_COLORS: Record<string, string> = {
   content: 'oklch(0.42 0.16 260)',
@@ -16,9 +17,54 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export function ServicesClient({
   initialServices,
+  view = 'cards',
 }: {
   initialServices: Array<Record<string, unknown>>
+  view?: CrmListViewMode
 }) {
+  if (view === 'list') {
+    const sorted = [...initialServices].sort((a, b) =>
+      String(a.name ?? '').localeCompare(String(b.name ?? ''), 'fr')
+    )
+    return (
+      <div className="crm-card overflow-hidden">
+        <table className="crm-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Slug</th>
+              <th>Catégorie</th>
+              <th className="text-right">Prix</th>
+              <th>Actif</th>
+              <th className="w-10" />
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((s) => (
+              <tr key={s.id as string}>
+                <td className="font-medium text-sm">{String(s.name ?? '')}</td>
+                <td className="text-xs font-mono text-muted-foreground">{String(s.slug ?? '')}</td>
+                <td className="text-sm capitalize">{String(s.category ?? '—')}</td>
+                <td className="text-right tabular-nums text-sm">
+                  {Number(s.default_price ?? 0).toLocaleString('fr-FR')} {String(s.currency ?? 'FCFA')}
+                </td>
+                <td>{s.is_active ? 'Oui' : 'Non'}</td>
+                <td>
+                  <Link
+                    href={`/services/${s.id}/edit`}
+                    className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary"
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                  </Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
   const byCategory = initialServices.reduce<Record<string, Array<Record<string, unknown>>>>((acc, s) => {
     const cat = String(s.category ?? 'other')
     const arr = acc[cat] ?? []

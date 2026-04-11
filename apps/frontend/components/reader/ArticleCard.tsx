@@ -8,9 +8,11 @@ interface ArticleCardProps {
   variant?: 'default' | 'compact' | 'row'
   /** Sur la variante compacte : pastille lecture si l’article a une vidéo */
   emphasizeVideo?: boolean
+  /** true = au-dessus de la ligne de flottaison (fetchPriority élevé, pas de lazy) */
+  imagePriority?: boolean
 }
 
-export function ArticleCard({ article, variant = 'default', emphasizeVideo }: ArticleCardProps) {
+export function ArticleCard({ article, variant = 'default', emphasizeVideo, imagePriority = false }: ArticleCardProps) {
   const href = `/articles/${article.slug}`
 
   if (variant === 'row') {
@@ -21,8 +23,12 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo }: Ar
           {article.cover_image_url ? (
             <img
               src={article.cover_image_url}
-              alt=""
+              alt={`Illustration — ${article.title}`}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+              sizes="(max-width: 768px) 100vw, 42vw"
+              loading={imagePriority ? 'eager' : 'lazy'}
+              decoding="async"
+              fetchPriority={imagePriority ? 'high' : 'low'}
             />
           ) : null}
         </Link>
@@ -55,9 +61,12 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo }: Ar
             {article.cover_image_url ? (
               <Thumbnail
                 src={article.cover_image_url}
-                alt=""
+                alt={`Illustration — ${article.title}`}
                 aspectRatio="video"
                 className="w-full"
+                loading={imagePriority ? 'eager' : 'lazy'}
+                decoding="async"
+                fetchPriority={imagePriority ? 'high' : 'low'}
               />
             ) : (
               <div className="aspect-video w-full bg-muted" />
@@ -90,9 +99,12 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo }: Ar
         {article.cover_image_url ? (
           <Thumbnail
             src={article.cover_image_url}
-            alt=""
+            alt={`Illustration — ${article.title}`}
             aspectRatio="video"
             className="w-full"
+            loading={imagePriority ? 'eager' : 'lazy'}
+            decoding="async"
+            fetchPriority={imagePriority ? 'high' : 'low'}
           />
         ) : (
           <div className="aspect-video w-full bg-muted" />

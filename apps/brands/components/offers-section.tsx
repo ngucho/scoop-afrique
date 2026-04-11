@@ -9,13 +9,13 @@ import { serviceOffers } from '@/lib/services-data'
 
 export function OffersSection() {
   return (
-    <section id="offres" className="relative overflow-hidden bg-background py-20 md:py-28 lg:py-32">
+    <section id="offres" className="relative scroll-mt-28 overflow-hidden bg-background py-20 md:py-28 lg:py-32">
       <div className="mx-auto max-w-7xl px-6 md:px-12 lg:px-20">
-        <h2 id="offres" className="mb-2 font-sans text-lg font-semibold uppercase tracking-wider text-foreground">
-          Nos offres B2B
-        </h2>
-        <p className="mb-10 max-w-xl text-sm text-muted-foreground">
-          Couverture événementielle, contenu sponsorisé, campagnes digitales, partenariats. Tarifs indicatifs ; devis sur demande.
+        <h2 className="mb-2 font-sans text-lg font-semibold uppercase tracking-wider text-foreground">Nos offres B2B</h2>
+        <p className="mb-10 max-w-xl text-sm leading-relaxed text-muted-foreground">
+          Cinq familles de prestations alignées sur notre grille 2026 : couverture terrain, publications ponctuelles, promo
+          artistes & événements, interviews, partenariats mensuels. Chaque fiche détaille livrables, délais et profils idéaux
+          — puis un seul CTA : votre brief.
         </p>
         <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {serviceOffers.map((offer, i) => (
@@ -57,7 +57,7 @@ export function OffersSection() {
           ))}
         </div>
         <div className="mt-12 text-center">
-          <CtaButton href="/contact" variant="fillHover">
+          <CtaButton href="/demander-devis" variant="fillHover">
             Demander un devis personnalisé
           </CtaButton>
         </div>

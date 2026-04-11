@@ -25,9 +25,11 @@ export default async function ReaderHomepagePage() {
           Page d&apos;accueil — sections
         </Heading>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ces réglages pilotent la page d&apos;accueil publique (titres, ordre, visibilité, limites). Réservé aux rôles{' '}
-          <strong className="font-medium text-foreground">manager</strong> et{' '}
-          <strong className="font-medium text-foreground">admin</strong> (API + navigation).
+          Ces réglages pilotent la page d&apos;accueil publique (titres, ordre, visibilité, limites). La section{' '}
+          <strong className="font-medium text-foreground">partnership_strip</strong> contrôle uniquement le bandeau
+          partenariats au-dessus du footer sur tout le site lecteur — activez « Visible sur le site » pour l&apos;afficher.
+          Réservé aux rôles <strong className="font-medium text-foreground">manager</strong> et{' '}
+          <strong className="font-medium text-foreground">admin</strong>.
         </p>
       </div>
 

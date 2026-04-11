@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
 import { Bell, Pencil, X } from 'lucide-react'
+import type { CrmListViewMode } from '@/lib/crm-list-query'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -43,6 +44,7 @@ interface RemindersClientProps {
   initialTotal: number
   initialCounts: Record<string, number>
   contacts: Array<{ id: string; first_name?: string; last_name?: string }>
+  view?: CrmListViewMode
 }
 
 export function RemindersClient({
@@ -50,6 +52,7 @@ export function RemindersClient({
   initialTotal,
   initialCounts,
   contacts,
+  view = 'list',
 }: RemindersClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -338,6 +341,67 @@ export function RemindersClient({
       </div>
 
       <div className="crm-card overflow-hidden">
+        {view === 'cards' ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 p-4">
+            {reminders.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-lg border border-border p-4 space-y-2 text-sm"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className={STATUS_PILL[r.status ?? 'draft'] ?? STATUS_PILL.draft}>
+                    {STATUS_LABELS[r.status ?? 'draft'] ?? r.status}
+                  </span>
+                  <span className="text-xs text-muted-foreground capitalize">{r.channel}</span>
+                </div>
+                <p className="font-medium">{contactName(r.contact_id)}</p>
+                <p className="text-xs text-muted-foreground">{String(r.type ?? '')}</p>
+                {editingId === r.id ? (
+                  <textarea
+                    value={editForm.message}
+                    onChange={(e) => setEditForm((f) => ({ ...f, message: e.target.value }))}
+                    className="w-full min-h-[72px] rounded-md border border-input bg-background px-2 py-1 text-sm"
+                  />
+                ) : (
+                  <p className="line-clamp-3 text-muted-foreground">{r.message}</p>
+                )}
+                <div className="flex flex-wrap gap-1 pt-2 justify-end">
+                  {editingId === r.id ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={patching === r.id}
+                        onClick={() => saveEdit(r.id)}
+                      >
+                        Enregistrer
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditingId(null)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button size="sm" variant="outline" onClick={() => openEdit(r)} title="Modifier">
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      {!r.sent_at && ['draft', 'scheduled'].includes(r.status ?? '') && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          disabled={sending === r.id}
+                          onClick={() => handleSend(r.id)}
+                        >
+                          {sending === r.id ? '…' : 'Envoyer'}
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="crm-table">
             <thead>
@@ -491,6 +555,7 @@ export function RemindersClient({
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {reminders.length === 0 && !showForm && (

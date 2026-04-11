@@ -24,6 +24,8 @@ const SECTION_HELP: Record<string, string> = {
   video: 'Section carrousel ; utilisez le JSON pour un filtre par tag (ex. `"tag":"video"`).',
   editors: 'Sélection courte type « rédaction ».',
   rubriques: 'Bandes par rubrique (ordre des catégories reader). `max_per_strip` par rubrique.',
+  partnership_strip:
+    'Bandeau au-dessus du footer sur tout le site lecteur (www), avec CTA vers brands.scoop-afrique.com. N’alimente pas la page d’accueil : uniquement on/off + texte d’aide ci-dessous.',
 }
 
 function numOrEmpty(v: string): number | undefined {

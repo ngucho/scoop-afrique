@@ -32,8 +32,8 @@ export const metadata: Metadata = {
 }
 
 const stats = [
-  { icon: BarChart3, value: '300M+', label: 'Vues sur nos réseaux' },
-  { icon: Users, value: '1,25M+', label: 'Abonnés' },
+  { icon: BarChart3, value: '5+', label: 'Réseaux actifs' },
+  { icon: Users, value: '+1,4M', label: 'Abonnés cumulés (mars 2026)' },
 ]
 
 export default function ServicesPage() {
@@ -48,10 +48,14 @@ export default function ServicesPage() {
           <h1 className="mt-4 mb-6 font-sans text-2xl font-bold uppercase tracking-tight text-foreground md:text-3xl">
             Couverture, contenu & <span className="text-primary">partenariats</span>
           </h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Tournage, montage et diffusion sur TikTok, Instagram, Facebook, YouTube. Nous accompagnons marques, artistes et
-            organisateurs avec une audience panafricaine engagée. Nos tarifs sont accessibles : structure agile, équipe réactive,
-            pas de surcoûts superflus — une approche pensée pour les PME et startups africaines.
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            Tournage, montage et diffusion sur TikTok, Instagram, Facebook, YouTube et Threads. Nos offres sont calées sur une
+            grille 2026 publique (FCFA TTC) : vous savez à quoi vous attendre avant le premier appel. Pour les formats
+            récurrents — interviews longues, jeux avec personnalités, micro-trottoirs — voir aussi{' '}
+            <Link href="/programmes" className="text-primary underline-offset-4 hover:underline">
+              les programmes sponsoring
+            </Link>
+            .
           </p>
           <div className="mt-10 flex flex-wrap gap-6">
             {stats.map((s) => (
@@ -107,7 +111,7 @@ export default function ServicesPage() {
             ))}
           </div>
           <div className="mt-12 text-center">
-            <CtaButton href="/contact" variant="fillHover">
+            <CtaButton href="/demander-devis" variant="fillHover">
               Demander un devis personnalisé
             </CtaButton>
           </div>

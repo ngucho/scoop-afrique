@@ -1,11 +1,26 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { ServicesClient } from '@/components/services/ServicesClient'
 import { Plus, Package } from 'lucide-react'
+import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
+import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
 
-export default async function ServicesPage() {
-  const res = await crmGetServer<Array<Record<string, unknown>>>('services?limit=100')
+export default async function ServicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
+  const search = listSearchFromParams(sp)
+  const view = parseListView(sp.view, 'cards')
+
+  const q = new URLSearchParams()
+  q.set('limit', '100')
+  if (search) q.set('search', search)
+
+  const res = await crmGetServer<Array<Record<string, unknown>>>(`services?${q}`)
   const services = res?.data ?? []
 
   return (
@@ -23,6 +38,10 @@ export default async function ServicesPage() {
         </Link>
       </div>
 
+      <Suspense fallback={null}>
+        <CrmSearchViewToolbar basePath="/services" initialSearch={search ?? ''} defaultView="cards" />
+      </Suspense>
+
       {services.length === 0 ? (
         <div className="crm-card">
           <div className="crm-empty py-16">
@@ -35,7 +54,7 @@ export default async function ServicesPage() {
           </div>
         </div>
       ) : (
-        <ServicesClient initialServices={services} />
+        <ServicesClient initialServices={services} view={view} />
       )}
     </div>
   )

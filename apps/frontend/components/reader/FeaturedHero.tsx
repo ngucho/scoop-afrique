@@ -4,9 +4,11 @@ import type { Article } from '@/lib/api/types'
 
 interface FeaturedHeroProps {
   article: Article
+  /** high = image LCP (à la une) ; low = héros secondaire sous la ligne de flottaison */
+  imageFetchPriority?: 'high' | 'low'
 }
 
-export function FeaturedHero({ article }: FeaturedHeroProps) {
+export function FeaturedHero({ article, imageFetchPriority = 'high' }: FeaturedHeroProps) {
   const href = `/articles/${article.slug}`
   const label = article.category?.name ?? 'À la une'
 
@@ -18,9 +20,11 @@ export function FeaturedHero({ article }: FeaturedHeroProps) {
             {article.cover_image_url ? (
               <img
                 src={article.cover_image_url}
-                alt=""
+                alt={`Illustration — ${article.title}`}
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 sizes="(max-width: 768px) 100vw, 66vw"
+                decoding="async"
+                fetchPriority={imageFetchPriority}
               />
             ) : (
               <div className="h-full min-h-[280px] bg-editorial-surface-container md:min-h-[420px]" />

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { GlitchText, NavLinksList, type NavLinkItem } from 'scoop'
+import { wwwPath } from '@/lib/site-urls'
 
 /** Red dot between SCOOP and AFRIQUE — explicit bg-[var(--primary)] for visibility */
 function LogoDot({ className = '' }: { className?: string }) {
@@ -14,26 +15,42 @@ function LogoDot({ className = '' }: { className?: string }) {
 }
 
 const pageLinks: NavLinkItem[] = [
+  { label: 'Lire scoop-afrique.com', href: wwwPath('/'), external: true },
+  { label: 'Offres & services', href: '/services' },
+  { label: 'Programmes sponsoring', href: '/programmes' },
+  { label: 'Tarifs & grille 2026', href: '/tarifs' },
+  { label: 'Réalisations', href: '/realisations' },
+  { label: 'FAQ', href: '/faq' },
   { label: 'À propos', href: '/a-propos' },
   { label: 'Stratégie éditoriale', href: '/strategie-editoriale' },
-  { label: 'Services', href: '/services' },
-  { label: 'Tarifs', href: '/tarifs' },
-  { label: 'Réalisations', href: '/realisations' },
+  { label: 'Demander un devis', href: '/demander-devis' },
   { label: 'Contact', href: '/contact' },
-  { label: 'Politique de confidentialité', href: '/politique-de-confidentialite' },
-  { label: 'Mentions légales', href: '/mentions-legales' },
+  { label: 'Politique de confidentialité (site média)', href: wwwPath('/politique-de-confidentialite'), external: true },
+  { label: 'Mentions légales (site média)', href: wwwPath('/mentions-legales'), external: true },
 ]
 
 const socialLinks: NavLinkItem[] = [
   { label: 'TikTok', href: 'https://tiktok.com/@Scoop.Afrique', external: true },
-  { label: 'Facebook', href: 'https://facebook.com/scoop.afrique', external: true },
+  { label: 'Facebook', href: 'https://facebook.com/profile.php?id=61568464568442', external: true },
   { label: 'Threads', href: 'https://threads.net/@Scoop.Afrique', external: true },
   { label: 'Instagram', href: 'https://instagram.com/Scoop.Afrique', external: true },
   { label: 'YouTube', href: 'https://youtube.com/@Scoop.Afrique', external: true },
 ]
 
-function NextLink({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
-  return <Link href={href} className={className}>{children}</Link>
+function FooterNavLink({ href, className, children }: { href: string; className?: string; children: React.ReactNode }) {
+  const isExternal = href.startsWith('http')
+  if (isExternal) {
+    return (
+      <a href={href} className={className} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  )
 }
 
 export function Footer() {
@@ -57,16 +74,25 @@ export function Footer() {
               </div>
             </div>
             <p className="mt-3 text-xs text-muted-foreground sm:mt-4 sm:text-sm">
-              Le média digital qui décrypte<br />l&apos;Afrique autrement.
+              Partenariats marques &amp; institutions : contenus natifs, couvertures terrain, programmes récurrents — audience
+              jeune afro-francophone.
             </p>
           </div>
-          <NavLinksList title="Navigation" links={pageLinks} linkComponent={NextLink} />
+          <NavLinksList title="Navigation" links={pageLinks} linkComponent={FooterNavLink} />
           <NavLinksList title="Suivez-nous" links={socialLinks} />
           <div>
             <span className="mb-3 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:text-xs">Contact</span>
             <div className="space-y-1.5 text-xs sm:space-y-2 sm:text-sm">
               <a href="mailto:contact@scoop-afrique.com" className="block font-medium text-primary transition-colors hover:text-foreground" data-hover>
                 contact@scoop-afrique.com
+              </a>
+              <a
+                href="https://wa.me/2250702907949"
+                className="block pt-1 font-medium text-primary transition-colors hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                WhatsApp +225 07 02 907 949
               </a>
               <p className="pt-1 text-muted-foreground sm:pt-2">Abidjan, Cocody Riviera Faya — Côte d&apos;Ivoire</p>
               <p className="text-[10px] text-muted-foreground sm:text-xs">RCCM CI-ABJ-03-2025-B12058-06</p>
@@ -78,8 +104,22 @@ export function Footer() {
             © {new Date().getFullYear()} SCOOP AFRIQUE SARL — Tous droits réservés
           </p>
           <div className="flex items-center gap-4 sm:gap-6">
-            <Link href="/politique-de-confidentialite" className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary sm:text-xs">Confidentialité</Link>
-            <Link href="/mentions-legales" className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary sm:text-xs">Mentions Légales</Link>
+            <a
+              href={wwwPath('/politique-de-confidentialite')}
+              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary sm:text-xs"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Confidentialité
+            </a>
+            <a
+              href={wwwPath('/mentions-legales')}
+              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary sm:text-xs"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Mentions légales
+            </a>
           </div>
         </div>
       </div>
