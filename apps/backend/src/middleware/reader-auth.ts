@@ -13,12 +13,12 @@ export async function requireReaderAuth(c: Context, next: Next) {
     return c.json({ error: 'Unauthorized', code: 'NO_TOKEN' }, 401)
   }
 
-  if (!config.auth0 || !config.auth0Reader) {
+  if (!config.auth0) {
     return c.json(
       {
         error: 'Reader auth not configured',
         code: 'CONFIG',
-        hint: 'Set AUTH0_DOMAIN, AUTH0_AUDIENCE, and AUTH0_READER_CLIENT_ID',
+        hint: 'Set AUTH0_DOMAIN and AUTH0_AUDIENCE',
       },
       503,
     )

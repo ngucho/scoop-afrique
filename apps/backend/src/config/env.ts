@@ -46,8 +46,6 @@ const envSchema = z.object({
         : undefined
     ),
   AUTH0_AUDIENCE: z.string().min(1).optional(),
-  /** Auth0 "Reader" SPA client ID — JWT `azp` claim; staff routes reject tokens from this app. */
-  AUTH0_READER_CLIENT_ID: z.string().min(1).optional(),
 
   // Auth0 Management API (M2M app for user_metadata, password). Either set these or AUTH0_CLIENT_ID / AUTH0_CLIENT_SECRET.
   AUTH0_MANAGEMENT_CLIENT_ID: z.string().min(1).optional(),
@@ -121,8 +119,6 @@ export const config = {
     env.AUTH0_DOMAIN && env.AUTH0_AUDIENCE
       ? { domain: env.AUTH0_DOMAIN, audience: env.AUTH0_AUDIENCE }
       : null,
-
-  auth0Reader: env.AUTH0_READER_CLIENT_ID ? { clientId: env.AUTH0_READER_CLIENT_ID } : null,
 
   auth0Management:
     env.AUTH0_DOMAIN &&

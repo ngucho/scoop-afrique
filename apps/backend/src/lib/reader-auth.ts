@@ -1,5 +1,5 @@
 /**
- * Reader (subscriber) JWT — same API audience, Auth0 application id (`azp`) must be the reader SPA.
+ * Reader (subscriber) JWT — same API audience; permissions must be reader-only (`access:reader`, no staff perms).
  */
 import type { Context } from 'hono'
 import { verifyReaderAuth0Token } from './auth0.js'

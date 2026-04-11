@@ -1,15 +1,19 @@
 /**
  * Auth0 client for reader (subscriber) accounts — separate cookie + routes from admin.
- * Env: READER_AUTH0_CLIENT_ID, READER_AUTH0_CLIENT_SECRET, optional READER_AUTH0_SECRET.
- * Same API audience as admin (AUTH0_AUDIENCE) so the backend accepts the access token.
+ * Env: READER_AUTH0_* or fall back to AUTH0_CLIENT_ID / AUTH0_CLIENT_SECRET (same Auth0 app).
+ * Optional READER_AUTH0_SECRET; same API audience (AUTH0_AUDIENCE) as admin.
  */
 import { Auth0Client } from '@auth0/nextjs-auth0/server'
 
+const readerClientId =
+  process.env.READER_AUTH0_CLIENT_ID?.trim() || process.env.AUTH0_CLIENT_ID?.trim() || ''
+const readerClientSecret =
+  process.env.READER_AUTH0_CLIENT_SECRET?.trim() || process.env.AUTH0_CLIENT_SECRET?.trim() || ''
+
 export const readerAuth0 = new Auth0Client({
   domain: process.env.READER_AUTH0_DOMAIN ?? process.env.AUTH0_DOMAIN,
-  /** Reader SPA credentials — empty string prevents falling back to admin Auth0 app env vars. */
-  clientId: process.env.READER_AUTH0_CLIENT_ID ?? '',
-  clientSecret: process.env.READER_AUTH0_CLIENT_SECRET ?? '',
+  clientId: readerClientId,
+  clientSecret: readerClientSecret,
   secret: process.env.READER_AUTH0_SECRET ?? process.env.AUTH0_SECRET,
   appBaseUrl: process.env.APP_BASE_URL,
   authorizationParameters: {

@@ -8,10 +8,7 @@
  */
 import { config } from '../config/env.js'
 import { logger } from './logger.js'
-import {
-  hasReaderAccountPermission,
-  hasStaffApiAccess,
-} from './api-permissions.js'
+import { hasStaffApiAccess, isReaderAccountOnly } from './api-permissions.js'
 import type { AppRole, Auth0UserInfo } from '../services/profile.service.js'
 
 /** Verified reader JWT (subscriber); no staff `role` — use staff routes with verifyAuth0Token only. */
@@ -106,12 +103,6 @@ export function verifyAuth0Token(accessToken: string): Auth0UserInfo | null {
 
   const permissions = (payload.permissions as string[] | undefined) ?? []
 
-  const azp = typeof payload.azp === 'string' ? payload.azp : undefined
-  if (config.auth0Reader && azp === config.auth0Reader.clientId) {
-    logger.jwtInvalid('Reader app token cannot access staff APIs')
-    return null
-  }
-
   if (!hasStaffApiAccess(permissions)) {
     logger.jwtInvalid('Staff API requires at least one employee permission (not reader-only)')
     return null
@@ -132,12 +123,11 @@ export function verifyAuth0Token(accessToken: string): Auth0UserInfo | null {
 }
 
 /**
- * Verify access token for the reader Auth0 application only (JWT `azp` must match).
- * Used for subscriber account APIs; staff tokens are rejected.
- * Requires permission `access:reader` (Auth0 role **reader**).
+ * Verify access token for subscriber reader APIs: `access:reader` and no staff permissions.
+ * Staff-only or staff+reader RBAC tokens are rejected here (use staff routes).
  */
 export function verifyReaderAuth0Token(accessToken: string): ReaderAuth0TokenInfo | null {
-  if (!config.auth0 || !config.auth0Reader) return null
+  if (!config.auth0) return null
   const { domain, audience } = config.auth0
   const expectedIssuer = `https://${domain}/`
 
@@ -180,15 +170,9 @@ export function verifyReaderAuth0Token(accessToken: string): ReaderAuth0TokenInf
     return null
   }
 
-  const azp = typeof payload.azp === 'string' ? payload.azp : undefined
-  if (azp !== config.auth0Reader.clientId) {
-    logger.jwtInvalid('Not a reader application token')
-    return null
-  }
-
   const permissions = (payload.permissions as string[] | undefined) ?? []
-  if (!hasReaderAccountPermission(permissions)) {
-    logger.jwtInvalid('Reader token missing access:reader permission')
+  if (!isReaderAccountOnly(permissions)) {
+    logger.jwtInvalid('Reader API requires access:reader without staff permissions')
     return null
   }
 
