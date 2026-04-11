@@ -1,5 +1,6 @@
 import { PartnershipStrip } from './PartnershipStrip'
 import { ReaderFooter } from './ReaderFooter'
+import { GlobalTopAdStrip } from './GlobalTopAdStrip'
 import { isPartnershipStripEnabled } from '@/lib/readerPartnershipStrip'
 import { ReaderChrome } from './ReaderChrome'
 import { ReaderHeader } from './ReaderHeader'
@@ -36,6 +37,7 @@ export async function ReaderLayout({ children }: { children: React.ReactNode }) 
       </a>
       <ReaderHeader bannerAnnouncement={bar} urgentBar={urgentBar} categories={categories} />
       <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col pb-24 outline-none md:pb-12">
+        <GlobalTopAdStrip />
         {tickerItems.length > 0 ? <ReaderChrome tickerItems={tickerItems} /> : null}
         {children}
       </main>
