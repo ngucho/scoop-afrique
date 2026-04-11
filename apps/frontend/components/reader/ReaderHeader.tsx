@@ -8,6 +8,7 @@ import {
   GlitchText,
   Dot,
   ThemeToggle,
+  cn,
 } from 'scoop'
 import type { Announcement } from '@/lib/api/types'
 import type { Category } from '@/lib/api/types'
@@ -97,7 +98,21 @@ export function ReaderHeader({ bannerAnnouncement, urgentBar, categories }: Read
       categoryNav={categoryNav}
       searchHref="/search"
       accountHref="/account"
-      rightSlot={<ThemeToggle className="hidden sm:flex" />}
+      rightSlot={
+        <div className="hidden items-center gap-2 sm:flex">
+          <ThemeToggle />
+          <a
+            href="https://brands.scoop-afrique.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              'rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20'
+            )}
+          >
+            Annonceurs
+          </a>
+        </div>
+      }
       drawerFooterSlot={<ThemeToggle />}
       brandsHref="https://brands.scoop-afrique.com"
     />

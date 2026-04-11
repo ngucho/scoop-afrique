@@ -37,7 +37,13 @@ const departments = [
   { title: 'Partenariats & Publicité', description: 'Collaborations commerciales, sponsorings, campagnes digitales et placements de produits.', email: 'contact@scoop-afrique.com', subject: 'Partenariat / Publicité' },
   { title: 'Couverture & Vidéo', description: 'Couverture événementielle, reportages et contenus vidéo. Devis sur demande.', email: 'contact@scoop-afrique.com', subject: 'Couverture médiatique / Vidéo' },
   { title: 'Interviews & Reportage', description: 'Interviews, promotion artiste, partenariat de marque. À partir de 150 000 FCFA.', email: 'contact@scoop-afrique.com', subject: 'Interview / Reportage' },
-  { title: 'Publication & Presse', description: "Publication simple (50K–75K FCFA) ou communiqués de presse.", email: 'contact@scoop-afrique.com', subject: 'Publication / Presse' },
+  {
+    title: 'Publication & Presse',
+    description:
+      'Publications sponsorisées dès 50 000 FCFA (post classique) jusqu’à 90 000 FCFA (premium + design), packs — grille V2.',
+    email: 'contact@scoop-afrique.com',
+    subject: 'Publication / Presse',
+  },
   { title: 'Support', description: 'Signalement technique ou question générale.', email: 'contact@scoop-afrique.com', subject: 'Support' },
 ]
 

@@ -110,25 +110,36 @@ export async function renderReceiptPdf(
   invoice?: Record<string, unknown>,
   contact?: Record<string, unknown>
 ): Promise<Buffer> {
+  const { config } = await import('../../config/env.js')
+  const c = config.crmCompany
   const doc = React.createElement(ReceiptTemplate, {
     receipt: {
-        payment: {
-          id: payment.id as string,
-          amount: payment.amount as number,
-          currency: (payment.currency as string) ?? 'FCFA',
-          method: (payment.method as string) ?? 'other',
-          reference: payment.reference as string,
-          paid_at: payment.paid_at as string,
-        },
-        invoice: invoice ? { reference: invoice.reference as string } : undefined,
-        contact: contact
-          ? {
-              first_name: contact.first_name as string,
-              last_name: contact.last_name as string,
-              company: contact.company as string,
-            }
-          : undefined,
+      issuer: {
+        legalName: c.legalName,
+        legalForm: c.legalForm,
+        rccm: c.rccm,
+        ncc: c.ncc,
+        address: c.address,
+        phone: c.phone,
+        email: c.email,
       },
+      payment: {
+        id: payment.id as string,
+        amount: payment.amount as number,
+        currency: (payment.currency as string) ?? 'FCFA',
+        method: (payment.method as string) ?? 'other',
+        reference: payment.reference as string,
+        paid_at: payment.paid_at as string,
+      },
+      invoice: invoice ? { reference: invoice.reference as string } : undefined,
+      contact: contact
+        ? {
+            first_name: contact.first_name as string,
+            last_name: contact.last_name as string,
+            company: contact.company as string,
+          }
+        : undefined,
+    },
   })
   return renderPdfToBuffer(doc)
 }

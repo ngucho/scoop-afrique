@@ -15,6 +15,7 @@ app.get('/', async (c) => {
   const order = c.req.query('order') as 'asc' | 'desc' | undefined
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const offset = Number(c.req.query('offset')) || 0
+  const search = (c.req.query('search') || c.req.query('q') || '').trim() || undefined
 
   let statusFilter:
     | 'draft'
@@ -51,6 +52,7 @@ app.get('/', async (c) => {
     order: order || 'desc',
     limit,
     offset,
+    search,
   })
   return c.json({ data, total, counts })
 })

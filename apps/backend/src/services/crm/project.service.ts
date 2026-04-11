@@ -1,7 +1,7 @@
 /**
  * CRM project service
  */
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { eq, and, desc, sql, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmProjects, crmProjectContacts, crmContacts, devisRequests } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
@@ -20,6 +20,8 @@ export async function listProjects(params?: {
   limit?: number
   offset?: number
   withContact?: boolean
+  /** Recherche titre, référence, nom / société du contact principal */
+  search?: string
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
   const db = getDb()
   const conditions = []
@@ -29,53 +31,88 @@ export async function listProjects(params?: {
   if (params?.archived === true) conditions.push(eq(crmProjects.isArchived, true))
   else conditions.push(eq(crmProjects.isArchived, false))
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const baseWhere = conditions.length > 0 ? and(...conditions) : undefined
+  const q = params?.search?.trim()
+  const searchWhere = q
+    ? or(
+        ilike(crmProjects.title, `%${q}%`),
+        ilike(crmProjects.reference, `%${q}%`),
+        ilike(crmContacts.firstName, `%${q}%`),
+        ilike(crmContacts.lastName, `%${q}%`),
+        ilike(crmContacts.company, `%${q}%`)
+      )
+    : undefined
+  const fullWhere =
+    baseWhere && searchWhere ? and(baseWhere, searchWhere) : (searchWhere ?? baseWhere)
+
   const limit = params?.limit ?? 50
   const offset = params?.offset ?? 0
+  const useJoin = Boolean(params?.withContact) || Boolean(q)
 
-  if (params?.withContact) {
+  if (useJoin) {
+    const countPromise = db
+      .select({ count: sql<number>`count(distinct ${crmProjects.id})::int` })
+      .from(crmProjects)
+      .leftJoin(crmContacts, eq(crmProjects.contactId, crmContacts.id))
+      .where(fullWhere)
+
+    if (params?.withContact) {
+      const [rows, [{ count }]] = await Promise.all([
+        db
+          .select({
+            project: crmProjects,
+            contact: {
+              firstName: crmContacts.firstName,
+              lastName: crmContacts.lastName,
+            },
+          })
+          .from(crmProjects)
+          .leftJoin(crmContacts, eq(crmProjects.contactId, crmContacts.id))
+          .where(fullWhere)
+          .orderBy(desc(crmProjects.createdAt))
+          .limit(limit)
+          .offset(offset),
+        countPromise,
+      ])
+      const data = rows.map((r) => {
+        const rec = toSnakeRecord(r.project as Record<string, unknown>) as Record<string, unknown>
+        if (r.contact?.firstName != null || r.contact?.lastName != null) {
+          rec.crm_contacts = toSnakeRecord(r.contact as Record<string, unknown>)
+        }
+        return rec
+      })
+      return { data, total: count ?? 0 }
+    }
+
     const [rows, [{ count }]] = await Promise.all([
       db
-        .select({
-          project: crmProjects,
-          contact: {
-            firstName: crmContacts.firstName,
-            lastName: crmContacts.lastName,
-          },
-        })
+        .select({ project: crmProjects })
         .from(crmProjects)
         .leftJoin(crmContacts, eq(crmProjects.contactId, crmContacts.id))
-        .where(whereClause)
+        .where(fullWhere)
         .orderBy(desc(crmProjects.createdAt))
         .limit(limit)
         .offset(offset),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(crmProjects)
-        .where(whereClause),
+      countPromise,
     ])
-    const data = rows.map((r) => {
-      const rec = toSnakeRecord(r.project as Record<string, unknown>) as Record<string, unknown>
-      if (r.contact?.firstName != null || r.contact?.lastName != null) {
-        rec.crm_contacts = toSnakeRecord(r.contact as Record<string, unknown>)
-      }
-      return rec
-    })
-    return { data, total: count ?? 0 }
+    return {
+      data: rows.map((r) => toSnakeRecord(r.project as Record<string, unknown>)),
+      total: count ?? 0,
+    }
   }
 
   const [rows, [{ count }]] = await Promise.all([
     db
       .select()
       .from(crmProjects)
-      .where(whereClause)
+      .where(fullWhere)
       .orderBy(desc(crmProjects.createdAt))
       .limit(limit)
       .offset(offset),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(crmProjects)
-      .where(whereClause),
+      .where(fullWhere),
   ])
   return {
     data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)),

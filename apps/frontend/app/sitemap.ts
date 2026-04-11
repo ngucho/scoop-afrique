@@ -39,6 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/video`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/a-propos`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/search`, lastModified: now, changeFrequency: 'weekly', priority: 0.5 },
+    { url: `${SITE_URL}/rss.xml`, lastModified: now, changeFrequency: 'hourly', priority: 0.4 },
   ]
 
   const articlePages: MetadataRoute.Sitemap = articles

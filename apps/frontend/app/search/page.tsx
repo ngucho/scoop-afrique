@@ -1,7 +1,28 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { SearchForm } from './SearchForm'
 import { EditorialSearchHero, Button } from 'scoop'
+import { config } from '@/lib/config'
+
+const SITE_URL = config.siteUrl.replace(/\/$/, '')
+
+export const metadata: Metadata = {
+  title: 'Recherche',
+  description:
+    "Recherchez parmi les articles Scoop.Afrique : actualités, analyses et rubriques panafricaines. Résultats sur la page Articles.",
+  alternates: { canonical: `${SITE_URL}/search` },
+  openGraph: {
+    title: 'Recherche | Scoop.Afrique',
+    description: 'Trouvez un sujet, une rubrique ou un article sur le média.',
+    url: `${SITE_URL}/search`,
+    siteName: 'Scoop.Afrique',
+    type: 'website',
+    locale: 'fr_FR',
+  },
+  twitter: { card: 'summary_large_image', title: 'Recherche | Scoop.Afrique' },
+  robots: { index: true, follow: true },
+}
 
 export default function SearchPage() {
   return (

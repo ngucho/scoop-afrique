@@ -1,9 +1,12 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { Plus, Receipt, ArrowRight, AlertCircle, Pencil } from 'lucide-react'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
+import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
+import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -18,14 +21,28 @@ function formatMoney(amount: number, currency = 'FCFA'): string {
   return `${amount.toLocaleString('fr-FR')} ${currency}`
 }
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
   const isAdmin = await getCrmIsAdmin()
+  const search = listSearchFromParams(sp)
+  const view = parseListView(sp.view, 'list')
 
-  const activeRes = await crmGetServer<Array<Record<string, unknown>>>('invoices?limit=100')
+  const qActive = new URLSearchParams()
+  qActive.set('limit', '100')
+  if (search) qActive.set('search', search)
+
+  const qArchived = new URLSearchParams(qActive)
+  qArchived.set('archived', 'true')
+
+  const activeRes = await crmGetServer<Array<Record<string, unknown>>>(`invoices?${qActive}`)
   const invoices = activeRes?.data ?? []
 
   const archivedRes = isAdmin
-    ? await crmGetServer<Array<Record<string, unknown>>>('invoices?limit=100&archived=true')
+    ? await crmGetServer<Array<Record<string, unknown>>>(`invoices?${qArchived}`)
     : null
   const archivedInvoices = archivedRes?.data ?? []
 
@@ -56,6 +73,10 @@ export default async function InvoicesPage() {
         </Link>
       </div>
 
+      <Suspense fallback={null}>
+        <CrmSearchViewToolbar basePath="/invoices" initialSearch={search ?? ''} defaultView="list" />
+      </Suspense>
+
       {/* Summary cards */}
       {invoices.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
@@ -82,6 +103,41 @@ export default async function InvoicesPage() {
               <Button className="mt-4 rounded-full px-5">Créer une facture</Button>
             </Link>
           </div>
+        </div>
+      ) : view === 'cards' ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {invoices.map((inv, i) => {
+            const status = String(inv.status ?? 'draft')
+            const currency = String(inv.currency ?? 'FCFA')
+            const total = Number(inv.total ?? 0)
+            const paid = Number(inv.amount_paid ?? 0)
+            return (
+              <div
+                key={inv.id as string}
+                className={`crm-card crm-card-interactive p-5 crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1|2|3|4}`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <Link href={`/invoices/${inv.id}`} className="font-semibold text-sm min-w-0">
+                    {String(inv.reference ?? '—')}
+                  </Link>
+                  <AdminArchiveRestoreActions
+                    resource="invoices"
+                    id={inv.id as string}
+                    isArchived={Boolean((inv as Record<string, unknown>)['is_archived'])}
+                    isAdmin={isAdmin}
+                  />
+                </div>
+                <Link href={`/invoices/${inv.id}`} className="block">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className={`crm-pill crm-pill-${status}`}>{STATUS_LABELS[status] ?? status}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Payé {formatMoney(paid, currency)} / {formatMoney(total, currency)}
+                  </p>
+                </Link>
+              </div>
+            )
+          })}
         </div>
       ) : (
         <div className="crm-card overflow-hidden">
@@ -170,6 +226,37 @@ export default async function InvoicesPage() {
       {isAdmin && archivedInvoices.length > 0 && (
         <div className="crm-card overflow-hidden">
           <p className="crm-section-title px-4 pt-4 mb-3">Archivées ({archivedInvoices.length})</p>
+          {view === 'cards' ? (
+            <div className="grid gap-3 sm:grid-cols-2 p-4 pt-0 lg:grid-cols-3">
+              {archivedInvoices.map((inv, i) => {
+                const status = String(inv.status ?? 'draft')
+                const currency = String(inv.currency ?? 'FCFA')
+                const total = Number(inv.total ?? 0)
+                const paid = Number(inv.amount_paid ?? 0)
+                return (
+                  <Link
+                    key={inv.id as string}
+                    href={`/invoices/${inv.id}`}
+                    className={`crm-card crm-card-interactive p-4 block crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1|2|3|4}`}
+                  >
+                    <p className="font-semibold text-sm mb-2">{String(inv.reference ?? '')}</p>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className={`crm-pill crm-pill-${status}`}>{STATUS_LABELS[status] ?? status}</span>
+                      <AdminArchiveRestoreActions
+                        resource="invoices"
+                        id={inv.id as string}
+                        isArchived={true}
+                        isAdmin={isAdmin}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Payé {formatMoney(paid, currency)} / {formatMoney(total, currency)}
+                    </p>
+                  </Link>
+                )
+              })}
+            </div>
+          ) : (
           <table className="crm-table">
             <thead>
               <tr>
@@ -249,6 +336,7 @@ export default async function InvoicesPage() {
               })}
             </tbody>
           </table>
+          )}
         </div>
       )}
     </div>

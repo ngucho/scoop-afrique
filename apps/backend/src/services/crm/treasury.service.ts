@@ -1,7 +1,7 @@
 /**
  * Treasury movements (revenus / dépenses hors facturation CRM)
  */
-import { eq, and, desc, asc, sql } from 'drizzle-orm'
+import { eq, and, desc, asc, sql, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmTreasuryMovements } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
@@ -17,6 +17,7 @@ export async function listTreasuryMovements(params?: {
   order?: 'asc' | 'desc'
   limit?: number
   offset?: number
+  search?: string
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
   const db = getDb()
   const conditions = []
@@ -28,6 +29,17 @@ export async function listTreasuryMovements(params?: {
   }
   if (params?.to) {
     conditions.push(sql`${crmTreasuryMovements.occurredAt} <= ${params.to}::date`)
+  }
+  const q = params?.search?.trim()
+  if (q) {
+    const pat = `%${q}%`
+    conditions.push(
+      or(
+        ilike(crmTreasuryMovements.title, pat),
+        ilike(crmTreasuryMovements.notes, pat),
+        ilike(crmTreasuryMovements.category, pat)
+      )!
+    )
   }
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const limit = params?.limit ?? 50
@@ -80,8 +92,9 @@ export async function createTreasuryMovement(
       amount: input.amount,
       currency: input.currency ?? 'FCFA',
       occurredAt: input.occurred_at || new Date().toISOString().slice(0, 10),
-      title: input.title.trim(),
+           title: input.title.trim(),
       notes: input.notes?.trim() || null,
+      receiptUrl: input.receipt_url?.trim() || null,
       metadata: input.metadata ?? {},
       projectId: input.project_id || null,
       createdBy: createdBy ?? null,
@@ -124,6 +137,7 @@ export async function updateTreasuryMovement(
   if (input.occurred_at !== undefined) update.occurredAt = input.occurred_at || new Date().toISOString().slice(0, 10)
   if (input.title !== undefined) update.title = input.title.trim()
   if (input.notes !== undefined) update.notes = input.notes?.trim() || null
+  if (input.receipt_url !== undefined) update.receiptUrl = input.receipt_url?.trim() || null
   if (input.metadata !== undefined) update.metadata = input.metadata ?? {}
   if (input.project_id !== undefined) update.projectId = input.project_id
 

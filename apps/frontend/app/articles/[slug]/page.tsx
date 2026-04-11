@@ -59,10 +59,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : undefined
   const ogImage = imageUrl ?? `${config.siteUrl}/opengraph-image`
 
+  const section = article.category?.name
+
   return {
     title,
     description,
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+    ...(section ? { other: { 'article:section': section } } : {}),
     openGraph: {
       title,
       description,
@@ -107,6 +110,7 @@ function ArticleJsonLd({
     cover_image_url: string | null
     author_display_name?: string | null
     author?: { email: string | null } | null
+    category?: { name: string; slug: string } | null
   }
   shareUrl: string
 }) {
@@ -121,6 +125,7 @@ function ArticleJsonLd({
     image: image ? [image] : undefined,
     datePublished: article.published_at ?? undefined,
     dateModified: article.updated_at,
+    ...(article.category?.name ? { articleSection: article.category.name } : {}),
     author: {
       '@type': 'Person',
       name: article.author_display_name ?? article.author?.email ?? 'Scoop Afrique',
@@ -133,6 +138,42 @@ function ArticleJsonLd({
     },
     isAccessibleForFree: true,
     copyrightHolder: { '@type': 'Organization', name: 'Scoop.Afrique' },
+  }
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+}
+
+function ArticleBreadcrumbJsonLd({
+  title,
+  categoryName,
+  categorySlug,
+  articleUrl,
+}: {
+  title: string
+  categoryName: string | null
+  categorySlug: string | null
+  articleUrl: string
+}) {
+  const origin = config.siteUrl.replace(/\/$/, '')
+  const items: { name: string; item: string }[] = [
+    { name: 'Accueil', item: `${origin}/` },
+    { name: 'Articles', item: `${origin}/articles` },
+  ]
+  if (categoryName && categorySlug) {
+    items.push({
+      name: categoryName,
+      item: `${origin}/category/${encodeURIComponent(categorySlug)}`,
+    })
+  }
+  items.push({ name: title, item: articleUrl })
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: it.name,
+      item: it.item,
+    })),
   }
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 }
@@ -174,6 +215,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   return (
     <ReaderLayout>
       <ArticleJsonLd article={article} shareUrl={shareUrl} />
+      <ArticleBreadcrumbJsonLd
+        title={article.title}
+        categoryName={article.category?.name ?? null}
+        categorySlug={article.category?.slug ?? null}
+        articleUrl={shareUrl}
+      />
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-12 lg:gap-12">
           <article className="min-w-0 lg:col-span-8">
@@ -238,7 +285,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
             {hasCoverImage && (
               <div className="relative -mx-4 mb-12 overflow-hidden rounded-xl sm:mx-0 md:-mx-6">
-                <Thumbnail src={coverImageUrl} alt="" aspectRatio="video" className="w-full rounded-xl shadow-[var(--shadow-lg)]" />
+                <Thumbnail
+                  src={coverImageUrl}
+                  alt={`Illustration — ${article.title}`}
+                  aspectRatio="video"
+                  className="w-full rounded-xl shadow-[var(--shadow-lg)]"
+                />
               </div>
             )}
             {hasCoverVideo && videoEmbedUrl && (

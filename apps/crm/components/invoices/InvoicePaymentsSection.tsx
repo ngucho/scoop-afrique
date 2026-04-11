@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Button, Input } from 'scoop'
+import { Button, Dialog, Input } from 'scoop'
 import { Pencil } from 'lucide-react'
 import { PaymentForm } from './PaymentForm'
 
@@ -29,6 +29,7 @@ export function InvoicePaymentsSection({
   const router = useRouter()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [paymentOpen, setPaymentOpen] = useState(false)
 
   async function saveEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -192,7 +193,25 @@ export function InvoicePaymentsSection({
           </table>
         </div>
       )}
-      {balance > 0 && <PaymentForm invoiceId={invoiceId} />}
+      {balance > 0 && (
+        <>
+          <Button type="button" className="mt-2 rounded-full" onClick={() => setPaymentOpen(true)}>
+            Enregistrer un paiement
+          </Button>
+          <Dialog
+            open={paymentOpen}
+            onOpenChange={setPaymentOpen}
+            title="Enregistrer un paiement"
+            className="max-w-lg"
+          >
+            <PaymentForm
+              invoiceId={invoiceId}
+              variant="plain"
+              onSuccess={() => setPaymentOpen(false)}
+            />
+          </Dialog>
+        </>
+      )}
     </section>
   )
 }

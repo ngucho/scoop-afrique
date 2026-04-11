@@ -99,12 +99,13 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
         <p className="text-xs text-muted-foreground -mt-1">
           Période analysée : <span className="font-medium text-foreground">{periodLabel}</span> — factures
           filtrées par <span className="font-medium">date d&apos;échéance</span> (ou date de création si pas
-          d&apos;échéance), encaissements par <span className="font-medium">date de paiement</span>, dépenses
-          projet et{' '}
+          d&apos;échéance), encaissements par <span className="font-medium">date de paiement</span> (jour
+          calendaire), dépenses projet et{' '}
           <Link href="/treasury" className="text-primary hover:underline">
             mouvements de trésorerie
           </Link>
-          )
+          . La section « Performance commerciale » utilise les <span className="font-medium">devis / projets /
+          factures créés</span> dans la même plage.
         </p>
       )}
 

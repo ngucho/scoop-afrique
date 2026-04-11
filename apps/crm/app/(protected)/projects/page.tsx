@@ -1,9 +1,12 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { Plus, ClipboardList, Calendar, DollarSign, ArrowRight } from 'lucide-react'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
+import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
+import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -21,14 +24,28 @@ function formatMoney(amount: number): string {
   return amount.toLocaleString('fr-FR')
 }
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
   const isAdmin = await getCrmIsAdmin()
+  const search = listSearchFromParams(sp)
+  const view = parseListView(sp.view, 'cards')
 
-  const activeRes = await crmGetServer<Array<Record<string, unknown>>>('projects?limit=100')
+  const qActive = new URLSearchParams()
+  qActive.set('limit', '100')
+  if (search) qActive.set('search', search)
+
+  const qArchived = new URLSearchParams(qActive)
+  qArchived.set('archived', 'true')
+
+  const activeRes = await crmGetServer<Array<Record<string, unknown>>>(`projects?${qActive}`)
   const activeProjects = activeRes?.data ?? []
 
   const archivedRes = isAdmin
-    ? await crmGetServer<Array<Record<string, unknown>>>('projects?limit=100&archived=true')
+    ? await crmGetServer<Array<Record<string, unknown>>>(`projects?${qArchived}`)
     : null
   const archivedProjects = archivedRes?.data ?? []
 
@@ -57,6 +74,14 @@ export default async function ProjectsPage() {
         </Link>
       </div>
 
+      <Suspense fallback={null}>
+        <CrmSearchViewToolbar
+          basePath="/projects"
+          initialSearch={search ?? ''}
+          defaultView="cards"
+        />
+      </Suspense>
+
       {/* Stats bar */}
       {activeProjects.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
@@ -83,6 +108,54 @@ export default async function ProjectsPage() {
               <Button className="mt-4 rounded-full px-5">Créer un projet</Button>
             </Link>
           </div>
+        </div>
+      ) : view === 'list' ? (
+        <div className="crm-card overflow-hidden">
+          <table className="crm-table">
+            <thead>
+              <tr>
+                <th>Référence</th>
+                <th>Titre</th>
+                <th>Statut</th>
+                <th className="hidden md:table-cell">Période</th>
+                <th className="text-right">Budget</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {activeProjects.map((p) => {
+                const status = String(p.status ?? 'draft')
+                const statusLabel = STATUS_LABELS[status] ?? status
+                const budget = Number(p.budget_agreed) || 0
+                const endDate = p.end_date
+                  ? new Date(p.end_date as string).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
+                  : null
+                return (
+                  <tr key={p.id as string}>
+                    <td>
+                      <Link href={`/projects/${p.id}`} className="font-mono text-xs font-semibold hover:text-primary">
+                        {String(p.reference ?? '')}
+                      </Link>
+                    </td>
+                    <td className="text-sm font-medium max-w-[240px] truncate">{String(p.title ?? '')}</td>
+                    <td>
+                      <span className={`crm-pill crm-pill-${status}`}>{statusLabel}</span>
+                    </td>
+                    <td className="hidden md:table-cell text-xs text-muted-foreground">{endDate ?? '—'}</td>
+                    <td className="text-right text-sm tabular-nums">{budget > 0 ? `${formatMoney(budget)} F` : '—'}</td>
+                    <td>
+                      <AdminArchiveRestoreActions
+                        resource="projects"
+                        id={p.id as string}
+                        isArchived={Boolean((p as Record<string, unknown>)['is_archived'])}
+                        isAdmin={isAdmin}
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -151,6 +224,50 @@ export default async function ProjectsPage() {
       {isAdmin && archivedProjects.length > 0 && (
         <>
           <p className="crm-section-title px-2">Archivés ({archivedProjects.length})</p>
+          {view === 'list' ? (
+            <div className="crm-card overflow-hidden">
+              <table className="crm-table">
+                <thead>
+                  <tr>
+                    <th>Référence</th>
+                    <th>Titre</th>
+                    <th>Statut</th>
+                    <th className="text-right">Budget</th>
+                    <th className="w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {archivedProjects.map((p) => {
+                    const status = String(p.status ?? 'draft')
+                    const statusLabel = STATUS_LABELS[status] ?? status
+                    const budget = Number(p.budget_agreed) || 0
+                    return (
+                      <tr key={p.id as string}>
+                        <td>
+                          <Link href={`/projects/${p.id}`} className="font-mono text-xs font-semibold hover:text-primary">
+                            {String(p.reference ?? '')}
+                          </Link>
+                        </td>
+                        <td className="text-sm max-w-[240px] truncate">{String(p.title ?? '')}</td>
+                        <td>
+                          <span className={`crm-pill crm-pill-${status}`}>{statusLabel}</span>
+                        </td>
+                        <td className="text-right text-sm tabular-nums">{budget > 0 ? `${formatMoney(budget)} F` : '—'}</td>
+                        <td>
+                          <AdminArchiveRestoreActions
+                            resource="projects"
+                            id={p.id as string}
+                            isArchived={true}
+                            isAdmin={isAdmin}
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {archivedProjects.map((p, i) => {
               const status = String(p.status ?? 'draft')
@@ -214,6 +331,7 @@ export default async function ProjectsPage() {
               )
             })}
           </div>
+          )}
         </>
       )}
     </div>

@@ -1,16 +1,24 @@
 import { Suspense } from 'react'
 import { crmGetServer } from '@/lib/api-server'
 import { RemindersClient } from '@/components/reminders/RemindersClient'
+import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
+import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
 
 export default async function RemindersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const sp = await searchParams
+  const search = listSearchFromParams(sp)
+  const view = parseListView(sp.view, 'list')
+
   const q = new URLSearchParams()
   q.set('limit', '100')
-  if (sp.status) q.set('status', sp.status)
+  const statusRaw = sp.status
+  const status = Array.isArray(statusRaw) ? statusRaw[0] : statusRaw
+  if (status) q.set('status', status)
+  if (search) q.set('search', search)
 
   const [remindersRes, contactsRes] = await Promise.all([
     crmGetServer<Array<Record<string, unknown>>>(`reminders?${q.toString()}`),
@@ -35,12 +43,21 @@ export default async function RemindersPage({
         </div>
       </div>
 
+      <Suspense fallback={null}>
+        <CrmSearchViewToolbar
+          basePath="/reminders"
+          initialSearch={search ?? ''}
+          defaultView="list"
+        />
+      </Suspense>
+
       <Suspense fallback={<div className="crm-card p-8 text-muted-foreground">Chargement…</div>}>
         <RemindersClient
           initialReminders={reminders}
           initialTotal={total}
           initialCounts={counts}
           contacts={contacts}
+          view={view}
         />
       </Suspense>
     </div>

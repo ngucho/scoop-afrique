@@ -1,4 +1,6 @@
+import { PartnershipStrip } from './PartnershipStrip'
 import { ReaderFooter } from './ReaderFooter'
+import { isPartnershipStripEnabled } from '@/lib/readerPartnershipStrip'
 import { ReaderChrome } from './ReaderChrome'
 import { ReaderHeader } from './ReaderHeader'
 import { ReaderMobileDock } from './ReaderMobileDock'
@@ -16,7 +18,11 @@ async function getCategories(): Promise<Category[]> {
 }
 
 export async function ReaderLayout({ children }: { children: React.ReactNode }) {
-  const [categories, announcements] = await Promise.all([getCategories(), fetchAnnouncements()])
+  const [categories, announcements, partnershipStrip] = await Promise.all([
+    getCategories(),
+    fetchAnnouncements(),
+    isPartnershipStripEnabled(),
+  ])
   const { bar, tickerSource, urgentBar } = splitAnnouncementsForChrome(announcements)
   const tickerItems = announcementTickerItems(tickerSource)
 
@@ -33,6 +39,7 @@ export async function ReaderLayout({ children }: { children: React.ReactNode }) 
         {tickerItems.length > 0 ? <ReaderChrome tickerItems={tickerItems} /> : null}
         {children}
       </main>
+      <PartnershipStrip cmsEnabled={partnershipStrip} />
       <ReaderFooter />
       <ReaderMobileDock />
     </div>
