@@ -18,30 +18,28 @@ export const metadata: Metadata = {
   title: 'Actualités panafricaines — Scoop.Afrique',
   description:
     "Le média digital qui décrypte l'Afrique autrement. Actualités, politique, culture, sport, société. Articles, newsletter, vidéos et podcasts.",
-  openGraph: {
+   openGraph: {
     title: 'Scoop.Afrique — Actualités & articles panafricains',
     description: "Le média digital qui décrypte l'Afrique autrement.",
     url: SITE_URL,
     siteName: 'Scoop.Afrique',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Scoop.Afrique' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Scoop.Afrique — Actualités panafricaines',
-    images: ['/og-image.png'],
   },
   alternates: { canonical: SITE_URL },
 }
 
 export default async function HomePage() {
-  const [{ sections }, placements] = await Promise.all([buildHomeSections(), fetchAdPlacements()])
+  const [{ sections, titles }, placements] = await Promise.all([buildHomeSections(), fetchAdPlacements()])
   const { slots, creatives_by_slot } = placements
   const topAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.GLOBAL_TOP_BANNER)
   const midAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_MID_1)
   const bottomAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_BOTTOM)
   const sponsorAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_HERO_SPONSOR)
 
-  const { featured, latest, trending, editorsPicks, categoryStrips } = sections
+  const { featured, latest, videoArticles, trending, editorsPicks, categoryStrips } = sections
   const hasArticles = !!featured || latest.length > 0
 
   const itemListJsonLd = hasArticles
@@ -67,7 +65,7 @@ export default async function HomePage() {
       {itemListJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       ) : null}
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 md:pb-12 lg:px-8">
         {topAd ? (
           <MotionEnter as="div" className="mb-8 flex justify-center">
             <AdSlotSection slotKey={AD_SLOT_KEYS.GLOBAL_TOP_BANNER} creative={topAd.creative} className="w-full max-w-6xl" />
@@ -76,10 +74,15 @@ export default async function HomePage() {
 
         <header className="mb-10">
           <SectionHeader label="Accueil" className="mb-4" />
-          <Heading as="h1" level="h1" className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <Heading
+            as="h1"
+            level="h1"
+            className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
+            style={{ fontFamily: 'var(--font-headline)' }}
+          >
             L&apos;Afrique, en continu
           </Heading>
-          <p className="mt-3 max-w-2xl text-muted-foreground">
+          <p className="mt-3 max-w-2xl text-editorial-secondary">
             Décryptages, reportages et analyses — une sélection modulaire mise à jour depuis la rédaction.
           </p>
         </header>
@@ -97,13 +100,52 @@ export default async function HomePage() {
         ) : null}
 
         {latest.length > 0 ? (
-          <MotionEnter as="section" className="mb-14">
-            <SectionHeader label="À la une" className="mb-6" />
-            <div className="grid gap-6 sm:grid-cols-2">
+          <MotionEnter as="section" className="mb-16">
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+              <h2
+                className="border-l-4 border-primary pl-4 text-3xl font-bold text-editorial-on-surface"
+                style={{ fontFamily: 'var(--font-headline)' }}
+              >
+                {titles.latest}
+              </h2>
+              <Link
+                href="/articles"
+                className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
+              >
+                Tout voir <span aria-hidden>→</span>
+              </Link>
+            </div>
+            <div className="grid gap-10 sm:grid-cols-2">
               {latest.map((article, i) => (
-                <MotionEnter key={article.id} disabled={i > 5} className="scoop-motion-hover-depth rounded-xl">
-                  <ArticleCard article={article} variant="row" />
+                <MotionEnter key={article.id} disabled={i > 5}>
+                  <ArticleCard article={article} variant="row" imagePriority={i < 2} />
                 </MotionEnter>
+              ))}
+            </div>
+          </MotionEnter>
+        ) : null}
+
+        {videoArticles.length > 0 ? (
+          <MotionEnter as="section" className="mb-16">
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+              <SectionHeader label={titles.video} />
+              <Link
+                href="/articles"
+                className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
+              >
+                Tout voir <span aria-hidden>→</span>
+              </Link>
+            </div>
+            <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+              {videoArticles.map((article, i) => (
+                <div
+                  key={article.id}
+                  className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]"
+                >
+                  <MotionEnter disabled={i > 4}>
+                    <ArticleCard article={article} variant="compact" emphasizeVideo imagePriority={i === 0} />
+                  </MotionEnter>
+                </div>
               ))}
             </div>
           </MotionEnter>
@@ -115,7 +157,7 @@ export default async function HomePage() {
 
         {trending.length > 0 ? (
           <MotionEnter as="section" className="mb-14">
-            <SectionHeader label="Les plus lus" className="mb-6" />
+            <SectionHeader label={titles.trending} className="mb-6" />
             <ol className="grid gap-3 sm:grid-cols-2">
               {trending.map((article, i) => (
                 <li
@@ -139,11 +181,11 @@ export default async function HomePage() {
 
         {editorsPicks.length > 0 ? (
           <MotionEnter as="section" className="mb-14">
-            <SectionHeader label="Sélection de la rédaction" className="mb-6" />
+            <SectionHeader label={titles.editors} className="mb-6" />
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {editorsPicks.map((article) => (
+              {editorsPicks.map((article, i) => (
                 <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
-                  <ArticleCard article={article} />
+                  <ArticleCard article={article} imagePriority={i < 2} />
                 </MotionEnter>
               ))}
             </div>

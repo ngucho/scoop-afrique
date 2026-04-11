@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { AdSlotFrame } from 'scoop'
+import { AdSlotFrame, AdCreativeDisplay, AdSlotEmptyState, type AdCreativeDisplayModel } from 'scoop'
 import { config } from '@/lib/config'
 import type { AdCreative } from '@/lib/api/types'
 
@@ -28,9 +28,28 @@ function postAdEvent(path: '/ads/events/impression' | '/ads/events/click', body:
   }).catch(() => {})
 }
 
+function resolveFormat(creative: AdCreative): AdCreativeDisplayModel['format'] {
+  if (creative.format) return creative.format
+  if (creative.video_url?.trim()) return 'video'
+  if (creative.image_url?.trim()) return 'image'
+  return 'native'
+}
+
+function toDisplayModel(creative: AdCreative): AdCreativeDisplayModel {
+  return {
+    format: creative.format,
+    headline: creative.headline,
+    body: creative.body,
+    image_url: creative.image_url,
+    link_url: creative.link_url,
+    cta_label: creative.cta_label,
+    video_url: creative.video_url,
+    alt: creative.alt,
+  }
+}
+
 /**
- * Renders a reserved ad surface with `data-ad-slot`. Loads tracking only when visible.
- * Without a creative, shows fallback (house / placeholder) — no third-party script.
+ * Réserve un emplacement `data-ad-slot`, envoie les événements quand visible, délègue le rendu au design system.
  */
 export function AdSlotRenderer({
   slotKey,
@@ -51,7 +70,7 @@ export function AdSlotRenderer({
       ([e]) => {
         if (e?.isIntersecting) setVisible(true)
       },
-      { rootMargin: '120px', threshold: 0.01 }
+      { rootMargin: '120px', threshold: 0.01 },
     )
     obs.observe(el)
     return () => obs.disconnect()
@@ -64,48 +83,29 @@ export function AdSlotRenderer({
       creative_id: creative.id,
       article_id: articleId,
       user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      metadata: { format: resolveFormat(creative) },
     })
   }, [visible, creative, articleId])
 
-  const defaultFallback = (
-    <div className="flex min-h-[100px] flex-col items-center justify-center gap-1 text-center">
-      <span className="text-xs text-[var(--on-glass-muted)]">Espace publicitaire</span>
-      <span className="text-[length:var(--text-xs)] text-[var(--on-glass-muted)]/80">
-        Emplacement {slotKey}
-      </span>
-    </div>
-  )
+  const trackClick = () =>
+    postAdEvent('/ads/events/click', {
+      creative_id: creative!.id,
+      article_id: articleId,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      metadata: { format: creative ? resolveFormat(creative) : undefined },
+    })
 
-  const inner = creative && creative.image_url ? (
-    <a
-      href={creative.link_url}
-      target="_blank"
-      rel="noopener sponsored noreferrer"
-      className="group block outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      onClick={() =>
-        postAdEvent('/ads/events/click', {
-          creative_id: creative.id,
-          article_id: articleId,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-        })
-      }
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- dynamic remote ad URLs */}
-      <img
-        src={creative.image_url}
-        alt={creative.alt ?? label}
-        className="mx-auto max-h-[280px] w-auto max-w-full rounded-md object-contain transition-opacity group-hover:opacity-95"
-        width={600}
-        height={400}
-      />
-    </a>
+  const defaultFallback = <AdSlotEmptyState slotKey={slotKey} />
+
+  const content = creative ? (
+    <AdCreativeDisplay creative={toDisplayModel(creative)} frameLabel={label} onLinkClick={trackClick} />
   ) : (
     (fallback ?? defaultFallback)
   )
 
   return (
     <div ref={rootRef} data-ad-slot={slotKey} className={className}>
-      <AdSlotFrame label={label}>{inner}</AdSlotFrame>
+      <AdSlotFrame label={label}>{content}</AdSlotFrame>
     </div>
   )
 }

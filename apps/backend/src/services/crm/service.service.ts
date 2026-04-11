@@ -1,7 +1,7 @@
 /**
  * CRM services catalog — prestations (description, prix, unité)
  */
-import { eq, and, asc, sql } from 'drizzle-orm'
+import { eq, and, asc, sql, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmServices } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
@@ -12,11 +12,24 @@ export async function listServices(params?: {
   category?: string
   limit?: number
   offset?: number
+  search?: string
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
   const db = getDb()
   const conditions = []
   if (params?.active !== undefined) conditions.push(eq(crmServices.isActive, params.active))
   if (params?.category) conditions.push(eq(crmServices.category, params.category))
+  const q = params?.search?.trim()
+  if (q) {
+    const pat = `%${q}%`
+    conditions.push(
+      or(
+        ilike(crmServices.name, pat),
+        ilike(crmServices.slug, pat),
+        ilike(crmServices.description, pat),
+        ilike(crmServices.category, pat)
+      )!
+    )
+  }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined
   const limit = params?.limit ?? 50

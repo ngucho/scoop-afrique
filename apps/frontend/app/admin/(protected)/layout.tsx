@@ -3,6 +3,7 @@ import { getSession, getAccessToken, getAccessTokenPayload, getUserMetadataFromP
 import { AdminLayoutClient } from '../AdminLayoutClient'
 import { AdminUserProvider, type AdminUser } from '@/lib/admin/UserContext'
 import { roleFromPermissions, type AppRole } from '@/lib/admin/rbac'
+import { hasStaffApiAccess } from '@/lib/admin/staff-api-access'
 import type { UserMetadata } from '@/lib/admin/session'
 
 const ADMIN_LOGIN = '/admin/login'
@@ -30,6 +31,11 @@ export default async function AdminProtectedLayout({
     : []
   if (permissions.length === 0) {
     redirect(ADMIN_LOGIN)
+  }
+
+  // Reject reader-only tokens (e.g. Auth0 role `reader` with `access:reader` only)
+  if (!hasStaffApiAccess(permissions)) {
+    redirect('/')
   }
 
   // Step 4: Role from permissions

@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
-import { Heading, Text, Dot, SectionHeader } from 'scoop'
-import { toYoutubeEmbedUrl } from '@/lib/youtube'
+import { Heading, Text, Dot, SectionHeader, MediaFeatureCard, toYoutubeEmbedUrl } from 'scoop'
 
 export const metadata: Metadata = {
   title: 'Vidéos',
@@ -43,29 +42,31 @@ function VideoCard({
 }) {
   const embedUrl = toYoutubeEmbedUrl(youtubeUrl)
   return (
-    <article className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-primary/40 hover:bg-white/10">
-      <div className="aspect-video w-full overflow-hidden bg-black/40">
-        {embedUrl ? (
+    <MediaFeatureCard
+      layout="stack"
+      className="group"
+      media={
+        embedUrl ? (
           <iframe
             src={embedUrl}
             title={title}
-            className="h-full w-full"
+            className="h-full w-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <span className="text-4xl text-white/20">▶</span>
+          <div className="flex h-full min-h-[12rem] items-center justify-center bg-black/40">
+            <span className="text-4xl text-muted-foreground/25">▶</span>
           </div>
-        )}
-      </div>
-      <div className="p-5">
+        )
+      }
+      heading={
         <h3 className="font-[var(--font-scoop)] text-lg font-bold tracking-tight text-foreground group-hover:text-primary">
           {title}
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-    </article>
+      }
+      description={description}
+    />
   )
 }
 
@@ -74,7 +75,7 @@ export default function VideoPage() {
     <ReaderLayout>
       <main className="min-h-screen">
         {/* Hero — style streaming / VOD */}
-        <section className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-background via-background to-primary/5">
+        <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-background via-background to-primary/5">
           <div
             className="pointer-events-none absolute inset-0 opacity-30"
             aria-hidden

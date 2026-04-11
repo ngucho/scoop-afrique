@@ -5,7 +5,7 @@ import { GlitchText, FillHoverAnchor } from 'scoop'
 
 const socialPlatforms = [
   { name: "TikTok", handle: "@Scoop.Afrique", href: "https://tiktok.com/@Scoop.Afrique", followers: "837.5K", gradient: "from-cyan-400 via-pink-500 to-red-500", description: "Videos virales & trends africains" },
-  { name: "Facebook", handle: "@scoop.afrique", href: "https://facebook.com/scoop.afrique", followers: "359K", gradient: "from-blue-600 to-blue-400", description: "Communaute & actualites" },
+  { name: "Facebook", handle: "@scoop.afrique", href: "https://facebook.com/profile.php?id=61568464568442", followers: "359K", gradient: "from-blue-600 to-blue-400", description: "Communaute & actualites" },
   { name: "Threads", handle: "@Scoop.Afrique", href: "https://threads.net/@Scoop.Afrique", followers: "24.5K", gradient: "from-foreground to-muted-foreground", description: "Conversations & opinions" },
   { name: "Instagram", handle: "@Scoop.Afrique", href: "https://instagram.com/Scoop.Afrique", followers: "23.5K", gradient: "from-purple-600 via-pink-500 to-orange-400", description: "Stories & reels exclusifs" },
   { name: "YouTube", handle: "@Scoop.Afrique", href: "https://youtube.com/@Scoop.Afrique", followers: "6.5K", gradient: "from-red-600 to-red-400", description: "Reportages & analyses video" },

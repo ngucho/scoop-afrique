@@ -43,6 +43,52 @@ function lastDayOfMonthYm(ym: string): string {
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Bornes calendaires YYYY-MM-DD sans conversion timezone (évite le décalage toISOString()).
+ */
+export function normalizeFinancialRange(
+  startDate?: string,
+  endDate?: string,
+  months = 12
+): { startStr: string; endStr: string } {
+  const s = startDate?.slice(0, 10)
+  const e = endDate?.slice(0, 10)
+  if (s && e && YMD_RE.test(s) && YMD_RE.test(e)) {
+    return s <= e ? { startStr: s, endStr: e } : { startStr: e, endStr: s }
+  }
+  const end = new Date()
+  const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+  const start = new Date(end.getFullYear(), end.getMonth() - months, end.getDate())
+  const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+  return { startStr, endStr }
+}
+
+function devisCreatedInRange(range: { from: string; to: string }) {
+  const from = range.from.slice(0, 10)
+  const to = range.to.slice(0, 10)
+  return and(sql`${crmDevis.createdAt}::date >= ${from}::date`, sql`${crmDevis.createdAt}::date <= ${to}::date`)
+}
+
+function projectCreatedInRange(range: { from: string; to: string }) {
+  const from = range.from.slice(0, 10)
+  const to = range.to.slice(0, 10)
+  return and(
+    sql`${crmProjects.createdAt}::date >= ${from}::date`,
+    sql`${crmProjects.createdAt}::date <= ${to}::date`
+  )
+}
+
+function invoiceCreatedInRange(range: { from: string; to: string }) {
+  const from = range.from.slice(0, 10)
+  const to = range.to.slice(0, 10)
+  return and(
+    sql`${crmInvoices.createdAt}::date >= ${from}::date`,
+    sql`${crmInvoices.createdAt}::date <= ${to}::date`
+  )
+}
+
 export type RevenueByMonth = {
   month: string
   /** Encaissements factures (payées / partielles) */
@@ -106,8 +152,8 @@ export async function getRevenueByMonth(
     .where(
       and(
         eq(crmInvoices.isArchived, false),
-        gte(crmPayments.paidAt, new Date(`${queryFrom}T00:00:00Z`)),
-        lte(crmPayments.paidAt, new Date(`${queryTo}T23:59:59Z`))
+        sql`(${crmPayments.paidAt}::date) >= ${queryFrom}::date`,
+        sql`(${crmPayments.paidAt}::date) <= ${queryTo}::date`
       )
     )
 
@@ -162,9 +208,13 @@ export async function getRevenueByMonth(
   return result
 }
 
-export async function getDevisByStatus(): Promise<DevisByStatus[]> {
+export async function getDevisByStatus(range?: { from: string; to: string }): Promise<DevisByStatus[]> {
   const db = getDb()
-  const rows = await db.select({ status: crmDevis.status, total: crmDevis.total }).from(crmDevis)
+  const q = db.select({ status: crmDevis.status, total: crmDevis.total }).from(crmDevis)
+  const rows =
+    range?.from && range?.to
+      ? await q.where(devisCreatedInRange({ from: range.from, to: range.to }))
+      : await q
 
   const byStatus = new Map<string, { count: number; total: number }>()
   for (const row of rows) {
@@ -182,8 +232,8 @@ export async function getDevisByStatus(): Promise<DevisByStatus[]> {
   })
 }
 
-export async function getPipelineFunnel(): Promise<PipelineFunnel> {
-  const byStatus = await getDevisByStatus()
+export async function getPipelineFunnel(range?: { from: string; to: string }): Promise<PipelineFunnel> {
+  const byStatus = await getDevisByStatus(range)
   const map = Object.fromEntries(byStatus.map((s) => [s.status, s.count]))
   return {
     draft: map.draft ?? 0,
@@ -194,17 +244,30 @@ export async function getPipelineFunnel(): Promise<PipelineFunnel> {
   }
 }
 
-export async function getConversionRates(): Promise<{
+export async function getConversionRates(range?: {
+  from: string
+  to: string
+}): Promise<{
   devisSentToAccepted: number
   devisAcceptedToProject: number
   invoiceSentToPaid: number
 }> {
   const db = getDb()
 
+  const devisQ = db.select({ status: crmDevis.status }).from(crmDevis)
+  const projectQ = db.select({ id: crmProjects.id }).from(crmProjects)
+  const invoiceQ = db.select({ status: crmInvoices.status }).from(crmInvoices)
+
   const [devisRows, projectRows, invoiceRows] = await Promise.all([
-    db.select({ status: crmDevis.status }).from(crmDevis),
-    db.select({ id: crmProjects.id }).from(crmProjects),
-    db.select({ status: crmInvoices.status }).from(crmInvoices),
+    range?.from && range?.to
+      ? devisQ.where(devisCreatedInRange({ from: range.from, to: range.to }))
+      : devisQ,
+    range?.from && range?.to
+      ? projectQ.where(projectCreatedInRange({ from: range.from, to: range.to }))
+      : projectQ,
+    range?.from && range?.to
+      ? invoiceQ.where(invoiceCreatedInRange({ from: range.from, to: range.to }))
+      : invoiceQ,
   ])
 
   const sent = devisRows.filter((d) => d.status === 'sent').length
@@ -233,9 +296,9 @@ export async function getReportsSummary(
 }> {
   const [revenueByMonth, devisByStatus, pipelineFunnel, conversionRates] = await Promise.all([
     getRevenueByMonth(months, range),
-    getDevisByStatus(),
-    getPipelineFunnel(),
-    getConversionRates(),
+    getDevisByStatus(range),
+    getPipelineFunnel(range),
+    getConversionRates(range),
   ])
   return { revenueByMonth, devisByStatus, pipelineFunnel, conversionRates }
 }
@@ -265,17 +328,7 @@ export async function getFinancialSummary(
 ): Promise<FinancialSummary> {
   const db = getDb()
 
-  const end = endDate ? new Date(endDate) : new Date()
-  const start = startDate
-    ? new Date(startDate)
-    : (() => {
-        const d = new Date()
-        d.setMonth(d.getMonth() - months)
-        return d
-      })()
-
-  const startStr = start.toISOString().slice(0, 10)
-  const endStr = end.toISOString().slice(0, 10)
+  const { startStr, endStr } = normalizeFinancialRange(startDate, endDate, months)
 
   /** Factures « dans la période » : date d'échéance, ou date de création si pas d'échéance */
   const invoiceInPeriod = sql`COALESCE(${crmInvoices.dueDate}, (${crmInvoices.createdAt}::date))`
@@ -313,8 +366,8 @@ export async function getFinancialSummary(
       .where(
         and(
           eq(crmInvoices.isArchived, false),
-          gte(crmPayments.paidAt, new Date(`${startStr}T00:00:00Z`)),
-          lte(crmPayments.paidAt, new Date(`${endStr}T23:59:59Z`))
+          sql`(${crmPayments.paidAt}::date) >= ${startStr}::date`,
+          sql`(${crmPayments.paidAt}::date) <= ${endStr}::date`
         )
       ),
     db

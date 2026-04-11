@@ -1,7 +1,7 @@
 /**
  * CRM invoice service
  */
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { eq, and, desc, sql, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmInvoices, crmContacts, crmProjects } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
@@ -17,6 +17,7 @@ export async function listInvoices(params?: {
   archived?: boolean
   limit?: number
   offset?: number
+  search?: string
 }): Promise<{ data: Array<Record<string, unknown>>; total: number }> {
   const db = getDb()
   const conditions = []
@@ -27,26 +28,57 @@ export async function listInvoices(params?: {
   if (params?.archived === true) conditions.push(eq(crmInvoices.isArchived, true))
   else conditions.push(eq(crmInvoices.isArchived, false))
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+  const baseWhere = conditions.length > 0 ? and(...conditions) : undefined
+  const q = params?.search?.trim()
+  const searchWhere = q
+    ? or(
+        ilike(crmInvoices.reference, `%${q}%`),
+        ilike(crmContacts.firstName, `%${q}%`),
+        ilike(crmContacts.lastName, `%${q}%`),
+        ilike(crmContacts.company, `%${q}%`)
+      )
+    : undefined
+  const fullWhere =
+    baseWhere && searchWhere ? and(baseWhere, searchWhere) : (searchWhere ?? baseWhere)
+
   const limit = params?.limit ?? 50
   const offset = params?.offset ?? 0
+  const useJoin = Boolean(q)
 
-  const [rows, [{ count }]] = await Promise.all([
-    db
-      .select()
-      .from(crmInvoices)
-      .where(whereClause)
-      .orderBy(desc(crmInvoices.createdAt))
-      .limit(limit)
-      .offset(offset),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(crmInvoices)
-      .where(whereClause),
-  ])
+  const countQuery = useJoin
+    ? db
+        .select({ count: sql<number>`count(distinct ${crmInvoices.id})::int` })
+        .from(crmInvoices)
+        .leftJoin(crmContacts, eq(crmInvoices.contactId, crmContacts.id))
+        .where(fullWhere)
+    : db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(crmInvoices)
+        .where(fullWhere)
+
+  const rowsQuery = useJoin
+    ? db
+        .select({ invoice: crmInvoices })
+        .from(crmInvoices)
+        .leftJoin(crmContacts, eq(crmInvoices.contactId, crmContacts.id))
+        .where(fullWhere)
+        .orderBy(desc(crmInvoices.createdAt))
+        .limit(limit)
+        .offset(offset)
+    : db
+        .select()
+        .from(crmInvoices)
+        .where(fullWhere)
+        .orderBy(desc(crmInvoices.createdAt))
+        .limit(limit)
+        .offset(offset)
+
+  const [rows, [{ count }]] = await Promise.all([rowsQuery, countQuery])
 
   return {
-    data: rows.map((r) => toSnakeRecord(r as Record<string, unknown>)),
+    data: rows.map((r) =>
+      toSnakeRecord((useJoin ? (r as { invoice: typeof crmInvoices.$inferSelect }).invoice : r) as Record<string, unknown>)
+    ),
     total: count ?? 0,
   }
 }

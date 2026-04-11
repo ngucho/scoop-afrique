@@ -1,52 +1,62 @@
 import Link from 'next/link'
-import { Button, Heading, Badge, GlassCard } from 'scoop'
+import { Button } from 'scoop'
 import type { Article } from '@/lib/api/types'
 
 interface FeaturedHeroProps {
   article: Article
+  /** high = image LCP (à la une) ; low = héros secondaire sous la ligne de flottaison */
+  imageFetchPriority?: 'high' | 'low'
 }
 
-export function FeaturedHero({ article }: FeaturedHeroProps) {
+export function FeaturedHero({ article, imageFetchPriority = 'high' }: FeaturedHeroProps) {
   const href = `/articles/${article.slug}`
+  const label = article.category?.name ?? 'À la une'
 
   return (
-    <section className="grid min-h-[320px] grid-cols-1 overflow-hidden rounded-xl shadow-[var(--shadow-glass-layer-2)] md:min-h-[380px] md:grid-cols-2">
-      <div className="relative min-h-[200px] rounded-t-xl md:min-h-full md:rounded-l-xl md:rounded-tr-none">
-        {article.cover_image_url ? (
-          <img
-            src={article.cover_image_url}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-muted" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:from-transparent md:via-transparent md:to-transparent md:bg-gradient-to-r md:from-black/40" />
-      </div>
-      <GlassCard
-        elevation="raised"
-        className="flex flex-col justify-center gap-4 rounded-none rounded-b-xl border-x-0 border-t border-b border-[var(--glass-border)] p-6 md:rounded-b-none md:rounded-r-xl md:border md:border-l-0 md:border-[var(--glass-border)] md:p-8 lg:p-10"
-      >
-        <Badge variant="breaking" className="w-fit">
-          À la une
-        </Badge>
-        <Heading
-          as="h2"
-          level="h2"
-          className="line-clamp-3 text-2xl font-bold text-[var(--on-glass-foreground)] sm:text-3xl"
-        >
-          {article.title}
-        </Heading>
-        {article.excerpt ? (
-          <p className="line-clamp-2 text-[var(--on-glass-muted)]">{article.excerpt}</p>
-        ) : null}
-        <div className="pt-2">
-          <Button asChild size="lg">
-            <Link href={href}>Lire l&apos;article</Link>
-          </Button>
+    <section className="mb-12">
+      <div className="group cursor-pointer overflow-hidden rounded-xl bg-editorial-surface-low shadow-[var(--shadow-md)] transition-[box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-[var(--shadow-lg)]">
+        <div className="grid gap-0 md:grid-cols-12">
+          <div className="relative min-h-[280px] overflow-hidden md:col-span-8 md:min-h-[420px] lg:min-h-[520px]">
+            {article.cover_image_url ? (
+              <img
+                src={article.cover_image_url}
+                alt={`Illustration — ${article.title}`}
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                sizes="(max-width: 768px) 100vw, 66vw"
+                decoding="async"
+                fetchPriority={imageFetchPriority}
+              />
+            ) : (
+              <div className="h-full min-h-[280px] bg-editorial-surface-container md:min-h-[420px]" />
+            )}
+          </div>
+          <div className="flex flex-col justify-center bg-editorial-surface-lowest p-6 md:col-span-4 md:p-8">
+            <span className="mb-4 block text-[10px] font-black uppercase tracking-[0.2em] text-primary">{label}</span>
+            <h2
+              className="mb-4 text-3xl font-bold leading-[1.1] text-editorial-on-surface md:text-4xl lg:text-5xl"
+              style={{ fontFamily: 'var(--font-headline)' }}
+            >
+              {article.title}
+            </h2>
+            {article.excerpt ? (
+              <p className="mb-8 text-lg leading-relaxed text-editorial-secondary">{article.excerpt}</p>
+            ) : null}
+            <div className="mt-auto flex items-center gap-3">
+              <div className="flex min-w-0 flex-col">
+                <p className="text-xs font-bold uppercase tracking-wider text-editorial-on-surface">
+                  {(article as { author_display_name?: string | null }).author_display_name ?? article.author?.email?.split('@')[0] ?? 'Rédaction'}
+                </p>
+                <p className="text-[10px] uppercase tracking-wide text-editorial-secondary">Article à la une</p>
+              </div>
+            </div>
+            <div className="mt-6">
+              <Button asChild size="lg" className="rounded-full">
+                <Link href={href}>Lire l&apos;article</Link>
+              </Button>
+            </div>
+          </div>
         </div>
-      </GlassCard>
+      </div>
     </section>
   )
 }

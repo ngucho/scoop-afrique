@@ -1,9 +1,12 @@
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { Plus, FileText, ArrowRight, Clock } from 'lucide-react'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
+import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
+import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -17,10 +20,24 @@ function formatMoney(amount: number, currency = 'FCFA'): string {
   return `${amount.toLocaleString('fr-FR')} ${currency}`
 }
 
-export default async function DevisPage() {
+export default async function DevisPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const sp = await searchParams
   const isAdmin = await getCrmIsAdmin()
+  const search = listSearchFromParams(sp)
+  const view = parseListView(sp.view, 'list')
 
-  const activeRes = await crmGetServer<Array<Record<string, unknown>>>('devis?limit=100')
+  const qActive = new URLSearchParams()
+  qActive.set('limit', '100')
+  if (search) qActive.set('search', search)
+
+  const qArchived = new URLSearchParams(qActive)
+  qArchived.set('archived', 'true')
+
+  const activeRes = await crmGetServer<Array<Record<string, unknown>>>(`devis?${qActive}`)
   if (!activeRes) {
     return (
       <div className="space-y-6 max-w-[1200px] crm-fade-in">
@@ -35,9 +52,7 @@ export default async function DevisPage() {
   }
   const devis = activeRes.data ?? []
 
-  const archivedRes = isAdmin
-    ? await crmGetServer<Array<Record<string, unknown>>>('devis?limit=100&archived=true')
-    : null
+  const archivedRes = isAdmin ? await crmGetServer<Array<Record<string, unknown>>>(`devis?${qArchived}`) : null
   const archivedDevis = archivedRes?.data ?? []
 
   const pipeline = devis.filter((d) => d.status === 'sent').reduce((sum, d) => sum + Number(d.total ?? 0), 0)
@@ -71,6 +86,10 @@ export default async function DevisPage() {
         </div>
       </div>
 
+      <Suspense fallback={null}>
+        <CrmSearchViewToolbar basePath="/devis" initialSearch={search ?? ''} defaultView="list" />
+      </Suspense>
+
       {/* Stats */}
       {devis.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
@@ -97,6 +116,38 @@ export default async function DevisPage() {
               <Button className="mt-4 rounded-full px-5">Créer un devis</Button>
             </Link>
           </div>
+        </div>
+      ) : view === 'cards' ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {devis.map((d, i) => {
+            const status = String(d.status ?? 'draft')
+            const currency = String(d.currency ?? 'FCFA')
+            return (
+              <div
+                key={d.id as string}
+                className={`crm-card crm-card-interactive p-5 crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1|2|3|4}`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <Link href={`/devis/${d.id}`} className="block min-w-0 flex-1">
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground mb-1 font-mono">
+                      {String(d.reference ?? '—')}
+                    </p>
+                    <h3 className="font-semibold text-sm line-clamp-2">{String(d.title ?? '—')}</h3>
+                  </Link>
+                  <AdminArchiveRestoreActions
+                    resource="devis"
+                    id={d.id as string}
+                    isArchived={Boolean((d as Record<string, unknown>)['is_archived'])}
+                    isAdmin={isAdmin}
+                  />
+                </div>
+                <Link href={`/devis/${d.id}`} className="flex items-center justify-between pt-2 border-t border-border">
+                  <span className={`crm-pill crm-pill-${status}`}>{STATUS_LABELS[status] ?? status}</span>
+                  <span className="text-sm font-bold">{formatMoney(Number(d.total ?? 0), currency)}</span>
+                </Link>
+              </div>
+            )
+          })}
         </div>
       ) : (
         <div className="crm-card overflow-hidden">
@@ -161,6 +212,34 @@ export default async function DevisPage() {
       {isAdmin && archivedDevis.length > 0 && (
         <div className="crm-card overflow-hidden">
           <p className="crm-section-title px-4 pt-4 mb-3">Archivés ({archivedDevis.length})</p>
+          {view === 'cards' ? (
+            <div className="grid gap-3 sm:grid-cols-2 p-4 pt-0 lg:grid-cols-3">
+              {archivedDevis.map((d, i) => {
+                const status = String(d.status ?? 'draft')
+                const currency = String(d.currency ?? 'FCFA')
+                return (
+                  <Link
+                    key={d.id as string}
+                    href={`/devis/${d.id}`}
+                    className={`crm-card crm-card-interactive p-4 block crm-fade-in crm-stagger-${Math.min(i % 4 + 1, 4) as 1|2|3|4}`}
+                  >
+                    <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1">{String(d.reference ?? '')}</p>
+                    <h3 className="font-semibold text-sm line-clamp-2 mb-2">{String(d.title ?? '')}</h3>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`crm-pill crm-pill-${status}`}>{STATUS_LABELS[status] ?? status}</span>
+                      <AdminArchiveRestoreActions
+                        resource="devis"
+                        id={d.id as string}
+                        isArchived={true}
+                        isAdmin={isAdmin}
+                      />
+                    </div>
+                    <p className="text-right text-sm font-bold mt-2">{formatMoney(Number(d.total ?? 0), currency)}</p>
+                  </Link>
+                )
+              })}
+            </div>
+          ) : (
           <table className="crm-table">
             <thead>
               <tr>
@@ -216,6 +295,7 @@ export default async function DevisPage() {
               })}
             </tbody>
           </table>
+          )}
         </div>
       )}
     </div>

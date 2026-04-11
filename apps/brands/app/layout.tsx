@@ -1,15 +1,22 @@
 import React from 'react'
 import type { Metadata, Viewport } from 'next'
-import { Space_Grotesk, Geist_Mono } from 'next/font/google'
+import { Manrope, Newsreader, Geist_Mono } from 'next/font/google'
 import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
 import { BrandsHeader } from '@/components/brands-header'
+import { StickyDevisBar } from '@/components/sticky-devis-bar'
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import './globals.css'
 
-const spaceGrotesk = Space_Grotesk({
+const manrope = Manrope({
   subsets: ['latin'],
-  variable: '--font-sans',
+  variable: '--font-manrope',
+  display: 'swap',
+})
+
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  variable: '--font-newsreader',
   display: 'swap',
 })
 
@@ -34,19 +41,20 @@ export const metadata: Metadata = {
     template: '%s | Scoop Afrique',
   },
   description:
-    "Scoop Afrique, média panafricain. Couverture événementielle, contenus sponsorisés, campagnes digitales pour annonceurs et partenaires. +300M vues, 1,25M abonnés. Devis sur demande.",
+    "Scoop Afrique — média panafricain (Abidjan). +1,4 M abonnés cumulés. Grille tarifaire V2 (mars 2026) : publications dès 50 000 FCFA, couvertures, promos, interviews, brand deals. Devis en 24–48 h.",
   keywords: [
     'Scoop Afrique',
     'media africain',
     'partenariat médiatique',
     'publicité Afrique',
+    'sponsoring média',
     'couverture événement',
     'contenu sponsorisé',
     'campagne digitale',
     "Côte d'Ivoire",
     'Abidjan',
     'annonceurs',
-    'influence',
+    'TikTok Afrique',
   ],
   authors: [{ name: 'Scoop.Afrique', url: BASE_URL }],
   creator: 'Scoop.Afrique',
@@ -60,15 +68,15 @@ export const metadata: Metadata = {
     siteName: 'Scoop Afrique',
     title: "Scoop Afrique — Partenariats, publicité & couverture médiatique",
     description:
-      "Média panafricain. Couverture événementielle, contenus sponsorisés, campagnes digitales pour annonceurs et partenaires. Devis sur demande.",
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'Scoop Afrique' }],
+      "+1,4 M abonnés cumulés. Grille V2 mars 2026 — publications dès 50 K FCFA, couvertures, partenariats. Devis rapide.",
+    images: [{ url: '/images/hero-brands.png', width: 1200, height: 630, alt: 'Scoop Afrique — Partenariats' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Scoop Afrique — Partenariats & publicité",
     description:
-      "Média panafricain. Couverture événementielle, contenus sponsorisés, campagnes digitales. Devis sur demande.",
-    images: ['/og-image.png'],
+      "+1,4 M abonnés cumulés. Offres annonceurs et programmes éditoriaux. Devis sous 24–48 h.",
+    images: ['/images/hero-brands.png'],
     creator: '@ScoopAfrique',
     site: '@ScoopAfrique',
   },
@@ -111,10 +119,10 @@ function JsonLd() {
     alternateName: ['Scoop Afrique', 'ScoopAfrique'],
     url: BASE_URL,
     logo: { '@type': 'ImageObject', url: `${BASE_URL}/logo.png`, width: 512, height: 512 },
-    image: `${BASE_URL}/og-image.png`,
+    image: `${BASE_URL}/images/hero-brands.png`,
     description:
       "Devenir le média de référence de la jeunesse africaine francophone. Donner une voix et une vitrine à l'Afrique en produisant des contenus audiovisuels impactants.",
-    foundingDate: '2020',
+    foundingDate: '2024',
     sameAs: [
       'https://www.tiktok.com/@Scoop.Afrique',
       'https://www.facebook.com/profile.php?id=61568464568442',
@@ -124,7 +132,7 @@ function JsonLd() {
     ],
     contactPoint: {
       '@type': 'ContactPoint',
-      email: 'Contact@scoop-afrique.com',
+      email: 'contact@scoop-afrique.com',
       contactType: 'customer service',
       availableLanguage: ['French', 'English'],
     },
@@ -150,15 +158,16 @@ function JsonLd() {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning className={`${manrope.variable} ${newsreader.variable}`}>
       <head>
         <JsonLd />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${spaceGrotesk.variable} ${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
+      <body className={`${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
         <BrandsHeader />
         {children}
+        <StickyDevisBar />
         <CookieConsentBanner />
         <Analytics />
       </body>

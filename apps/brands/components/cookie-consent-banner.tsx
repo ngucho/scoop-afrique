@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { Button } from 'scoop'
+import { wwwPath } from '@/lib/site-urls'
 
 const STORAGE_KEY = 'scoop_cookie_consent'
 type Consent = 'accepted' | 'rejected'
@@ -39,12 +39,14 @@ export function CookieConsentBanner() {
         <p className="text-sm text-foreground">
           Nous utilisons des cookies pour le bon fonctionnement du site, la mémorisation de vos préférences et
           l&apos;analyse d&apos;audience. En cliquant sur &quot;Tout accepter&quot;, vous consentez à leur utilisation.{' '}
-          <Link
-            href="/politique-de-confidentialite"
+          <a
+            href={wwwPath('/politique-de-confidentialite')}
             className="font-medium text-primary underline underline-offset-2 hover:no-underline"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Politique de confidentialité
-          </Link>
+          </a>
         </p>
         <div className="flex shrink-0 flex-wrap gap-3">
           <Button variant="outline" size="default" onClick={() => save('rejected')}>

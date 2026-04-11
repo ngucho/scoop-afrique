@@ -22,10 +22,8 @@ export function AdSlotFrame({
       role="complementary"
       aria-label={label}
       className={cn(
-        'relative overflow-hidden rounded-[var(--radius-lg)] border border-[var(--surface-border)]',
-        'bg-[var(--gradient-ad-muted)] p-[var(--space-4)]',
-        'shadow-[var(--shadow-sm)]',
-        'min-h-[120px]',
+        'relative min-h-[120px] overflow-hidden rounded-[var(--radius-lg)] border border-border',
+        'bg-muted/25 p-[var(--space-4)] shadow-sm',
         className
       )}
       {...props}
@@ -34,12 +32,12 @@ export function AdSlotFrame({
         className={cn(
           'mb-[var(--space-3)] flex items-center justify-between gap-[var(--space-2)]',
           'text-[length:var(--text-xs)] font-semibold uppercase tracking-[var(--tracking-wider)]',
-          'text-[var(--on-glass-muted)]'
+          'text-muted-foreground'
         )}
       >
         <span>{label}</span>
       </div>
-      <div className="text-[var(--on-glass-foreground)]">{children}</div>
+      <div className="text-foreground">{children}</div>
     </aside>
   )
 }
