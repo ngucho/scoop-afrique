@@ -158,6 +158,10 @@ La documentation complète (architecture, API, auth, déploiement) est dans le d
 - [ ] Logo et vidéo hero configurés
 - [ ] Vérification sitemap / Search Console et headers de sécurité
 
+## Licence et propriété intellectuelle
+
+Le code et les contenus originaux de ce dépôt sont **propriété exclusive de Jordan Ngucho** (licence propriétaire — voir le fichier **[LICENSE](LICENSE)**). Aucun droit de copie, redistribution ou usage commercial n’est accordé sans **accord écrit préalable**. Les dépendances tierces (`node_modules`, etc.) restent soumises à **leurs** licences respectives.
+
 ---
 
 **Scoop.Afrique** — Le media digital qui décrypte l'Afrique autrement.

@@ -1,0 +1,54 @@
+Proprietary License — Scoop Afrique monorepo
+==============================================
+
+Copyright (c) 2026 Jordan Ngucho. All rights reserved.
+
+French (français)
+-----------------
+
+Le présent dépôt et l'ensemble de son contenu (code source, documentation,
+graphismes, structure, configurations et autres éléments) sont la propriété
+exclusive de **Jordan Ngucho**, sauf pour les composants tiers soumis à leurs
+propres licences (fichiers `node_modules`, dépendances open source, etc.).
+
+Sous réserve des droits impératifs applicables, **aucune licence** n'est
+accordée à un tiers pour :
+
+- copier, reproduire ou cloner le logiciel à des fins commerciales ou non ;
+- modifier, adapter ou créer des oeuvres dérivées ;
+- distribuer, publier, sous-licencier, louer ou vendre ;
+- utiliser le logiciel ou des extraits substantiels pour un produit ou service concurrent ou dérivé,
+
+sans **accord écrit préalable** de Jordan Ngucho.
+
+La mise à disposition du code sur une plateforme publique (par ex. GitHub) à
+des fins de transparence, sauvegarde ou collaboration **autorisée** ne constitue
+pas une renonciation aux droits ci-dessus et **ne vous confère aucun droit
+d'usage** au-delà de ce qui est expressément convenu par écrit.
+
+Pour toute demande de licence, partenariat ou autorisation d'usage :
+contact via les canaux officiels du projet Scoop Afrique.
+
+English
+-------
+
+Copyright (c) 2026 Jordan Ngucho. All rights reserved.
+
+This repository and its contents (source code, documentation, assets, layout,
+configuration, and other material) are the exclusive property of **Jordan
+Ngucho**, except third-party components under their own licenses (e.g.
+`node_modules`, open-source dependencies).
+
+No license is granted to copy, modify, distribute, sublicense, sell, or use
+this software or substantial parts of it in a competing or derivative product,
+**without prior written permission** from Jordan Ngucho.
+
+Public visibility of this repository does **not** waive the foregoing rights and
+does **not** grant you any rights beyond what is expressly agreed in writing.
+
+Third-party software
+--------------------
+
+Dependencies installed via package managers remain subject to their respective
+licenses. This file governs **original work** in this repository attributed to
+the copyright holder above, not third-party packages.

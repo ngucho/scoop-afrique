@@ -27,3 +27,8 @@ const STAFF_SET = new Set<string>(STAFF_API_PERMISSIONS)
 export function hasStaffApiAccess(permissions: string[]): boolean {
   return permissions.some((p) => STAFF_SET.has(p))
 }
+
+/** Mirrors backend `isReaderAccountOnly` — subscriber APIs: reader permission, no staff. */
+export function isReaderAccountOnly(permissions: string[]): boolean {
+  return permissions.includes(READER_ACCOUNT_PERMISSION) && !hasStaffApiAccess(permissions)
+}
