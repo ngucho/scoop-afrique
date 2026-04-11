@@ -96,7 +96,19 @@ Le backend est configuré pour Vercel en **zero-config** : l’app Hono est expo
 
 5. **Variables d’environnement** : toutes celles du backend (Supabase, Auth0, CORS, etc.). **CORS** : mettre `CORS_ORIGINS` avec les URLs de production (brands, frontend).
 
-### 4.2 Limites et alternatives
+### 4.2 Migrations et cohérence schéma
+
+Après chaque déploiement qui inclut des changements SQL, appliquer les migrations sur **la même** base que le backend (`DATABASE_URL`), puis valider si besoin :
+
+```bash
+cd apps/backend
+pnpm db:migrate
+pnpm verify:reader-ads-schema
+```
+
+Ou en une fois : `pnpm db:migrate:verify`. Voir **`docs/DATABASE_MIGRATIONS.md`** (règles pour éviter les dérives entre migrations et `schema.ts`).
+
+### 4.3 Limites et alternatives
 
 - **Cold start** et **timeout** : en Serverless, les requêtes longues (upload, traitements lourds) peuvent être limitées. Si besoin de processus longs ou de WebSockets, envisager un hébergeur Node dédié.
 - **Alternative recommandée si le backend doit tourner en continu** : déployer le backend sur **Railway**, **Render** ou **Fly.io** en tant que service Node (commande `node dist/index.js` ou `pnpm start`), puis définir `NEXT_PUBLIC_API_URL` du frontend sur l’URL de ce service.
@@ -134,6 +146,6 @@ Après déploiement :
 - [ ] Frontend : login/logout admin, chargement des articles et catégories, likes, newsletter.
 - [ ] Backend : health check (`GET /`), CORS OK depuis le frontend, JWT validés.
 - [ ] Auth0 : tenants et applications configurés pour la production ; Action Post-Login déployée.
-- [ ] Supabase : migrations appliquées en production ; clés et URL de production utilisées par le backend.
+- [ ] Supabase : migrations appliquées en production (`pnpm db:migrate`) ; optionnel : `pnpm verify:reader-ads-schema` ; clés et URL de production utilisées par le backend.
 
 Pour plus de détails sur l’architecture et l’API, voir **ARCHITECTURE.md**, **API.md** et **DOCUMENTATION_COMPLETE.md**.
