@@ -15,6 +15,7 @@ const CADENCE: Record<string, string> = {
 const STATUS: Record<string, string> = {
   draft: 'Brouillon',
   scheduled: 'Planifiée',
+  sending: 'Envoi en cours',
   sent: 'Envoyée',
   cancelled: 'Annulée',
 }
@@ -33,9 +34,9 @@ export default async function ReaderNewslettersPage() {
           Campagnes newsletter
         </Heading>
         <p className="mt-1 text-sm text-muted-foreground">
-          Cadence (quotidien / hebdo / mensuel), filtre de segment JSON (aligné sur les tags abonnés), objet et
-          planification. L&apos;envoi effectif sera branché sur le worker d&apos;email ; ici vous préparez et auditez la
-          configuration.
+          Objet, pré-en-tête (preheader), corps en HTML (éditeur sur la fiche campagne), segments JSON et planification.
+          Accès <strong className="font-medium text-foreground">manager</strong> et{' '}
+          <strong className="font-medium text-foreground">admin</strong> uniquement.
         </p>
       </div>
 

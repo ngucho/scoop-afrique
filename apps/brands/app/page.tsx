@@ -13,10 +13,10 @@ const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
   openGraph: {
-    images: [{ url: '/images/hero-brands.jpg', width: 1200, height: 630, alt: 'Scoop Afrique — Le média de référence de la jeunesse africaine' }],
+    images: [{ url: '/images/hero-brands.png', width: 1200, height: 630, alt: 'Scoop Afrique — Le média de référence de la jeunesse africaine' }],
   },
   twitter: {
-    images: ['/images/hero-brands.jpg'],
+    images: ['/images/hero-brands.png'],
   },
 }
 

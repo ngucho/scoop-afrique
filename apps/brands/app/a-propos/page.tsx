@@ -42,7 +42,7 @@ export default function AboutPage() {
       {/* Hero full-width image — Brut style */}
       <section className="relative h-[40vh] min-h-[280px] w-full overflow-hidden border-b border-[var(--surface-border)] sm:h-[50vh]">
         <Image
-          src="/images/hero-brands.jpg"
+          src="/images/hero-brands.png"
           alt=""
           fill
           className="object-cover object-center"

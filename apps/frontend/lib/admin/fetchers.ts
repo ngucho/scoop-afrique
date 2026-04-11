@@ -21,6 +21,8 @@ import type {
   HomepageSection,
   NewsletterSubscriberRow,
   NewsletterCampaignRow,
+  ReaderContribution,
+  ReaderAdMetrics,
 } from '@/lib/api/types'
 
 async function getToken(): Promise<string | null> {
@@ -80,6 +82,27 @@ export async function fetchAdminComments(params?: {
   try {
     return await apiGetAuth<ApiListResponse<Comment>>(
       `/admin/comments?${sp.toString()}`,
+      token,
+    )
+  } catch {
+    return { data: [], total: 0 }
+  }
+}
+
+export async function fetchAdminContributions(params?: {
+  status?: string
+  page?: number
+  limit?: number
+}): Promise<{ data: ReaderContribution[]; total: number }> {
+  const token = await getToken()
+  if (!token) return { data: [], total: 0 }
+  const sp = new URLSearchParams()
+  if (params?.status) sp.set('status', params.status)
+  sp.set('page', String(params?.page ?? 1))
+  sp.set('limit', String(params?.limit ?? 50))
+  try {
+    return await apiGetAuth<ApiListResponse<ReaderContribution>>(
+      `/admin/contributions?${sp.toString()}`,
       token,
     )
   } catch {
@@ -237,6 +260,20 @@ export async function fetchAdCampaigns(): Promise<AdCampaign[]> {
   }
 }
 
+export async function fetchAdMetrics(days = 30): Promise<ReaderAdMetrics | null> {
+  const token = await getToken()
+  if (!token) return null
+  try {
+    const res = await apiGetAuth<ApiResponse<ReaderAdMetrics>>(
+      `/admin/reader/ads/metrics?days=${encodeURIComponent(String(days))}`,
+      token,
+    )
+    return res.data
+  } catch {
+    return null
+  }
+}
+
 export async function fetchHomepageSections(): Promise<HomepageSection[]> {
   const token = await getToken()
   if (!token) return []
@@ -285,5 +322,19 @@ export async function fetchNewsletterCampaigns(): Promise<NewsletterCampaignRow[
     return res.data
   } catch {
     return []
+  }
+}
+
+export async function fetchNewsletterCampaign(id: string): Promise<NewsletterCampaignRow | null> {
+  const token = await getToken()
+  if (!token) return null
+  try {
+    const res = await apiGetAuth<ApiResponse<NewsletterCampaignRow>>(
+      `/admin/reader/newsletter-campaigns/${id}`,
+      token,
+    )
+    return res.data
+  } catch {
+    return null
   }
 }

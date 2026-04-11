@@ -1,7 +1,7 @@
 /**
  * Scoop Design System — Theme
- * Apple HIG–aligned + Monday.com–inspired. Translucent, gradients, full-rounded.
- * Primary: Scoop Red. Font: Brasika (Scoop), SF-like (body).
+ * Editorial Heritage (inspirations/heritage_moderne): tonal surfaces, Newsreader/Manrope,
+ * primary #b70100 → subtle gradients. Logo wordmark stays Brasika via --font-scoop.
  */
 
 @custom-variant dark (&:is(.dark *));
@@ -9,10 +9,24 @@
 /* ========== 1. FONDATIONS (DESIGN TOKENS) ========== */
 /* 1.1 Couleurs — Light */
 :root {
-  /* Primary background, text, signal/breaking (CTA) */
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.12 0 0);
-  --signal: oklch(0.55 0.26 25);
+  /* Editorial Heritage — surface stack (no harsh dividers; use layers) */
+  --editorial-surface: #f9f9f9;
+  --editorial-surface-low: #f3f3f3;
+  --editorial-surface-container: #eeeeee;
+  --editorial-surface-high: #e8e8e8;
+  --editorial-surface-lowest: #ffffff;
+  --editorial-on-surface: #1a1c1c;
+  --editorial-secondary: #5f5e5e;
+  --editorial-tertiary: #735c00;
+  --editorial-tertiary-container: #cca730;
+  --editorial-primary: #b70100;
+  --editorial-primary-container: #e60000;
+  --editorial-outline-variant: #e9bcb5;
+
+  /* Primary background, text, signal/breaking (CTA) — aligned with heritage */
+  --background: #f9f9f9;
+  --foreground: #1a1c1c;
+  --signal: oklch(0.44 0.19 28);
   --signal-foreground: oklch(0.98 0 0);
   /* Gray scale */
   --gray-50: oklch(0.98 0 0);
@@ -35,17 +49,17 @@
   --card-foreground: oklch(0.12 0 0);
   --popover: oklch(0.99 0 0);
   --popover-foreground: oklch(0.12 0 0);
-  --primary: oklch(0.59 0.24 25);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.94 0 0);
-  --secondary-foreground: oklch(0.12 0 0);
-  --muted: oklch(0.95 0 0);
-  --muted-foreground: oklch(0.48 0 0);
+  --primary: #b70100;
+  --primary-foreground: #ffffff;
+  --secondary: #e2dfde;
+  --secondary-foreground: #1a1c1c;
+  --muted: #eeeeee;
+  --muted-foreground: #5f5e5e;
   --accent: oklch(0.59 0.24 25);
   --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.55 0.22 25);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.9 0 0 / 0.8);
+  --border: color-mix(in srgb, #e9bcb5 15%, transparent);
   --input: oklch(0.94 0 0);
   --ring: oklch(0.59 0.24 25);
   --chart-1: oklch(0.59 0.24 25);
@@ -100,11 +114,7 @@
     oklch(0.985 0 0 / 0.4) 70%,
     oklch(0.985 0 0 / 0.15) 100%
   );
-  --gradient-primary: linear-gradient(
-    135deg,
-    oklch(0.62 0.24 25) 0%,
-    oklch(0.56 0.24 25) 100%
-  );
+  --gradient-primary: linear-gradient(135deg, #b70100 0%, #e60000 100%);
   --gradient-surface: linear-gradient(
     180deg,
     oklch(0.99 0 0 / 0.95) 0%,
@@ -129,9 +139,10 @@
     oklch(0.94 0 0 / 0.75) 100%
   );
 
-  /* 1.2 Typographie — Apple-aligned (SF-like) */
+  /* 1.2 Typographie — logo: Brasika; headlines: Newsreader; UI/body: Manrope via --font-sans */
   --font-scoop: 'Brasika', 'Brasika Fallback', serif;
-  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-headline: var(--font-newsreader, 'Newsreader', Georgia, serif);
+  --font-body: var(--font-manrope, 'Manrope', system-ui, sans-serif);
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -192,8 +203,8 @@
 
   /* Shadows — subtle + layered glass depth */
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.04);
-  --shadow-md: 0 4px 12px oklch(0 0 0 / 0.06);
-  --shadow-lg: 0 8px 24px oklch(0 0 0 / 0.08);
+  --shadow-md: 0 4px 12px rgba(26, 28, 28, 0.06);
+  --shadow-lg: 0 8px 24px rgba(26, 28, 28, 0.06);
   --shadow-xl: 0 16px 48px oklch(0 0 0 / 0.1);
   --shadow-glass-layer-1: 0 1px 0 oklch(1 0 0 / 0.45) inset;
   --shadow-glass-layer-2:
@@ -209,9 +220,9 @@
   /* Motion — durations/easing (respect prefers-reduced-motion below) */
   --motion-duration-instant: 100ms;
   --motion-duration-fast: 180ms;
-  --motion-duration-base: 280ms;
+  --motion-duration-base: 300ms;
   --motion-duration-slow: 420ms;
-  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-out: cubic-bezier(0.4, 0, 0.2, 1);
   --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --motion-enter-distance: 10px;
   --motion-hover-lift: -2px;
@@ -454,10 +465,22 @@
 /* Tailwind v4 theme */
 @theme inline {
   --font-scoop: var(--font-scoop);
+  --font-headline: var(--font-headline);
   --font-sans: var(--font-body);
   --font-mono: ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-editorial-surface: var(--editorial-surface);
+  --color-editorial-surface-low: var(--editorial-surface-low);
+  --color-editorial-surface-container: var(--editorial-surface-container);
+  --color-editorial-surface-high: var(--editorial-surface-high);
+  --color-editorial-surface-lowest: var(--editorial-surface-lowest);
+  --color-editorial-on-surface: var(--editorial-on-surface);
+  --color-editorial-secondary: var(--editorial-secondary);
+  --color-editorial-tertiary: var(--editorial-tertiary);
+  --color-editorial-tertiary-container: var(--editorial-tertiary-container);
+  --color-editorial-primary-container: var(--editorial-primary-container);
+  --color-editorial-outline-variant: var(--editorial-outline-variant);
   --color-signal: var(--signal);
   --color-signal-foreground: var(--signal-foreground);
   --color-card: var(--card);
@@ -523,6 +546,7 @@
 
 /* Typography utilities */
 .scoop-font-scoop { font-family: var(--font-scoop); }
+.scoop-font-headline { font-family: var(--font-headline); }
 .scoop-line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .scoop-line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .scoop-line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

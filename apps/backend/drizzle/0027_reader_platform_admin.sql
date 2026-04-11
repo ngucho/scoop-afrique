@@ -1,13 +1,32 @@
 -- Reader platform backoffice: announcements, ads, homepage, newsletter campaigns, audit
+-- Idempotent: safe when objects already exist (e.g. DB provisioned outside Drizzle order).
 
-CREATE TYPE "public"."announcement_audience" AS ENUM('all', 'subscribers', 'guests');
-CREATE TYPE "public"."ad_campaign_status" AS ENUM('draft', 'active', 'paused', 'ended');
-CREATE TYPE "public"."ad_event_type" AS ENUM('impression', 'click');
-CREATE TYPE "public"."newsletter_campaign_cadence" AS ENUM('daily', 'weekly', 'monthly');
-CREATE TYPE "public"."newsletter_campaign_status" AS ENUM('draft', 'scheduled', 'sent', 'cancelled');
-CREATE TYPE "public"."homepage_section_layout" AS ENUM('featured_grid', 'list', 'carousel');
+DO $$ BEGIN
+  CREATE TYPE "public"."announcement_audience" AS ENUM('all', 'subscribers', 'guests');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."ad_campaign_status" AS ENUM('draft', 'active', 'paused', 'ended');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."ad_event_type" AS ENUM('impression', 'click');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."newsletter_campaign_cadence" AS ENUM('daily', 'weekly', 'monthly');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."newsletter_campaign_status" AS ENUM('draft', 'scheduled', 'sent', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "public"."homepage_section_layout" AS ENUM('featured_grid', 'list', 'carousel');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE TABLE "public"."reader_announcements" (
+CREATE TABLE IF NOT EXISTS "public"."reader_announcements" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"title" text NOT NULL,
 	"body" text NOT NULL,
@@ -20,7 +39,7 @@ CREATE TABLE "public"."reader_announcements" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "public"."ad_slots" (
+CREATE TABLE IF NOT EXISTS "public"."ad_slots" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"key" text NOT NULL UNIQUE,
 	"label" text NOT NULL,
@@ -28,7 +47,7 @@ CREATE TABLE "public"."ad_slots" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "public"."ad_campaigns" (
+CREATE TABLE IF NOT EXISTS "public"."ad_campaigns" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"slot_id" uuid NOT NULL REFERENCES "public"."ad_slots"("id") ON DELETE CASCADE,
 	"name" text NOT NULL,
@@ -41,7 +60,7 @@ CREATE TABLE "public"."ad_campaigns" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "public"."ad_creatives" (
+CREATE TABLE IF NOT EXISTS "public"."ad_creatives" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"campaign_id" uuid NOT NULL REFERENCES "public"."ad_campaigns"("id") ON DELETE CASCADE,
 	"headline" text NOT NULL,
@@ -52,7 +71,7 @@ CREATE TABLE "public"."ad_creatives" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "public"."ad_events" (
+CREATE TABLE IF NOT EXISTS "public"."ad_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"slot_key" text NOT NULL,
 	"campaign_id" uuid REFERENCES "public"."ad_campaigns"("id") ON DELETE SET NULL,
@@ -61,7 +80,7 @@ CREATE TABLE "public"."ad_events" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "public"."homepage_sections" (
+CREATE TABLE IF NOT EXISTS "public"."homepage_sections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"key" text NOT NULL UNIQUE,
 	"title" text NOT NULL,
@@ -72,7 +91,7 @@ CREATE TABLE "public"."homepage_sections" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "public"."newsletter_campaigns" (
+CREATE TABLE IF NOT EXISTS "public"."newsletter_campaigns" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"cadence" "newsletter_campaign_cadence" NOT NULL,
@@ -86,7 +105,7 @@ CREATE TABLE "public"."newsletter_campaigns" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE TABLE "public"."admin_audit_log" (
+CREATE TABLE IF NOT EXISTS "public"."admin_audit_log" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"actor_id" uuid,
 	"entity_type" text NOT NULL,
@@ -97,15 +116,43 @@ CREATE TABLE "public"."admin_audit_log" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE INDEX "ad_events_campaign_created_idx" ON "public"."ad_events" ("campaign_id", "created_at");
-CREATE INDEX "ad_events_type_created_idx" ON "public"."ad_events" ("event_type", "created_at");
-CREATE INDEX "admin_audit_entity_idx" ON "public"."admin_audit_log" ("entity_type", "created_at");
+CREATE INDEX IF NOT EXISTS "ad_events_campaign_created_idx" ON "public"."ad_events" ("campaign_id", "created_at");
+CREATE INDEX IF NOT EXISTS "ad_events_type_created_idx" ON "public"."ad_events" ("event_type", "created_at");
+CREATE INDEX IF NOT EXISTS "admin_audit_entity_idx" ON "public"."admin_audit_log" ("entity_type", "created_at");
+
+-- Legacy ad_slots (pre-label) — align with current schema
+ALTER TABLE "public"."ad_slots" ADD COLUMN IF NOT EXISTS "label" text;
+ALTER TABLE "public"."ad_slots" ADD COLUMN IF NOT EXISTS "description" text;
+UPDATE "public"."ad_slots" SET "label" = "key" WHERE "label" IS NULL;
+ALTER TABLE "public"."ad_slots" ALTER COLUMN "label" SET NOT NULL;
+
+-- Some DBs have a legacy NOT NULL "name" on ad_slots; new rows only set key/label/description.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ad_slots' AND column_name = 'name'
+  ) THEN
+    UPDATE "public"."ad_slots" SET "name" = COALESCE("name", "key", "label") WHERE "name" IS NULL;
+    ALTER TABLE "public"."ad_slots" ALTER COLUMN "name" DROP NOT NULL;
+  END IF;
+END $$;
 
 INSERT INTO "public"."ad_slots" ("key", "label", "description") VALUES
   ('homepage_hero', 'Accueil — bandeau', 'Emplacement principal sous le header'),
   ('article_inline', 'Article — in-texte', 'Bloc entre paragraphes'),
   ('sidebar', 'Sidebar', 'Colonne latérale reader')
 ON CONFLICT ("key") DO NOTHING;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'ad_slots' AND column_name = 'name'
+  ) THEN
+    UPDATE "public"."ad_slots" SET "name" = COALESCE("name", "label", "key") WHERE "name" IS NULL;
+  END IF;
+END $$;
 
 INSERT INTO "public"."homepage_sections" ("key", "title", "layout", "sort_order", "config", "is_visible") VALUES
   ('top_stories', 'À la une', 'featured_grid', 0, '{"max_items": 6}'::jsonb, true),

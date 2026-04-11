@@ -1,15 +1,21 @@
 import React from 'react'
 import type { Metadata, Viewport } from 'next'
-import { Space_Grotesk, Geist_Mono } from 'next/font/google'
+import { Manrope, Newsreader, Geist_Mono } from 'next/font/google'
 import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
 import { BrandsHeader } from '@/components/brands-header'
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
 import './globals.css'
 
-const spaceGrotesk = Space_Grotesk({
+const manrope = Manrope({
   subsets: ['latin'],
-  variable: '--font-sans',
+  variable: '--font-manrope',
+  display: 'swap',
+})
+
+const newsreader = Newsreader({
+  subsets: ['latin'],
+  variable: '--font-newsreader',
   display: 'swap',
 })
 
@@ -150,13 +156,13 @@ function JsonLd() {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning className={`${manrope.variable} ${newsreader.variable}`}>
       <head>
         <JsonLd />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${spaceGrotesk.variable} ${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
+      <body className={`${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
         <BrandsHeader />
         {children}
         <CookieConsentBanner />

@@ -15,6 +15,8 @@ import { getSupabase } from '../lib/supabase.js'
 import { config } from '../config/env.js'
 import crypto from 'node:crypto'
 
+const IMGBB_MAX_BYTES = 3 * 1024 * 1024
+
 const BUCKET = 'images'
 
 export interface MediaRecord {
@@ -103,6 +105,61 @@ export async function uploadImage(
     uploaded_by: uploadedBy,
     created_at: new Date().toISOString(),
   }
+}
+
+/* ---------- ImgBB (external host, optional) ---------- */
+
+type ImgbbApiResponse = {
+  data?: { url?: string; display_url?: string; title?: string }
+  success?: boolean
+  error?: { message?: string }
+}
+
+/**
+ * Upload a base64-encoded image to ImgBB and register the returned URL in `media`.
+ * Caller must ensure decoded size ≤ 3 MiB (validated here).
+ */
+export async function uploadImageViaImgbb(
+  imageBase64: string,
+  uploadedBy: string,
+  options?: { alt?: string; caption?: string; name?: string }
+): Promise<MediaRecord> {
+  if (!config.imgbb?.apiKey) {
+    throw new Error('ImgBB is not configured (IMGBB_API_KEY)')
+  }
+
+  let buf: Buffer
+  try {
+    buf = Buffer.from(imageBase64, 'base64')
+  } catch {
+    throw new Error('Invalid base64 image payload')
+  }
+  if (buf.length === 0) throw new Error('Empty image')
+  if (buf.length > IMGBB_MAX_BYTES) {
+    throw new Error(`Image too large after compression (max ${IMGBB_MAX_BYTES / (1024 * 1024)} MB)`)
+  }
+
+  const form = new FormData()
+  form.append('key', config.imgbb.apiKey)
+  form.append('image', imageBase64)
+  if (options?.name) form.append('name', options.name.slice(0, 200))
+
+  const res = await fetch('https://api.imgbb.com/1/upload', {
+    method: 'POST',
+    body: form,
+  })
+  const json = (await res.json().catch(() => ({}))) as ImgbbApiResponse
+  if (!res.ok || !json.success) {
+    const msg = json.error?.message ?? `ImgBB error (${res.status})`
+    throw new Error(msg)
+  }
+  const url = json.data?.url ?? json.data?.display_url
+  if (!url) throw new Error('ImgBB response missing URL')
+
+  return registerImageUrl(url, uploadedBy, {
+    alt: options?.alt,
+    caption: options?.caption,
+  })
 }
 
 /* ---------- Register an external image URL ---------- */
