@@ -85,12 +85,12 @@ export function EditorialReaderHeader({
   const drawerLinkClass = 'rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted'
 
   return (
-    <div className={className}>
+    <div className={cn('min-w-0 max-w-full', className)}>
       {banner}
 
-      <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
+      <header className="sticky top-0 z-50 w-full min-w-0 max-w-full border-b border-border/80 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto flex h-16 max-w-7xl min-w-0 items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <button
               type="button"
               className="rounded-full p-2 text-foreground transition-opacity hover:opacity-80 md:hidden"
@@ -99,7 +99,7 @@ export function EditorialReaderHeader({
             >
               <Menu className="h-6 w-6" />
             </button>
-            <Link href={logoHref} className="min-w-0 shrink" aria-label={logoAriaLabel}>
+            <Link href={logoHref} className="min-w-0 max-w-full shrink" aria-label={logoAriaLabel}>
               {logo}
             </Link>
           </div>
@@ -112,7 +112,7 @@ export function EditorialReaderHeader({
             ))}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-4">
             {rightSlot}
             <Link
               href={searchHref}
@@ -130,11 +130,11 @@ export function EditorialReaderHeader({
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl overflow-x-auto border-t border-transparent px-4 pb-2 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
+        <div className="mx-auto max-w-7xl min-w-0 overflow-x-auto border-t border-transparent px-4 pb-2 [scrollbar-width:none] sm:px-6 lg:px-8 [&::-webkit-scrollbar]:hidden">
           {secondaryNav ? (
-            <div className="py-2">{secondaryNav}</div>
+            <div className="min-w-0 py-2">{secondaryNav}</div>
           ) : (
-            <nav className="flex items-center gap-6 py-2" aria-label="Rubriques">
+            <nav className="flex min-w-0 items-center gap-4 py-2 sm:gap-6" aria-label="Rubriques">
               {categoryNav.map((item) => (
                 <Link key={item.href} href={item.href} className={catLinkClass(item.active)}>
                   {item.label}
