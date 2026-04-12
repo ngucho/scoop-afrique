@@ -8,10 +8,10 @@
  */
 import { config } from '../config/env.js'
 import { logger } from './logger.js'
-import { hasStaffApiAccess, isReaderAccountOnly } from './api-permissions.js'
+import { hasReaderAccountPermission, hasStaffApiAccess } from './api-permissions.js'
 import type { AppRole, Auth0UserInfo } from '../services/profile.service.js'
 
-/** Verified reader JWT (subscriber); no staff `role` — use staff routes with verifyAuth0Token only. */
+/** Verified reader JWT: includes `access:reader` (may coexist with staff permissions on same user). */
 export interface ReaderAuth0TokenInfo {
   sub: string
   email: string
@@ -123,8 +123,9 @@ export function verifyAuth0Token(accessToken: string): Auth0UserInfo | null {
 }
 
 /**
- * Verify access token for subscriber reader APIs: `access:reader` and no staff permissions.
- * Staff-only or staff+reader RBAC tokens are rejected here (use staff routes).
+ * Verify access token for reader-facing API routes: must include `access:reader`.
+ * Staff permissions on the same token are allowed (rédaction + abonné).
+ * Pure staff tokens (no `access:reader`) are rejected — use `verifyAuth0Token` / staff routes.
  */
 export function verifyReaderAuth0Token(accessToken: string): ReaderAuth0TokenInfo | null {
   if (!config.auth0) return null
@@ -171,8 +172,8 @@ export function verifyReaderAuth0Token(accessToken: string): ReaderAuth0TokenInf
   }
 
   const permissions = (payload.permissions as string[] | undefined) ?? []
-  if (!isReaderAccountOnly(permissions)) {
-    logger.jwtInvalid('Reader API requires access:reader without staff permissions')
+  if (!hasReaderAccountPermission(permissions)) {
+    logger.jwtInvalid('Reader API requires access:reader permission')
     return null
   }
 

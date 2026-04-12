@@ -98,10 +98,13 @@ export interface NavItem {
 export const ADMIN_NAV: NavItem[] = [
   { href: '/admin', label: 'Tableau de bord', icon: 'LayoutDashboard', minRole: 'journalist' },
   { href: '/admin/articles', label: 'Articles', icon: 'FileText', minRole: 'journalist' },
+  { href: '/admin/writer-api', label: 'API rédaction (LLM)', icon: 'Key', minRole: 'journalist' },
   { href: '/admin/comments', label: 'Commentaires', icon: 'MessageSquare', minRole: 'editor' },
   { href: '/admin/contributions', label: 'Tribune lecteurs', icon: 'PenLine', minRole: 'editor' },
   { href: '/admin/media', label: 'Médias', icon: 'Image', minRole: 'journalist' },
   { href: '/admin/reader/announcements', label: 'Annonces reader', icon: 'Megaphone', minRole: 'editor' },
+  { href: '/admin/reader/audience-metrics', label: 'KPI & audience', icon: 'ChartBar', minRole: 'editor' },
+  { href: '/admin/reader/chrome', label: 'Message pubs vides', icon: 'Palette', minRole: 'editor' },
   { href: '/admin/reader/ads', label: 'Publicité', icon: 'Ad', minRole: 'manager' },
   { href: '/admin/reader/homepage', label: 'Accueil (sections)', icon: 'LayoutGrid', minRole: 'manager' },
   { href: '/admin/reader/subscribers', label: 'Abonnés', icon: 'Mail', minRole: 'manager' },

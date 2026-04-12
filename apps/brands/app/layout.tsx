@@ -122,7 +122,7 @@ function JsonLd() {
     image: `${BASE_URL}/images/hero-brands.png`,
     description:
       "Devenir le média de référence de la jeunesse africaine francophone. Donner une voix et une vitrine à l'Afrique en produisant des contenus audiovisuels impactants.",
-    foundingDate: '2024',
+    foundingDate: '2025',
     sameAs: [
       'https://www.tiktok.com/@Scoop.Afrique',
       'https://www.facebook.com/profile.php?id=61568464568442',

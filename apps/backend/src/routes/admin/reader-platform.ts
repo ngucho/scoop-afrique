@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { config } from '../../config/env.js'
 import * as reader from '../../services/reader-platform.service.js'
+import * as chromeSettings from '../../services/chrome-settings.service.js'
+import * as audienceMetrics from '../../services/audience-metric.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
@@ -30,9 +32,17 @@ const announcementBody = z.object({
   title: z.string().min(1).max(500),
   body: z.string().min(1).max(10000),
   audience: z.enum(['all', 'subscribers', 'guests']),
+  link_url: z.string().url().nullable().optional().or(z.literal('').transform(() => null)),
+  placement: z.enum(['banner', 'modal', 'inline', 'footer']).optional(),
+  priority: z.number().int().min(0).max(999).optional(),
   starts_at: z.string().datetime().nullable().optional(),
   ends_at: z.string().datetime().nullable().optional(),
   is_active: z.boolean(),
+})
+
+const chromeSettingsBody = z.object({
+  empty_ad_title: z.string().max(500).nullable().optional(),
+  empty_ad_subtitle: z.string().max(2000).nullable().optional(),
 })
 
 const optionalIsoDatetime = z
@@ -117,6 +127,74 @@ app.get('/kpis', requireRole('editor', 'manager', 'admin'), async (c) => {
   return c.json({ data })
 })
 
+const audienceMetricIngestBody = z.object({
+  platform: z.string().min(1).max(64),
+  metric_key: z.string().min(1).max(128),
+  snapshot_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  country_code: z.string().max(8).optional().nullable(),
+  value_numeric: z.union([z.string(), z.number()]),
+  source: z.string().max(32).optional(),
+  metadata: z.record(z.unknown()).optional(),
+})
+
+/* --- Audience / social / site metrics (editor+ read/write, audited on POST) --- */
+app.get('/audience-metrics', requireRole('editor', 'manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const platform = c.req.query('platform') ?? undefined
+  const days = Math.min(Number(c.req.query('days')) || 90, 730)
+  const limit = Math.min(Number(c.req.query('limit')) || 500, 2000)
+  const data = await audienceMetrics.listAudienceMetricsRecent({ platform, days, limit })
+  return c.json({ data })
+})
+
+app.get('/audience-metrics/latest', requireRole('editor', 'manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const data = await audienceMetrics.getLatestAudienceMetricsByKey()
+  return c.json({ data })
+})
+
+app.post('/audience-metrics', requireRole('editor', 'manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const user = c.get('user')
+  const parsed = audienceMetricIngestBody.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
+  }
+  const row = await audienceMetrics.insertAudienceMetricSnapshot(parsed.data)
+  await reader.appendAudit({
+    actorId: user.id,
+    entityType: 'audience_metric_snapshot',
+    entityId: row.id,
+    action: 'ingest',
+    metadata: { platform: row.platform, metric_key: row.metric_key },
+  })
+  return c.json({ data: row }, 201)
+})
+
+app.get('/reports/audience', requireRole('manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const metricKey = c.req.query('metric_key') ?? 'followers'
+  const platform = c.req.query('platform') ?? undefined
+  const snapshotDate = c.req.query('snapshot_date') ?? undefined
+  const latest = await audienceMetrics.getLatestAudienceMetricsByKey()
+  const byCountry = await audienceMetrics.getCountryLeaderboard({
+    metric_key: metricKey,
+    platform,
+    snapshot_date: snapshotDate ?? undefined,
+  })
+  return c.json({
+    data: {
+      latest,
+      country_leaderboard: byCountry,
+      generated_at: new Date().toISOString(),
+    },
+  })
+})
+
 /* --- Announcements (editor+ read/write) --- */
 app.get('/announcements', requireRole('editor', 'manager', 'admin'), async (c) => {
   const dbErr = requireDatabase(c)
@@ -136,6 +214,9 @@ app.post('/announcements', requireRole('editor', 'manager', 'admin'), async (c) 
   const row = await reader.createAnnouncement(
     {
       ...parsed.data,
+      link_url: parsed.data.link_url ?? null,
+      placement: parsed.data.placement,
+      priority: parsed.data.priority,
       starts_at: parsed.data.starts_at ?? null,
       ends_at: parsed.data.ends_at ?? null,
     },
@@ -529,6 +610,33 @@ app.delete('/newsletter-campaigns/:id', requireRole('manager', 'admin'), async (
     action: 'delete',
   })
   return c.body(null, 204)
+})
+
+/* --- Textes emplacements pub vides (message Scoop) --- */
+app.get('/chrome-settings', requireRole('editor', 'manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const data = await chromeSettings.getChromeSettingsAdmin()
+  return c.json({ data })
+})
+
+app.patch('/chrome-settings', requireRole('editor', 'manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const user = c.get('user')
+  const parsed = chromeSettingsBody.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
+  }
+  const row = await chromeSettings.upsertChromeSettings(parsed.data)
+  await reader.appendAudit({
+    actorId: user.id,
+    entityType: 'reader_chrome_settings',
+    entityId: 'default',
+    action: 'update',
+    metadata: parsed.data as Record<string, unknown>,
+  })
+  return c.json({ data: row })
 })
 
 export default app

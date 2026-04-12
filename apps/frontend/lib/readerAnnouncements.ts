@@ -17,7 +17,17 @@ export function splitAnnouncementsForChrome(announcements: Announcement[]) {
     sorted.find((a) => a.placement === 'banner') ?? sorted[0] ?? null
   const rest = bar ? sorted.filter((a) => a.id !== bar.id) : sorted
   /** Inline placements belong in article bodies, not the header ticker. */
-  const tickerSource = rest.filter((a) => a.placement !== 'inline')
+  const tickerBase = rest.filter((a) => a.placement !== 'inline')
+  /**
+   * Une seule annonce active : le bandeau header s’affiche mais le fil défilant serait vide.
+   * On réinjecte la même annonce dans le ticker pour un défilement visible (alertes, maintenance).
+   */
+  const tickerSource =
+    tickerBase.length > 0
+      ? tickerBase
+      : bar && bar.placement !== 'inline'
+        ? [bar]
+        : []
   const urgentBar = bar ? bar.priority >= 10 : false
   return { bar, tickerSource, urgentBar }
 }

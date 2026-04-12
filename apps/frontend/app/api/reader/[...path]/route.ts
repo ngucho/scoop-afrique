@@ -56,3 +56,11 @@ export async function PATCH(
   const { path } = await params
   return proxyRequest(request, path)
 }
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await params
+  return proxyRequest(request, path)
+}

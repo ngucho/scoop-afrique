@@ -37,6 +37,11 @@
     { "idx": 32, "version": "7", "when": 1743469400000, "tag": "0032_crm_treasury_receipt_url", "breakpoints": true },
     { "idx": 33, "version": "7", "when": 1743555800000, "tag": "0033_ad_campaigns_reader_platform_align", "breakpoints": true },
     { "idx": 34, "version": "7", "when": 1743642200000, "tag": "0034_ad_creatives_reader_platform_align", "breakpoints": true },
-    { "idx": 35, "version": "7", "when": 1743728600000, "tag": "0035_drop_ad_creatives_slot_id", "breakpoints": true }
+    { "idx": 35, "version": "7", "when": 1743728600000, "tag": "0035_drop_ad_creatives_slot_id", "breakpoints": true },
+    { "idx": 36, "version": "7", "when": 1743815000000, "tag": "0036_scoop_platform_rework", "breakpoints": true },
+    { "idx": 37, "version": "7", "when": 1743900000000, "tag": "0037_tribune_anonymous_follows", "breakpoints": true },
+    { "idx": 38, "version": "7", "when": 1743986400000, "tag": "0038_contribution_comment_reactions", "breakpoints": true },
+    { "idx": 39, "version": "7", "when": 1744072800000, "tag": "0039_journalist_profile_fields", "breakpoints": true },
+    { "idx": 40, "version": "7", "when": 1744159200000, "tag": "0040_reader_chrome_writer_api", "breakpoints": true }
   ]
 }

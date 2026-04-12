@@ -12,7 +12,7 @@ const BASE_URL = 'https://brands.scoop-afrique.com'
 export const metadata: Metadata = {
   title: 'À propos de Scoop Afrique',
   description:
-    'Scoop Afrique — média fondé en 2024 à Abidjan. +1,4 M abonnés cumulés (mars 2026). Mission, équipe, vision et lien vers le site de lecture.',
+    'Scoop Afrique — média fondé en 2025 à Abidjan. +1,4 M abonnés cumulés (mars 2026). Mission, équipe, vision et lien vers le site de lecture.',
   alternates: { canonical: `${BASE_URL}/a-propos` },
   openGraph: {
     type: 'website',
@@ -73,7 +73,7 @@ export default function AboutPage() {
             <AnimatedBroadcastSvg />
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Scoop Afrique est né à <strong className="text-foreground">Abidjan en 2024</strong> d’une idée simple : offrir à
+            Scoop Afrique est né à <strong className="text-foreground">Abidjan en 2025</strong> d’une idée simple : offrir à
             la jeunesse africaine francophone un média rapide, créatif et ancré dans le réel — loin des discours lissés.
             Aujourd’hui, nous comptons plus de{' '}
             <strong className="text-foreground">1,4 million d’abonnés cumulés</strong> sur l’ensemble de nos comptes, avec

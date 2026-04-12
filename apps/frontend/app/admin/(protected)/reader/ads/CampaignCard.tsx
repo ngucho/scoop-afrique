@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import {
   Card,
   CardContent,
@@ -59,10 +59,13 @@ export function CampaignCard({
   statusLabels: Record<string, string>
 }) {
   const [pending, startTransition] = useTransition()
+  const [campaignName, setCampaignName] = useState(campaign.name)
+  const [slotId, setSlotId] = useState(campaign.slot_id)
   const [status, setStatus] = useState(campaign.status)
   const [weight, setWeight] = useState(campaign.weight)
   const [startAt, setStartAt] = useState(isoToDatetimeLocal(campaign.start_at))
   const [endAt, setEndAt] = useState(isoToDatetimeLocal(campaign.end_at))
+  const [editingCreativeId, setEditingCreativeId] = useState<string | null>(null)
   const [headline, setHeadline] = useState('')
   const [body, setBody] = useState('')
   const [linkUrl, setLinkUrl] = useState('https://')
@@ -73,6 +76,24 @@ export function CampaignCard({
   const [format, setFormat] = useState<NonNullable<AdCreative['format']>>('native')
   const [creativeWeight, setCreativeWeight] = useState(1)
   const slotLabel = slots.find((s) => s.id === campaign.slot_id)?.key ?? campaign.slot_id
+
+  useEffect(() => {
+    setCampaignName(campaign.name)
+    setSlotId(campaign.slot_id)
+    setStatus(campaign.status)
+    setWeight(campaign.weight)
+    setStartAt(isoToDatetimeLocal(campaign.start_at))
+    setEndAt(isoToDatetimeLocal(campaign.end_at))
+  }, [
+    campaign.id,
+    campaign.updated_at,
+    campaign.name,
+    campaign.slot_id,
+    campaign.status,
+    campaign.weight,
+    campaign.start_at,
+    campaign.end_at,
+  ])
 
   const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
     value,
@@ -88,6 +109,8 @@ export function CampaignCard({
     startTransition(async () => {
       try {
         await updateAdCampaign(campaign.id, {
+          name: campaignName.trim(),
+          slot_id: slotId,
           status,
           weight,
           start_at: startAt ? new Date(startAt).toISOString() : null,
@@ -115,12 +138,42 @@ export function CampaignCard({
     })
   }
 
+  function resetCreativeForm() {
+    setEditingCreativeId(null)
+    setHeadline('')
+    setBody('')
+    setLinkUrl('https://')
+    setImageUrl('')
+    setVideoUrl('')
+    setCtaLabel('')
+    setAlt('')
+    setFormat('native')
+    setCreativeWeight(1)
+  }
+
+  function startEditCreative(cr: AdCreative) {
+    setEditingCreativeId(cr.id)
+    setHeadline(cr.headline)
+    setBody(cr.body ?? '')
+    setLinkUrl(cr.link_url)
+    setImageUrl(cr.image_url ?? '')
+    setVideoUrl(cr.video_url ?? '')
+    setCtaLabel(cr.cta_label ?? '')
+    setAlt(cr.alt ?? '')
+    setFormat((cr.format as NonNullable<AdCreative['format']>) ?? 'native')
+    setCreativeWeight(cr.weight ?? 1)
+  }
+
   function addCreative(e: React.FormEvent) {
     e.preventDefault()
     if (!headline.trim() || !linkUrl.trim()) return
     startTransition(async () => {
       try {
+        const sortOrder = editingCreativeId
+          ? (campaign.creatives.find((c) => c.id === editingCreativeId)?.sort_order ?? 0)
+          : campaign.creatives.length
         await upsertCreative(campaign.id, {
+          ...(editingCreativeId ? { id: editingCreativeId } : {}),
           headline: headline.trim(),
           link_url: linkUrl.trim(),
           body: body.trim() || null,
@@ -130,17 +183,9 @@ export function CampaignCard({
           alt: alt.trim() || null,
           format,
           weight: creativeWeight,
-          sort_order: campaign.creatives.length,
+          sort_order: sortOrder,
         })
-        setHeadline('')
-        setBody('')
-        setLinkUrl('https://')
-        setImageUrl('')
-        setVideoUrl('')
-        setCtaLabel('')
-        setAlt('')
-        setFormat('native')
-        setCreativeWeight(1)
+        resetCreativeForm()
       } catch {
         alert('Erreur.')
       }
@@ -161,9 +206,29 @@ export function CampaignCard({
     <Card>
       <CardContent className="space-y-4 p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="font-mono text-xs text-muted-foreground">{slotLabel}</p>
-            <h3 className="text-lg font-semibold">{campaign.name}</h3>
+          <div className="min-w-0 space-y-2 sm:max-w-md">
+            <div className="space-y-1">
+              <Label size="sm" className="text-muted-foreground">
+                Emplacement (inventaire)
+              </Label>
+              <Select
+                value={slotId}
+                onChange={(e) => setSlotId(e.target.value)}
+                options={slots.map((s) => ({ value: s.id, label: `${s.label} (${s.key})` }))}
+                className="h-9 max-w-full"
+              />
+              <p className="text-xs text-muted-foreground">Avant : {slotLabel}</p>
+            </div>
+            <div className="space-y-1">
+              <Label size="sm" className="text-muted-foreground">
+                Nom interne
+              </Label>
+              <Input
+                value={campaignName}
+                onChange={(e) => setCampaignName(e.target.value)}
+                className="h-9 font-semibold"
+              />
+            </div>
             <p className="text-xs text-muted-foreground">
               Créée {new Date(campaign.created_at).toLocaleString('fr-FR')}
             </p>
@@ -288,15 +353,26 @@ export function CampaignCard({
               <span className="font-mono text-xs">{cr.format ?? 'native'}</span>,
               <span className="font-medium">{cr.headline}</span>,
               <span className="max-w-[200px] truncate text-muted-foreground">{cr.link_url}</span>,
-              <Button
-                type="button"
-                variant="text"
-                size="sm"
-                className="min-h-0 px-0 text-xs text-destructive hover:underline"
-                onClick={() => removeCreative(cr.id)}
-              >
-                Retirer
-              </Button>,
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="text"
+                  size="sm"
+                  className="min-h-0 px-0 text-xs hover:underline"
+                  onClick={() => startEditCreative(cr)}
+                >
+                  Modifier
+                </Button>
+                <Button
+                  type="button"
+                  variant="text"
+                  size="sm"
+                  className="min-h-0 px-0 text-xs text-destructive hover:underline"
+                  onClick={() => removeCreative(cr.id)}
+                >
+                  Retirer
+                </Button>
+              </div>,
             ])}
           />
         ) : null}
@@ -305,6 +381,11 @@ export function CampaignCard({
           onSubmit={addCreative}
           className="grid gap-3 rounded-md border border-dashed border-border p-4 sm:grid-cols-2 lg:grid-cols-3"
         >
+          {editingCreativeId ? (
+            <p className="sm:col-span-2 lg:col-span-3 text-sm font-medium text-primary">
+              Édition d’une créative existante — enregistrer pour appliquer ou annuler pour recommencer une nouvelle.
+            </p>
+          ) : null}
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">
             <Label size="sm" className="text-muted-foreground">
               Format créatif
@@ -375,10 +456,15 @@ export function CampaignCard({
             </Label>
             <Input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Description courte du visuel" />
           </div>
-          <div className="flex items-end sm:col-span-2 lg:col-span-3">
+          <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-3">
             <Button type="submit" disabled={pending} variant="secondary" size="sm" className="rounded-lg">
-              Ajouter la créative
+              {editingCreativeId ? 'Enregistrer la créative' : 'Ajouter la créative'}
             </Button>
+            {editingCreativeId ? (
+              <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={resetCreativeForm}>
+                Annuler l’édition
+              </Button>
+            ) : null}
           </div>
         </form>
       </CardContent>

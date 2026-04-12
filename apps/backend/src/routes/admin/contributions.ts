@@ -17,7 +17,9 @@ app.get('/', async (c) => {
   const page = Number(c.req.query('page')) || 1
   const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
   const st =
-    status === 'pending' || status === 'approved' || status === 'rejected' ? status : undefined
+    status === 'pending' || status === 'approved' || status === 'rejected' || status === 'suspended'
+      ? status
+      : undefined
   const { data, total } = await contributionService.listAllContributions({ status: st, page, limit })
   return c.json({ data, total })
 })

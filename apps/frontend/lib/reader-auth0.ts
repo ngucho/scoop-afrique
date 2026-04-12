@@ -18,7 +18,7 @@ export const readerAuth0 = new Auth0Client({
   appBaseUrl: process.env.APP_BASE_URL,
   authorizationParameters: {
     audience: process.env.AUTH0_AUDIENCE ?? undefined,
-    scope: 'openid profile email',
+    scope: 'openid profile email offline_access',
   },
   signInReturnToPath: '/account',
   session: {
@@ -56,7 +56,10 @@ export async function getReaderAccessToken(): Promise<{
   permissions?: string[]
 } | null> {
   try {
-    const result = await readerAuth0.getAccessToken()
+    let result = await readerAuth0.getAccessToken()
+    if (!result?.token) {
+      result = await readerAuth0.getAccessToken({ refresh: true })
+    }
     if (!result?.token) return null
     const payload = decodeJwtPayload(result.token)
     const permissions = payload.permissions as string[] | undefined

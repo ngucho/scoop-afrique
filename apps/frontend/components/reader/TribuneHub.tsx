@@ -4,55 +4,70 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { PenLine } from 'lucide-react'
-import {
-  EditorialSignalHero,
-  EditorialFilterTabs,
-  ContributionCard,
-  EditorialStickyPanel,
-  SegmentedToggle,
-  Input,
-  Textarea,
-  Button,
-  Label,
-} from 'scoop'
+import { EditorialSignalHero, EditorialFilterTabs, SegmentedToggle, Button } from 'scoop'
 import type { ReaderContribution } from '@/lib/api/types'
 import { config } from '@/lib/config'
-import { formatDate } from '@/lib/formatDate'
+import { TribuneComposeModal } from '@/components/reader/tribune/TribuneComposeModal'
+import { TribuneComposerBar } from '@/components/reader/tribune/TribuneComposerBar'
+import { TribuneFAB } from '@/components/reader/tribune/TribuneFAB'
+import { TribuneNoteCard } from '@/components/reader/tribune/TribuneNoteCard'
+import type { TribuneAccess } from '@/lib/tribune-access'
 
 interface TribuneHubProps {
   initialContributions: ReaderContribution[]
-  initialTotal: number
+  initialNextCursor: string | null
+  /** Déduit côté serveur pour éviter le flash du hero « Contribuez » si déjà connecté lecteur. */
+  initialTribuneAccess: TribuneAccess
+  initialAuthenticated: boolean
 }
 
-export function TribuneHub({ initialContributions, initialTotal }: TribuneHubProps) {
+function normalizeContribution(c: ReaderContribution): ReaderContribution {
+  return {
+    ...c,
+    author: c.author ?? null,
+    is_anonymous: Boolean(c.is_anonymous),
+  }
+}
+
+export function TribuneHub({
+  initialContributions,
+  initialNextCursor,
+  initialTribuneAccess,
+  initialAuthenticated,
+}: TribuneHubProps) {
   const pathname = usePathname()
-  const [list, setList] = useState(initialContributions)
-  const [total, setTotal] = useState(initialTotal)
-  const [authenticated, setAuthenticated] = useState(false)
-  const [kind, setKind] = useState<'writing' | 'event'>('writing')
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [eventLocation, setEventLocation] = useState('')
-  const [eventStartsAt, setEventStartsAt] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const [list, setList] = useState(() => initialContributions.map(normalizeContribution))
+  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [sort, setSort] = useState<'latest' | 'trending'>('latest')
+  const [authenticated, setAuthenticated] = useState(() => initialAuthenticated)
+  const [tribuneAccess, setTribuneAccess] = useState<TribuneAccess>(initialTribuneAccess)
+  const [sessionPicture, setSessionPicture] = useState<string | null>(null)
+  const [sessionName, setSessionName] = useState<string | null>(null)
+  const [myProfileId, setMyProfileId] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'writing' | 'event'>('all')
   const skipNextReload = useRef(true)
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<ReaderContribution | null>(null)
 
   const reload = useCallback(async () => {
     try {
       const sp = new URLSearchParams()
       if (filter !== 'all') sp.set('kind', filter)
       sp.set('limit', '24')
+      sp.set('sort', sort)
       const res = await fetch(`${config.apiBaseUrl}/api/v1/contributions?${sp.toString()}`)
       if (!res.ok) return
-      const json = (await res.json()) as { data: ReaderContribution[]; total: number }
-      setList(json.data ?? [])
-      setTotal(json.total ?? 0)
+      const json = (await res.json()) as {
+        data: ReaderContribution[]
+        next_cursor?: string | null
+      }
+      setList((json.data ?? []).map(normalizeContribution))
+      setNextCursor(json.next_cursor ?? null)
     } catch {
       // ignore
     }
-  }, [filter])
+  }, [filter, sort])
 
   useEffect(() => {
     if (skipNextReload.current) {
@@ -60,204 +75,231 @@ export function TribuneHub({ initialContributions, initialTotal }: TribuneHubPro
       return
     }
     void reload()
-  }, [reload, filter])
+  }, [reload, filter, sort])
 
   useEffect(() => {
     fetch('/api/reader-session')
       .then((r) => r.json())
-      .then((j: { authenticated?: boolean }) => setAuthenticated(!!j.authenticated))
+      .then(
+        (j: {
+          authenticated?: boolean
+          tribune_access?: TribuneAccess
+          user?: { picture?: string; name?: string }
+        }) => {
+          setAuthenticated(!!j.authenticated)
+          if (j.tribune_access) setTribuneAccess(j.tribune_access)
+          setSessionPicture(j.user?.picture ?? null)
+          setSessionName(j.user?.name ?? null)
+        },
+      )
       .catch(() => {})
+
+    fetch('/api/reader/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { data?: { profile_id?: string } } | null) => {
+        if (j?.data?.profile_id) setMyProfileId(j.data.profile_id)
+        else setMyProfileId(null)
+      })
+      .catch(() => setMyProfileId(null))
   }, [])
 
-  const submit = async () => {
-    if (!title.trim() || !body.trim() || submitting) return
-    setSubmitting(true)
-    setMessage(null)
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore || sort === 'trending') return
+    setLoadingMore(true)
     try {
-      const payload: Record<string, unknown> = {
-        kind,
-        title: title.trim(),
-        body: body.trim(),
+      const sp = new URLSearchParams()
+      if (filter !== 'all') sp.set('kind', filter)
+      sp.set('limit', '24')
+      sp.set('sort', sort)
+      sp.set('cursor', nextCursor)
+      const res = await fetch(`${config.apiBaseUrl}/api/v1/contributions?${sp.toString()}`)
+      if (!res.ok) return
+      const json = (await res.json()) as {
+        data: ReaderContribution[]
+        next_cursor?: string | null
       }
-      if (kind === 'event') {
-        payload.event_location = eventLocation.trim() || null
-        if (eventStartsAt) {
-          const d = new Date(eventStartsAt)
-          if (!Number.isNaN(d.getTime())) payload.event_starts_at = d.toISOString()
+      const more = (json.data ?? []).map(normalizeContribution)
+      setList((prev) => {
+        const seen = new Set(prev.map((p) => p.id))
+        const merged = [...prev]
+        for (const item of more) {
+          if (!seen.has(item.id)) {
+            seen.add(item.id)
+            merged.push(item)
+          }
         }
-      }
-      const res = await fetch('/api/reader-bff/contributions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        return merged
       })
-      const json = (await res.json().catch(() => ({}))) as { error?: string; details?: unknown }
-      if (!res.ok) {
-        setMessage(json.error ?? 'Envoi impossible.')
-        return
-      }
-      setTitle('')
-      setBody('')
-      setEventLocation('')
-      setEventStartsAt('')
-      setMessage(
-        kind === 'event'
-          ? 'Merci. Votre événement est soumis à modération.'
-          : 'Merci. Votre tribune est soumise à modération.',
-      )
-      await reload()
-    } catch {
-      setMessage('Erreur réseau.')
+      setNextCursor(json.next_cursor ?? null)
     } finally {
-      setSubmitting(false)
+      setLoadingMore(false)
     }
   }
 
   const filterTabs = [
     { id: 'all', label: 'Tout', active: filter === 'all', onSelect: () => setFilter('all') },
-    { id: 'writing', label: 'Analyses', active: filter === 'writing', onSelect: () => setFilter('writing') },
+    { id: 'writing', label: 'Tribune', active: filter === 'writing', onSelect: () => setFilter('writing') },
     { id: 'event', label: 'Événements', active: filter === 'event', onSelect: () => setFilter('event') },
   ]
 
   const loginHref = `/reader/auth/login?returnTo=${encodeURIComponent(pathname || '/tribune')}`
+  const canContribute = tribuneAccess === 'reader'
+
+  const openCompose = () => {
+    setEditTarget(null)
+    setComposeOpen(true)
+  }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <EditorialSignalHero
-        eyebrow="Tribune libre"
-        heading="Contribuez à la conversation"
-        description={
-          <p>
-            Publiez vos analyses ou signalez un événement pertinent pour la communauté panafricaine — publication
-            après validation par la rédaction.
+    <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 lg:px-8">
+      {tribuneAccess === 'anonymous' ? (
+        <EditorialSignalHero
+          eyebrow="Tribune libre"
+          heading="Contribuez à la conversation"
+          description={
+            <p>
+              Le réseau d&apos;information encadré par la rédaction : analyses, événements, débats — avec la source
+              journalistique à portée de main. Publiez en votre nom ou en anonyme.
+            </p>
+          }
+          actions={
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href={loginHref}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-primary shadow-md transition-transform active:scale-95"
+                prefetch={false}
+              >
+                <PenLine className="h-5 w-5" aria-hidden />
+                Se connecter pour participer
+              </Link>
+              <Link
+                href="/tribune/profile"
+                className="inline-flex items-center gap-2 rounded-full border border-white/40 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10"
+                prefetch={false}
+              >
+                Découvrir les profils
+              </Link>
+            </div>
+          }
+        />
+      ) : null}
+
+      {tribuneAccess === 'staff_only' ? (
+        <div className="mb-6 rounded-2xl border border-amber-500/35 bg-amber-500/[0.07] px-4 py-4 text-sm text-foreground shadow-sm">
+          <p className="leading-relaxed">
+            Vous êtes connecté avec un <strong>compte rédaction</strong>. Pour publier ou réagir sur la Tribune,
+            connectez-vous avec votre <strong>compte lecteur</strong> (celui de l’app ou de l’abonnement). L’espace
+            rédaction, c’est par ici :
           </p>
-        }
-        actions={
-          !authenticated ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
             <Link
-              href={loginHref}
-              className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-primary shadow-md transition-transform active:scale-95"
+              href="/admin"
+              className="inline-flex rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
               prefetch={false}
             >
-              <PenLine className="h-5 w-5" aria-hidden />
-              Se connecter pour écrire
+              Espace rédaction
             </Link>
-          ) : null
-        }
-      />
-
-      <div className="grid gap-12 lg:grid-cols-12">
-        <div className="space-y-8 lg:col-span-7">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <h2
-              className="border-l-4 border-primary pl-4 text-2xl font-bold md:text-3xl"
-              style={{ fontFamily: 'var(--font-headline)' }}
+            <Link
+              href={loginHref}
+              className="inline-flex rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold"
+              prefetch={false}
             >
-              Dernières contributions
-            </h2>
+              Me connecter en lecteur
+            </Link>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mx-auto mt-4 max-w-xl lg:max-w-2xl">
+        <TribuneComposerBar
+          picture={sessionPicture}
+          displayName={sessionName}
+          authenticated={authenticated}
+          canContribute={canContribute}
+          tribuneAccess={tribuneAccess}
+          onOpenCompose={openCompose}
+          loginHref={loginHref}
+        />
+
+        {authenticated && canContribute ? (
+          <p className="mb-4 text-center text-xs text-muted-foreground sm:text-left">
+            Tribune — réseau social de l&apos;information : discutez, réagissez, suivez les voix de la communauté et
+            les journalistes Scoop.Afrique.
+          </p>
+        ) : null}
+
+        <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-xl font-bold tracking-tight" style={{ fontFamily: 'var(--font-headline)' }}>
+            Fil
+          </h2>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <SegmentedToggle
+              options={[
+                { id: 'latest', label: 'Récent', active: sort === 'latest', onSelect: () => setSort('latest') },
+                {
+                  id: 'trending',
+                  label: 'Tendance',
+                  active: sort === 'trending',
+                  onSelect: () => setSort('trending'),
+                },
+              ]}
+            />
             <EditorialFilterTabs tabs={filterTabs} />
           </div>
-
-          {list.length === 0 ? (
-            <p className="text-muted-foreground">Aucune contribution publiée pour le moment.</p>
-          ) : (
-            <div className="grid gap-6 sm:grid-cols-2">
-              {list.map((c) => (
-                <ContributionCard
-                  key={c.id}
-                  kindLabel={c.kind === 'event' ? 'Événement' : 'Analyse'}
-                  heading={c.title}
-                  excerpt={c.body}
-                  meta={
-                    c.kind === 'event' && (c.event_location || c.event_starts_at) ? (
-                      <>
-                        {c.event_location ? `${c.event_location}` : ''}
-                        {c.event_starts_at ? ` · ${formatDate(c.event_starts_at)}` : ''}
-                      </>
-                    ) : null
-                  }
-                  footer={`${c.author?.email?.split('@')[0] ?? 'Lecteur'} · ${formatDate(c.created_at)}`}
-                />
-              ))}
-            </div>
-          )}
-          <p className="text-xs text-muted-foreground">{total} publication(s) au total (filtre appliqué).</p>
         </div>
 
-        <EditorialStickyPanel
-          heading={
-            <>
-              <PenLine className="h-6 w-6 text-primary" aria-hidden />
-              Nouveau envoi
-            </>
-          }
-        >
-          {!authenticated ? (
-            <p className="text-sm text-muted-foreground">
-              <Link href={loginHref} className="font-semibold text-primary underline" prefetch={false}>
-                Connectez-vous
-              </Link>{' '}
-              pour proposer une analyse ou un événement.
-            </p>
+        <div className="mt-2 overflow-hidden rounded-3xl border border-border/60 bg-card/95 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.15)] backdrop-blur-sm dark:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.5)]">
+          {list.length === 0 ? (
+            <p className="p-6 text-sm text-muted-foreground">Aucune note pour le moment.</p>
           ) : (
-            <div className="space-y-4">
-              <SegmentedToggle
-                options={[
-                  { id: 'writing', label: 'Tribune', active: kind === 'writing', onSelect: () => setKind('writing') },
-                  { id: 'event', label: 'Événement', active: kind === 'event', onSelect: () => setKind('event') },
-                ]}
+            list.map((c) => (
+              <TribuneNoteCard
+                key={c.id}
+                c={c}
+                myProfileId={myProfileId}
+                canInteract={canContribute}
+                loginHref={loginHref}
+                onDelete={(id) => {
+                  setList((prev) => prev.filter((p) => p.id !== id))
+                }}
+                onEdit={(row) => {
+                  setEditTarget(row)
+                  setComposeOpen(true)
+                }}
               />
-              <div className="space-y-1">
-                <Label size="sm" className="uppercase tracking-wide text-muted-foreground">
-                  Titre
-                </Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} className="rounded-xl" />
-              </div>
-              <div className="space-y-1">
-                <Label size="sm" className="uppercase tracking-wide text-muted-foreground">
-                  {kind === 'event' ? 'Description' : 'Texte'}
-                </Label>
-                <Textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={6}
-                  className="min-h-[8rem] rounded-xl"
-                />
-              </div>
-              {kind === 'event' ? (
-                <>
-                  <div className="space-y-1">
-                    <Label size="sm" className="uppercase tracking-wide text-muted-foreground">
-                      Lieu
-                    </Label>
-                    <Input value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} className="rounded-xl" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label size="sm" className="uppercase tracking-wide text-muted-foreground">
-                      Date / heure de début
-                    </Label>
-                    <Input
-                      type="datetime-local"
-                      value={eventStartsAt}
-                      onChange={(e) => setEventStartsAt(e.target.value)}
-                      className="rounded-xl"
-                    />
-                  </div>
-                </>
-              ) : null}
-              <Button
-                type="button"
-                className="w-full uppercase tracking-widest"
-                onClick={() => void submit()}
-                disabled={submitting}
-              >
-                {submitting ? 'Envoi…' : 'Envoyer'}
-              </Button>
-              {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-            </div>
+            ))
           )}
-        </EditorialStickyPanel>
+        </div>
+
+        {sort === 'latest' && nextCursor ? (
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-4 w-full sm:w-auto"
+            disabled={loadingMore}
+            onClick={() => void loadMore()}
+          >
+            {loadingMore ? 'Chargement…' : 'Charger plus'}
+          </Button>
+        ) : null}
+        {sort === 'trending' ? (
+          <p className="mt-4 text-xs text-muted-foreground">
+            Classement par score sur la page courante — passez en « Récent » pour le chargement infini.
+          </p>
+        ) : null}
       </div>
+
+      <TribuneComposeModal
+        open={composeOpen}
+        onOpenChange={(o) => {
+          setComposeOpen(o)
+          if (!o) setEditTarget(null)
+        }}
+        editContribution={editTarget}
+        onPosted={() => void reload()}
+      />
+
+      <TribuneFAB visible={canContribute} onClick={openCompose} />
     </div>
   )
 }

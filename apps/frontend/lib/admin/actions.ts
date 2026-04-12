@@ -87,7 +87,7 @@ export async function deleteComment(id: string): Promise<void> {
 
 export async function moderateReaderContribution(
   id: string,
-  status: 'approved' | 'rejected',
+  status: 'approved' | 'rejected' | 'suspended' | 'pending',
 ): Promise<ReaderContribution> {
   const token = await getToken()
   const res = await apiPatchAuth<ApiResponse<ReaderContribution>>(
@@ -245,6 +245,10 @@ export async function updateUserMetadata(data: {
   address?: string
   phone?: string
   sex?: string
+  public_bio?: string
+  public_avatar_url?: string
+  contact_private?: string
+  preferences?: string
 }): Promise<void> {
   const token = await getToken()
   await apiPatchAuth('/admin/profile/me/metadata', token, data)
@@ -266,6 +270,9 @@ function revReader() {
   revalidatePath('/admin/reader/homepage')
   revalidatePath('/admin/reader/subscribers')
   revalidatePath('/admin/reader/newsletters')
+  revalidatePath('/admin/reader/chrome')
+  revalidatePath('/', 'layout')
+  revalidatePath('/articles', 'layout')
 }
 
 export async function createAnnouncement(data: Record<string, unknown>): Promise<void> {
@@ -290,6 +297,13 @@ export async function createAdCampaign(data: Record<string, unknown>): Promise<v
   const token = await getToken()
   await apiPostAuth('/admin/reader/ads/campaigns', token, data)
   revReader()
+}
+
+export async function ingestAudienceMetric(data: Record<string, unknown>): Promise<void> {
+  const token = await getToken()
+  await apiPostAuth('/admin/reader/audience-metrics', token, data)
+  revReader()
+  revalidatePath('/admin/reader/audience-metrics')
 }
 
 export async function updateAdCampaign(id: string, data: Record<string, unknown>): Promise<void> {
@@ -323,6 +337,7 @@ export async function updateHomepageSection(id: string, data: Record<string, unk
   const token = await getToken()
   await apiPatchAuth(`/admin/reader/homepage-sections/${id}`, token, data)
   revReader()
+  revalidatePath('/admin/reader/homepage')
 }
 
 export async function updateSubscriberSegments(
@@ -351,4 +366,35 @@ export async function deleteNewsletterCampaign(id: string): Promise<void> {
   const token = await getToken()
   await apiDeleteAuth(`/admin/reader/newsletter-campaigns/${id}`, token)
   revReader()
+}
+
+/* ---------- Message emplacements pub vides + API Writer ---------- */
+
+export async function updateChromeSettings(data: {
+  empty_ad_title?: string | null
+  empty_ad_subtitle?: string | null
+}): Promise<void> {
+  const token = await getToken()
+  await apiPatchAuth('/admin/reader/chrome-settings', token, data)
+  revReader()
+}
+
+export async function createWriterApiKey(label?: string): Promise<{
+  id: string
+  raw_key: string
+  key_prefix: string
+}> {
+  const token = await getToken()
+  const res = await apiPostAuth<ApiResponse<{ id: string; raw_key: string; key_prefix: string }>>(
+    '/admin/writer-api-keys',
+    token,
+    { label: label?.trim() || 'Clé' },
+  )
+  return res.data
+}
+
+export async function revokeWriterApiKey(id: string): Promise<void> {
+  const token = await getToken()
+  await apiDeleteAuth(`/admin/writer-api-keys/${id}`, token)
+  revalidatePath('/admin/writer-api')
 }

@@ -10,7 +10,7 @@
  */
 import { eq, and, desc, sql, or, ilike, isNotNull } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
-import { articles, categories, profiles } from '../db/schema.js'
+import { articles, categories, profiles, readerPublicProfiles } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { CreateArticleBody, UpdateArticleBody } from '../schemas/article.js'
 import type { AppRole } from './profile.service.js'
@@ -50,6 +50,7 @@ export interface Article {
 
 export interface ArticleWithAuthor extends Article {
   author?: { email: string | null } | null
+  author_public?: { bio: string | null; avatar_url: string | null } | null
   category?: { id: string; name: string; slug: string } | null
 }
 
@@ -148,11 +149,35 @@ function toArticle(row: Record<string, unknown>): Article {
   }
 }
 
-function toArticleWithAuthor(row: Record<string, unknown>): ArticleWithAuthor {
-  const r = row as typeof articles.$inferSelect & { authorEmail?: string | null; categoryId?: string; categoryName?: string; categorySlug?: string }
+function toArticleWithAuthor(
+  row: Record<string, unknown>,
+): ArticleWithAuthor {
+  const r = row as typeof articles.$inferSelect & {
+    authorEmail?: string | null
+    categoryId?: string
+    categoryName?: string
+    categorySlug?: string
+    journalistPublicBio?: string | null
+    journalistPublicAvatarUrl?: string | null
+    readerPublicBio?: string | null
+    readerPublicAvatarUrl?: string | null
+  }
+  const bioJournalist = r.journalistPublicBio?.trim() ?? ''
+  const bioReader = r.readerPublicBio?.trim() ?? ''
+  const mergedBio = bioJournalist || bioReader ? (bioJournalist || bioReader) : null
+  const avatarJournalist = r.journalistPublicAvatarUrl?.trim() ?? ''
+  const avatarReader = r.readerPublicAvatarUrl?.trim() ?? ''
+  const mergedAvatar = avatarJournalist || avatarReader || null
+  const hasPublic = !!(mergedBio || mergedAvatar)
   return {
     ...toArticle(r),
     author: r.authorEmail != null ? { email: r.authorEmail } : null,
+    author_public: hasPublic
+      ? {
+          bio: mergedBio,
+          avatar_url: mergedAvatar,
+        }
+      : null,
     category: r.categoryId && r.categoryName && r.categorySlug ? { id: r.categoryId, name: r.categoryName, slug: r.categorySlug } : null,
   }
 }
@@ -296,12 +321,17 @@ export async function getArticleByIdOrSlug(
       createdAt: articles.createdAt,
       updatedAt: articles.updatedAt,
       authorEmail: profiles.email,
+      journalistPublicBio: profiles.journalistPublicBio,
+      journalistPublicAvatarUrl: profiles.journalistPublicAvatarUrl,
+      readerPublicBio: readerPublicProfiles.bio,
+      readerPublicAvatarUrl: readerPublicProfiles.avatarUrl,
       catId: categories.id,
       catName: categories.name,
       catSlug: categories.slug,
     })
     .from(articles)
     .leftJoin(profiles, eq(articles.authorId, profiles.id))
+    .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
     .leftJoin(categories, eq(articles.categoryId, categories.id))
     .where(whereClause)
     .limit(1)
