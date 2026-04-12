@@ -14,7 +14,7 @@ export function FeaturedHero({ article, imageFetchPriority = 'high' }: FeaturedH
 
   return (
     <section className="mb-12 w-full min-w-0 max-w-full">
-      <div className="group max-w-full cursor-pointer overflow-hidden rounded-xl bg-editorial-surface-low shadow-[var(--shadow-md)] transition-[box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-[var(--shadow-lg)]">
+      <div className="group max-w-full cursor-pointer overflow-hidden rounded-xl border border-border/60 bg-card shadow-[var(--shadow-md)] transition-[box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-[var(--shadow-lg)]">
         <div className="grid min-w-0 gap-0 md:grid-cols-12">
           <div className="relative min-h-[240px] min-w-0 overflow-hidden sm:min-h-[280px] md:col-span-8 md:min-h-[420px] lg:min-h-[520px]">
             {article.cover_image_url ? (
@@ -27,26 +27,26 @@ export function FeaturedHero({ article, imageFetchPriority = 'high' }: FeaturedH
                 fetchPriority={imageFetchPriority}
               />
             ) : (
-              <div className="h-full min-h-[280px] bg-editorial-surface-container md:min-h-[420px]" />
+              <div className="h-full min-h-[280px] bg-muted md:min-h-[420px]" />
             )}
           </div>
-          <div className="flex min-w-0 flex-col justify-center break-words bg-editorial-surface-lowest p-4 sm:p-6 md:col-span-4 md:p-8">
+          <div className="flex min-w-0 flex-col justify-center break-words bg-card p-4 sm:p-6 md:col-span-4 md:p-8">
             <span className="mb-4 block text-[10px] font-black uppercase tracking-[0.2em] text-primary">{label}</span>
             <h2
-              className="mb-4 text-2xl font-bold leading-[1.15] text-editorial-on-surface sm:text-3xl md:text-4xl lg:text-5xl"
+              className="mb-4 text-2xl font-bold leading-[1.15] text-foreground sm:text-3xl md:text-4xl lg:text-5xl"
               style={{ fontFamily: 'var(--font-headline)' }}
             >
               {article.title}
             </h2>
             {article.excerpt ? (
-              <p className="mb-8 text-base leading-relaxed text-editorial-secondary sm:text-lg">{article.excerpt}</p>
+              <p className="mb-8 text-base leading-relaxed text-muted-foreground sm:text-lg">{article.excerpt}</p>
             ) : null}
             <div className="mt-auto flex items-center gap-3">
               <div className="flex min-w-0 flex-col">
-                <p className="text-xs font-bold uppercase tracking-wider text-editorial-on-surface">
+                <p className="text-xs font-bold uppercase tracking-wider text-foreground">
                   {(article as { author_display_name?: string | null }).author_display_name ?? article.author?.email?.split('@')[0] ?? 'Rédaction'}
                 </p>
-                <p className="text-[10px] uppercase tracking-wide text-editorial-secondary">Article à la une</p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Article à la une</p>
               </div>
             </div>
             <div className="mt-6">

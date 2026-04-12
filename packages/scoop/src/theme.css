@@ -334,6 +334,20 @@
     0 20px 48px oklch(0 0 0 / 0.42),
     0 0 0 1px oklch(1 0 0 / 0.05);
   --shadow-rail: 0 -1px 0 oklch(1 0 0 / 0.08) inset, 0 10px 40px oklch(0 0 0 / 0.35);
+
+  /* Editorial Heritage — dark (must mirror :root editorial stack; reader + brands stay aligned) */
+  --editorial-surface: var(--background);
+  --editorial-surface-low: oklch(0.085 0 0);
+  --editorial-surface-container: var(--muted);
+  --editorial-surface-high: oklch(0.16 0 0);
+  --editorial-surface-lowest: var(--card);
+  --editorial-on-surface: var(--foreground);
+  --editorial-secondary: var(--muted-foreground);
+  --editorial-tertiary: oklch(0.78 0.11 85);
+  --editorial-tertiary-container: oklch(0.32 0.06 85);
+  --editorial-primary: var(--primary);
+  --editorial-primary-container: oklch(0.62 0.24 25);
+  --editorial-outline-variant: color-mix(in oklch, var(--border) 88%, var(--primary) 12%);
 }
 
 /* Animations */
@@ -479,6 +493,7 @@
   --color-editorial-secondary: var(--editorial-secondary);
   --color-editorial-tertiary: var(--editorial-tertiary);
   --color-editorial-tertiary-container: var(--editorial-tertiary-container);
+  --color-editorial-primary: var(--editorial-primary);
   --color-editorial-primary-container: var(--editorial-primary-container);
   --color-editorial-outline-variant: var(--editorial-outline-variant);
   --color-signal: var(--signal);

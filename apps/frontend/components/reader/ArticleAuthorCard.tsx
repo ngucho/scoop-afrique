@@ -12,7 +12,7 @@ export function ArticleAuthorCard({
 
   return (
     <section
-      className="mt-10 overflow-hidden rounded-2xl border border-editorial-outline-variant/20 bg-gradient-to-br from-muted/40 to-card shadow-sm"
+      className="mt-10 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-muted/50 to-card shadow-sm"
       aria-labelledby="article-author-heading"
     >
       <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:gap-6">

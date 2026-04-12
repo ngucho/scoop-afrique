@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Manrope, Newsreader, Geist_Mono } from 'next/font/google'
 import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
+import { ThemeProvider } from 'scoop'
 import { BrandsHeader } from '@/components/brands-header'
 import { StickyDevisBar } from '@/components/sticky-devis-bar'
 import { CookieConsentBanner } from '@/components/cookie-consent-banner'
@@ -165,10 +166,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={`${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
-        <BrandsHeader />
-        {children}
-        <StickyDevisBar />
-        <CookieConsentBanner />
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          <BrandsHeader />
+          {children}
+          <StickyDevisBar />
+          <CookieConsentBanner />
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

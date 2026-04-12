@@ -135,7 +135,7 @@ function HomeArticlesSection({
     <div className="mb-6 flex min-w-0 max-w-full flex-wrap items-end justify-between gap-3 gap-y-4 md:mb-8">
       {sectionKey === 'latest' ? (
         <h2
-          className="min-w-0 max-w-full break-words border-l-4 border-primary pl-3 text-2xl font-bold text-editorial-on-surface sm:pl-4 sm:text-3xl"
+          className="min-w-0 max-w-full break-words border-l-4 border-primary pl-3 text-2xl font-bold text-foreground sm:pl-4 sm:text-3xl"
           style={{ fontFamily: 'var(--font-headline)' }}
         >
           {title}
@@ -305,7 +305,7 @@ export default async function HomePage() {
           >
             L&apos;Afrique, en continu
           </Heading>
-          <p className="mt-3 max-w-2xl break-words text-editorial-secondary">
+          <p className="mt-3 max-w-2xl break-words text-muted-foreground">
             Décryptages, reportages et analyses — la page d&apos;accueil suit l&apos;ordre défini dans le CMS (sections,
             encarts pub, mise en page par bloc).
           </p>
@@ -331,7 +331,7 @@ export default async function HomePage() {
               <div className="mb-14 min-w-0 max-w-full space-y-14 md:mb-16">
                 <MotionEnter as="div">
                   <h2
-                    className="mb-8 break-words border-l-4 border-primary pl-3 text-xl font-bold text-editorial-on-surface sm:pl-4 sm:text-2xl md:text-3xl"
+                    className="mb-8 break-words border-l-4 border-primary pl-3 text-xl font-bold text-foreground sm:pl-4 sm:text-2xl md:text-3xl"
                     style={{ fontFamily: 'var(--font-headline)' }}
                   >
                     {block.title}
