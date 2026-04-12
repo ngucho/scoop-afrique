@@ -324,6 +324,48 @@ export default async function AdminDashboardPage() {
               </CardContent>
             </Card>
           )}
+
+          {readerKpis.audienceLatest && readerKpis.audienceLatest.length > 0 && (
+            <Card>
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <IconUsers className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Audience &amp; réseaux (derniers snapshots)</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th className="py-2 pr-2">Plateforme</th>
+                        <th className="py-2 pr-2">Métrique</th>
+                        <th className="py-2 pr-2">Date</th>
+                        <th className="py-2 tabular-nums">Valeur</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {readerKpis.audienceLatest.slice(0, 12).map((row, i) => (
+                        <tr key={`${row.platform}-${row.metric_key}-${i}`} className="border-b border-border/60 last:border-0">
+                          <td className="py-2 font-mono text-xs">{row.platform}</td>
+                          <td className="py-2">{row.metric_key}</td>
+                          <td className="py-2 text-muted-foreground">{row.snapshot_date}</td>
+                          <td className="py-2 tabular-nums font-medium">{row.value_numeric}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  <Link href="/admin/reader/audience-metrics" className="font-medium text-primary hover:underline">
+                    Saisir un KPI
+                  </Link>{' '}
+                  (interface) ou API{' '}
+                  <span className="font-mono">POST /admin/reader/audience-metrics</span> (éditeur+). Public :{' '}
+                  <span className="font-mono">GET /public/audience/summary</span> (site marques). Job batch :{' '}
+                  <span className="font-mono">pnpm job:ingest-audience-metrics</span>.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 

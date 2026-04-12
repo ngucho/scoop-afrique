@@ -386,6 +386,24 @@ If you omit the secrets, the Action still adds `user_metadata` claims when prese
 
 The backend currently gets profile data from the database (synced from Auth0); you can later optionally use these claims to avoid an extra profile fetch. The frontend can read the access token claims if you decode it (e.g. from `getAccessToken()`).
 
+### 11.5 Reader metadata, staff roles, and journalist fields
+
+**Do you need to change the Post-Login Action when we add form fields in Admin → Profil?**  
+Usually **no**. The canonical script (**`docs/auth0-actions/post-login-add-user-metadata.js`**, **SCRIPT_REVISION 2**) sets
+
+`api.accessToken.setCustomClaim('…/user_metadata', event.user.user_metadata)`
+
+so **every** key stored in Auth0 **user_metadata** is included in the token in one object. New keys (e.g. `public_bio`, `contact_private`) appear automatically after the user saves their profile and **logs in again** (or refreshes the session). You only need to edit the Action if you stop copying the whole object or add custom logic.
+
+**Default reader vs staff (who can “upgrade”):**
+
+1. **First signup:** the Action assigns the **reader** role when the user has **no roles** yet (Management API). That role carries **`access:reader`** so they can use the Tribune and reader APIs.
+2. **Staff (rédaction):** only an **administrator** adds roles such as **journalist**, **editor**, etc., in the Auth0 Dashboard (or via your processes). The Action does **not** remove **reader** when staff is added—whether a user has **both** reader + staff or **only** staff is an **RBAC configuration choice**:
+   - **Both roles:** one login can use backoffice and Tribune (simple for the same person).
+   - **Staff only** (reader removed): backoffice works; Tribune treats them as “rédaction only” until they use a **reader** login (as in the Tribune banner).
+
+Mirror to DB for public author cards: the backend copies `public_bio`, `public_avatar_url`, `contact_private`, and `preferences` from **Admin → Profil** into **`profiles`**; only **`public_*`** is shown on articles.
+
 ---
 
 ## 12. GET /auth/me (backend) and 401 debugging

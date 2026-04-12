@@ -13,6 +13,7 @@ import {
   jsonb,
   date,
   real,
+  numeric,
   uniqueIndex,
   pgEnum,
   primaryKey,
@@ -44,6 +45,7 @@ export const contributionStatusEnum = pgEnum('contribution_status', [
   'pending',
   'approved',
   'rejected',
+  'suspended',
 ])
 export const newsletterStatusEnum = pgEnum('newsletter_status', [
   'pending',
@@ -199,6 +201,12 @@ export const profiles = pgTable('profiles', {
   auth0Id: text('auth0_id'),
   role: appRoleEnum('role').notNull().default('journalist'),
   email: text('email'),
+  /** Bio publique (carte auteur article) — synchronisée depuis user_metadata. */
+  journalistPublicBio: text('journalist_public_bio'),
+  journalistPublicAvatarUrl: text('journalist_public_avatar_url'),
+  /** Contact interne — jamais exposé côté lecteur. */
+  journalistContactPrivate: text('journalist_contact_private'),
+  journalistPreferences: text('journalist_preferences'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
@@ -264,14 +272,144 @@ export const readerContributions = pgTable('reader_contributions', {
   userId: uuid('user_id')
     .notNull()
     .references(() => profiles.id, { onDelete: 'cascade' }),
+  articleId: uuid('article_id').references(() => articles.id, { onDelete: 'set null' }),
   kind: contributionKindEnum('kind').notNull().default('writing'),
   title: text('title').notNull(),
   body: text('body').notNull(),
   eventLocation: text('event_location'),
   eventStartsAt: timestamp('event_starts_at', { withTimezone: true }),
-  status: contributionStatusEnum('status').notNull().default('pending'),
+  status: contributionStatusEnum('status').notNull().default('approved'),
+  upvoteCount: integer('upvote_count').notNull().default(0),
+  downvoteCount: integer('downvote_count').notNull().default(0),
+  isAnonymous: boolean('is_anonymous').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Who follows whom on Tribune (personal feed / network). */
+export const tribuneFollows = pgTable(
+  'tribune_follows',
+  {
+    followerProfileId: uuid('follower_profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    followingProfileId: uuid('following_profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.followerProfileId, t.followingProfileId] })],
+)
+
+/** Append-only KPI snapshots (social, site, geo) for dashboards and brands. */
+export const audienceMetricSnapshots = pgTable(
+  'audience_metric_snapshots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    platform: text('platform').notNull(),
+    metricKey: text('metric_key').notNull(),
+    snapshotDate: date('snapshot_date', { mode: 'string' }).notNull(),
+    countryCode: text('country_code').notNull().default(''),
+    valueNumeric: numeric('value_numeric', { precision: 24, scale: 6 }).notNull(),
+    source: text('source').notNull().default('manual'),
+    metadata: jsonb('metadata').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('audience_metric_snapshots_dedup_idx').on(
+      t.platform,
+      t.metricKey,
+      t.snapshotDate,
+      t.countryCode,
+    ),
+  ],
+)
+
+/** Reader-facing editable profile (projection + Auth0 user_metadata sync). */
+export const readerPublicProfiles = pgTable('reader_public_profiles', {
+  auth0Sub: text('auth0_sub').primaryKey(),
+  displayName: text('display_name'),
+  pseudo: text('pseudo'),
+  avatarUrl: text('avatar_url'),
+  dateOfBirth: date('date_of_birth', { mode: 'string' }),
+  addressLine1: text('address_line1'),
+  addressLine2: text('address_line2'),
+  city: text('city'),
+  postalCode: text('postal_code'),
+  countryCode: text('country_code'),
+  bio: text('bio'),
+  interestCategoryIds: uuid('interest_category_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const contributionVotes = pgTable(
+  'contribution_votes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    contributionId: uuid('contribution_id')
+      .notNull()
+      .references(() => readerContributions.id, { onDelete: 'cascade' }),
+    actorKey: text('actor_key').notNull(),
+    value: integer('value').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('contribution_votes_unique_actor').on(t.contributionId, t.actorKey)],
+)
+
+export const contributionReactions = pgTable(
+  'contribution_reactions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    contributionId: uuid('contribution_id')
+      .notNull()
+      .references(() => readerContributions.id, { onDelete: 'cascade' }),
+    actorKey: text('actor_key').notNull(),
+    emoji: text('emoji').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('contribution_reactions_unique_actor_emoji').on(t.contributionId, t.actorKey, t.emoji)],
+)
+
+export const contributionComments = pgTable('contribution_comments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contributionId: uuid('contribution_id')
+    .notNull()
+    .references(() => readerContributions.id, { onDelete: 'cascade' }),
+  authorProfileId: uuid('author_profile_id').references(() => profiles.id, { onDelete: 'set null' }),
+  authorAuth0Sub: text('author_auth0_sub'),
+  parentId: uuid('parent_id'),
+  body: text('body').notNull(),
+  status: commentStatusEnum('status').notNull().default('approved'),
+  isAnonymous: boolean('is_anonymous').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+export const contributionCommentReactions = pgTable(
+  'contribution_comment_reactions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    commentId: uuid('comment_id')
+      .notNull()
+      .references(() => contributionComments.id, { onDelete: 'cascade' }),
+    actorKey: text('actor_key').notNull(),
+    emoji: text('emoji').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('contribution_comment_reactions_unique_actor_emoji').on(t.commentId, t.actorKey, t.emoji)],
+)
+
+export const contributionReports = pgTable('contribution_reports', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contributionId: uuid('contribution_id')
+    .notNull()
+    .references(() => readerContributions.id, { onDelete: 'cascade' }),
+  reporterActorKey: text('reporter_actor_key').notNull(),
+  reason: text('reason').notNull(),
+  details: text('details'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const newsletterSubscribers = pgTable('newsletter_subscribers', {
@@ -291,12 +429,37 @@ export const readerAnnouncements = pgTable('reader_announcements', {
   title: text('title').notNull(),
   body: text('body').notNull(),
   audience: announcementAudienceEnum('audience').notNull().default('all'),
+  linkUrl: text('link_url'),
+  placement: announcementPlacementEnum('placement').notNull().default('banner'),
+  priority: integer('priority').notNull().default(0),
   startsAt: timestamp('starts_at', { withTimezone: true }),
   endsAt: timestamp('ends_at', { withTimezone: true }),
   isActive: boolean('is_active').notNull().default(true),
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Textes des emplacements pub vides (message Scoop.Afrique). Une ligne `default`. */
+export const readerChromeSettings = pgTable('reader_chrome_settings', {
+  singletonKey: text('singleton_key').primaryKey().default('default'),
+  emptyAdTitle: text('empty_ad_title'),
+  emptyAdSubtitle: text('empty_ad_subtitle'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Clés API pour création / mise à jour de brouillons (pas de publication). */
+export const journalistApiKeys = pgTable('journalist_api_keys', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  profileId: uuid('profile_id')
+    .notNull()
+    .references(() => profiles.id, { onDelete: 'cascade' }),
+  keyPrefix: text('key_prefix').notNull(),
+  keyHash: text('key_hash').notNull().unique(),
+  label: text('label').notNull().default('Clé'),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
 export const adSlots = pgTable('ad_slots', {

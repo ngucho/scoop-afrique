@@ -10,8 +10,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@scoop-afrique/api-logger": "workspace:*",
     "@auth0/nextjs-auth0": "^4.14.1",
+    "@scoop-afrique/api-logger": "workspace:*",
     "@tabler/icons-react": "^3.21.0",
     "@tiptap/extension-character-count": "^3.19.0",
     "@tiptap/extension-color": "^3.19.0",
@@ -42,6 +42,7 @@
     "next": "^16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-easy-crop": "^5.5.7",
     "scoop": "workspace:*"
   },
   "devDependencies": {

@@ -37,9 +37,9 @@ export function hasReaderAccountPermission(permissions: string[]): boolean {
 }
 
 /**
- * Subscriber reader APIs (`/api/v1/reader/*`): token must include `access:reader` and must
- * not include any staff permission. Users with merged staff+reader RBAC use staff tokens on
- * staff routes only; their reader-only flows need a dedicated reader account or role layout.
+ * Strict “subscriber-only” check (no employee permissions). Unused by `/api/v1/reader/*`
+ * since 2026-04: those routes accept `access:reader` even when staff permissions are also
+ * present. Kept for tooling and future policies.
  */
 export function isReaderAccountOnly(permissions: string[]): boolean {
   return hasReaderAccountPermission(permissions) && !hasStaffApiAccess(permissions)

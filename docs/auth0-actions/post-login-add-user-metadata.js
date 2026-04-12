@@ -1,6 +1,11 @@
 /**
  * Auth0 Post-Login Action: default RBAC role + user_metadata in tokens.
  *
+ * SCRIPT_REVISION: 2 (2026-04) — pas de changement de logique par rapport à la v1 : tout
+ * `user_metadata` est recopié dans le jeton (bio, contact, préférences journalistes inclus).
+ * Mettez à jour dans Auth0 seulement si votre copie locale ne fait plus un merge complet du
+ * metadata, ou si vous ajoutez de nouvelles étapes (ex. Post User Registration).
+ *
  * Copy into Auth0: Actions → Library → Build Custom → Trigger: Login / Post Login
  * Then add the Action to the Login flow.
  *

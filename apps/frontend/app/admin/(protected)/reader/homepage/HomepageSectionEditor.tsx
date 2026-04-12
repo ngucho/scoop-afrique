@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Card,
   CardContent,
@@ -15,6 +16,7 @@ import {
 import type { HomepageSection } from '@/lib/api/types'
 import { updateHomepageSection } from '@/lib/admin/actions'
 import { Info, Loader2 } from 'lucide-react'
+import { useFormDraftState } from '@/hooks/useFormDraft'
 
 const SECTION_HELP: Record<string, string> = {
   top_stories:
@@ -34,6 +36,41 @@ function numOrEmpty(v: string): number | undefined {
   return Number.isFinite(n) ? n : undefined
 }
 
+type SectionDraft = {
+  title: string
+  layout: HomepageSection['layout']
+  sortOrder: string
+  visible: boolean
+  maxItems: string
+  maxPerStrip: string
+  tagFilter: string
+  configJson: string
+}
+
+function buildDefaults(section: HomepageSection): SectionDraft {
+  const cfg = (section.config ?? {}) as Record<string, unknown>
+  return {
+    title: section.title,
+    layout: section.layout,
+    sortOrder: String(section.sort_order),
+    visible: section.is_visible,
+    maxItems:
+      typeof cfg.max_items === 'number'
+        ? String(cfg.max_items)
+        : typeof cfg.max_items === 'string'
+          ? cfg.max_items
+          : '',
+    maxPerStrip:
+      typeof cfg.max_per_strip === 'number'
+        ? String(cfg.max_per_strip)
+        : typeof cfg.max_per_strip === 'string'
+          ? cfg.max_per_strip
+          : '',
+    tagFilter: typeof cfg.tag === 'string' ? cfg.tag : '',
+    configJson: JSON.stringify(section.config ?? {}, null, 2),
+  }
+}
+
 export function HomepageSectionEditor({
   section,
   layoutLabels,
@@ -41,52 +78,51 @@ export function HomepageSectionEditor({
   section: HomepageSection
   layoutLabels: Record<string, string>
 }) {
+  const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [title, setTitle] = useState(section.title)
-  const [layout, setLayout] = useState(section.layout)
-  const [sortOrder, setSortOrder] = useState(String(section.sort_order))
-  const [visible, setVisible] = useState(section.is_visible)
-  const cfg = (section.config ?? {}) as Record<string, unknown>
-  const [maxItems, setMaxItems] = useState(
-    typeof cfg.max_items === 'number' ? String(cfg.max_items) : typeof cfg.max_items === 'string' ? cfg.max_items : '',
+  const getDefaults = useCallback(() => buildDefaults(section), [section])
+  const [form, setForm, clearDraft] = useFormDraftState(
+    `admin:reader:homepage:v2:${section.id}`,
+    getDefaults,
   )
-  const [maxPerStrip, setMaxPerStrip] = useState(
-    typeof cfg.max_per_strip === 'number'
-      ? String(cfg.max_per_strip)
-      : typeof cfg.max_per_strip === 'string'
-        ? cfg.max_per_strip
-        : '',
-  )
-  const [tagFilter, setTagFilter] = useState(typeof cfg.tag === 'string' ? cfg.tag : '')
-  const [configJson, setConfigJson] = useState(JSON.stringify(section.config ?? {}, null, 2))
+
+  const syncedRef = useRef(section.updated_at)
+  useEffect(() => {
+    if (syncedRef.current !== section.updated_at) {
+      syncedRef.current = section.updated_at
+      setForm(buildDefaults(section))
+    }
+  }, [section, setForm])
 
   function save() {
     let baseConfig: Record<string, unknown>
     try {
-      baseConfig = JSON.parse(configJson) as Record<string, unknown>
+      baseConfig = JSON.parse(form.configJson) as Record<string, unknown>
     } catch {
       alert('JSON de configuration invalide.')
       return
     }
     const merged: Record<string, unknown> = { ...baseConfig }
-    const mi = numOrEmpty(maxItems)
+    const mi = numOrEmpty(form.maxItems)
     if (mi !== undefined) merged.max_items = mi
     else delete merged.max_items
-    const mps = numOrEmpty(maxPerStrip)
+    const mps = numOrEmpty(form.maxPerStrip)
     if (mps !== undefined) merged.max_per_strip = mps
     else delete merged.max_per_strip
-    if (tagFilter.trim()) merged.tag = tagFilter.trim()
+    if (form.tagFilter.trim()) merged.tag = form.tagFilter.trim()
     else delete merged.tag
 
     startTransition(async () => {
       try {
         await updateHomepageSection(section.id, {
-          title: title.trim(),
-          layout,
-          sort_order: Number(sortOrder) || 0,
-          is_visible: visible,
+          title: form.title.trim(),
+          layout: form.layout,
+          sort_order: Number(form.sortOrder) || 0,
+          is_visible: form.visible,
           config: merged,
         })
+        clearDraft()
+        router.refresh()
       } catch {
         alert('Erreur.')
       }
@@ -104,9 +140,15 @@ export function HomepageSectionEditor({
             <p className="text-xs text-muted-foreground">
               Dernière mise à jour : {new Date(section.updated_at).toLocaleString('fr-FR')}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Brouillon local conservé jusqu’à enregistrement réussi (rechargement de page inclus).
+            </p>
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <Checkbox checked={visible} onChange={(e) => setVisible(e.target.checked)} />
+            <Checkbox
+              checked={form.visible}
+              onChange={(e) => setForm((f) => ({ ...f, visible: e.target.checked }))}
+            />
             Visible sur le site
           </label>
         </div>
@@ -122,15 +164,20 @@ export function HomepageSectionEditor({
               <Label size="sm" className="text-muted-foreground">
                 Titre affiché
               </Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <Input
+                value={form.title}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              />
             </div>
             <div className="space-y-1">
               <Label size="sm" className="text-muted-foreground">
                 Disposition
               </Label>
               <Select
-                value={layout}
-                onChange={(e) => setLayout(e.target.value as HomepageSection['layout'])}
+                value={form.layout}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, layout: e.target.value as HomepageSection['layout'] }))
+                }
                 className="h-10"
                 options={Object.entries(layoutLabels).map(([k, v]) => ({ value: k, label: v }))}
               />
@@ -139,12 +186,20 @@ export function HomepageSectionEditor({
               <Label size="sm" className="text-muted-foreground">
                 Ordre d’affichage
               </Label>
-              <Input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} />
+              <Input
+                type="number"
+                value={form.sortOrder}
+                onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
+              />
             </div>
           </div>
         </AdminFormSection>
 
-        <AdminFormSection title="Paramètres fréquents" description="Fusionnés dans le JSON de configuration." className="border-dashed">
+        <AdminFormSection
+          title="Paramètres fréquents"
+          description="Fusionnés dans le JSON de configuration."
+          className="border-dashed"
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label size="sm" className="text-muted-foreground">
@@ -154,8 +209,8 @@ export function HomepageSectionEditor({
                 type="number"
                 min={0}
                 placeholder="ex. 10"
-                value={maxItems}
-                onChange={(e) => setMaxItems(e.target.value)}
+                value={form.maxItems}
+                onChange={(e) => setForm((f) => ({ ...f, maxItems: e.target.value }))}
               />
             </div>
             {section.key === 'rubriques' ? (
@@ -167,8 +222,8 @@ export function HomepageSectionEditor({
                   type="number"
                   min={0}
                   placeholder="ex. 2"
-                  value={maxPerStrip}
-                  onChange={(e) => setMaxPerStrip(e.target.value)}
+                  value={form.maxPerStrip}
+                  onChange={(e) => setForm((f) => ({ ...f, maxPerStrip: e.target.value }))}
                 />
               </div>
             ) : null}
@@ -177,7 +232,11 @@ export function HomepageSectionEditor({
                 <Label size="sm" className="text-muted-foreground">
                   Filtre tag (vidéo)
                 </Label>
-                <Input value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} placeholder="video" />
+                <Input
+                  value={form.tagFilter}
+                  onChange={(e) => setForm((f) => ({ ...f, tagFilter: e.target.value }))}
+                  placeholder="video"
+                />
               </div>
             ) : null}
           </div>
@@ -187,13 +246,23 @@ export function HomepageSectionEditor({
           <Label size="sm" className="text-muted-foreground">
             Configuration JSON (avancé)
           </Label>
-          <Textarea value={configJson} onChange={(e) => setConfigJson(e.target.value)} rows={5} className="font-mono text-xs" />
+          <Textarea
+            value={form.configJson}
+            onChange={(e) => setForm((f) => ({ ...f, configJson: e.target.value }))}
+            rows={5}
+            className="font-mono text-xs"
+          />
         </div>
 
-        <Button type="button" onClick={save} disabled={pending} className="gap-2 rounded-lg">
-          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Enregistrer (audit)
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={save} disabled={pending} className="gap-2 rounded-lg">
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Enregistrer (audit)
+          </Button>
+          <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={clearDraft}>
+            Réinitialiser le brouillon
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

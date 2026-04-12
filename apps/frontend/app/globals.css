@@ -27,6 +27,52 @@
 .scoop-loader-dot-delay-1 { animation: scoop-dot-bounce 1.4s ease-in-out 0.2s infinite; }
 .scoop-loader-dot-delay-2 { animation: scoop-dot-bounce 1.4s ease-in-out 0.4s infinite; }
 
+@keyframes scoop-ad-fallback-shift {
+  0%, 100% { background-position: 0% 40%; }
+  50% { background-position: 100% 60%; }
+}
+
+@keyframes scoop-ad-fallback-fade {
+  0%, 100% { opacity: 0.92; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-1px); }
+}
+
+@keyframes scoop-ad-fallback-pulse {
+  0%, 100% { opacity: 0.88; }
+  50% { opacity: 1; }
+}
+
+.scoop-ad-fallback-gradient {
+  background-size: 200% 200%;
+  animation: scoop-ad-fallback-shift 10s ease-in-out infinite;
+}
+
+.scoop-ad-fallback-logo {
+  animation: scoop-ad-fallback-fade 3.2s ease-in-out infinite;
+}
+
+.scoop-ad-fallback-title {
+  animation: scoop-ad-fallback-fade 4s ease-in-out infinite 0.15s;
+}
+
+.scoop-ad-fallback-sub {
+  animation: scoop-ad-fallback-pulse 5s ease-in-out infinite 0.2s;
+}
+
+.scoop-ad-fallback-cta {
+  animation: scoop-ad-fallback-fade 3.6s ease-in-out infinite 0.35s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scoop-ad-fallback-gradient,
+  .scoop-ad-fallback-logo,
+  .scoop-ad-fallback-title,
+  .scoop-ad-fallback-sub,
+  .scoop-ad-fallback-cta {
+    animation: none !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

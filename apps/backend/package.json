@@ -17,7 +17,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:bootstrap": "tsx scripts/bootstrap-drizzle-migrations.ts",
     "verify:ad-slots": "tsx scripts/verify-ad-slot-keys.ts",
-    "verify:reader-ads-schema": "tsx scripts/verify-reader-ads-schema.ts"
+    "verify:reader-ads-schema": "tsx scripts/verify-reader-ads-schema.ts",
+    "job:ingest-audience-metrics": "tsx scripts/ingest-audience-metrics.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
