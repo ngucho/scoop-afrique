@@ -40,7 +40,7 @@ export async function ReaderLayout({
 
   return (
     <ReaderAdFallbackProvider value={emptyAdCopy}>
-    <div className="flex min-h-screen flex-col bg-editorial-surface text-editorial-on-surface">
+    <div className="flex min-h-screen min-w-0 flex-col overflow-x-clip bg-editorial-surface text-editorial-on-surface">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
@@ -52,7 +52,7 @@ export async function ReaderLayout({
         id="main-content"
         tabIndex={-1}
         className={cn(
-          'flex flex-1 flex-col pb-24 outline-none md:pb-12',
+          'flex min-w-0 flex-1 flex-col pb-24 outline-none md:pb-12',
           variant === 'tribune' && 'bg-gradient-to-b from-background via-muted/20 to-background',
         )}
       >

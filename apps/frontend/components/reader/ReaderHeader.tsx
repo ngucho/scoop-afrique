@@ -17,19 +17,19 @@ import { TribuneSecondaryNav } from '@/components/reader/TribuneSecondaryNav'
 
 function LogoBlock() {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex min-w-0 items-center gap-0.5 sm:gap-1">
       <GlitchText
         text="SCOOP"
         as="span"
         scramble={false}
-        className="font-[var(--font-scoop)] text-lg font-black uppercase leading-none tracking-tight text-foreground md:text-xl"
+        className="font-[var(--font-scoop)] text-base font-black uppercase leading-none tracking-tight text-foreground sm:text-lg md:text-xl"
       />
-      <Dot size="md" className="shrink-0 align-middle" />
+      <Dot size="md" className="shrink-0 align-middle max-sm:scale-90" />
       <GlitchText
         text="AFRIQUE"
         as="span"
         scramble={false}
-        className="font-sans text-lg font-black uppercase leading-none tracking-tight text-primary md:text-xl"
+        className="font-sans text-base font-black uppercase leading-none tracking-tight text-primary sm:text-lg md:text-xl"
       />
     </div>
   )

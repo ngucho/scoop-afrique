@@ -16,6 +16,10 @@ export const revalidate = 30
 
 const SITE_URL = config.siteUrl
 
+/** Edge-to-edge carousel on mobile; parent must have min-w-0 to avoid horizontal page scroll */
+const HOME_CAROUSEL_ROW =
+  '-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-4 pb-2 [-webkit-overflow-scrolling:touch] md:mx-0 md:px-0'
+
 export const metadata: Metadata = {
   title: 'Actualités panafricaines — Scoop.Afrique',
   description:
@@ -83,23 +87,25 @@ function HomeRubriqueStripArticles({
 }) {
   if (layout === 'carousel') {
     return (
-      <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+      <div className="min-w-0 w-full max-w-full">
+        <div className={HOME_CAROUSEL_ROW}>
         {articles.map((article, i) => (
-          <div key={article.id} className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]">
+          <div key={article.id} className="w-[min(272px,calc(100vw-2.5rem))] shrink-0 snap-start sm:w-[min(280px,85vw)] md:w-[260px]">
             <MotionEnter disabled={i > 4}>
               <ArticleCard article={article} variant="compact" imagePriority={i === 0} />
             </MotionEnter>
           </div>
         ))}
+        </div>
       </div>
     )
   }
 
   if (layout === 'featured_grid') {
     return (
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid min-w-0 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {articles.map((article, i) => (
-          <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
+          <MotionEnter key={article.id} className="min-w-0 scoop-motion-hover-depth rounded-xl">
             <ArticleCard article={article} imagePriority={i < 2} />
           </MotionEnter>
         ))}
@@ -108,7 +114,7 @@ function HomeRubriqueStripArticles({
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid min-w-0 gap-6 md:grid-cols-2">
       {articles.map((article) => (
         <ArticleCard key={article.id} article={article} variant="row" />
       ))}
@@ -126,16 +132,18 @@ function HomeArticlesSection({
   const grid = layout === 'featured_grid'
 
   const header = (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
+    <div className="mb-6 flex min-w-0 max-w-full flex-wrap items-end justify-between gap-3 gap-y-4 md:mb-8">
       {sectionKey === 'latest' ? (
         <h2
-          className="border-l-4 border-primary pl-4 text-3xl font-bold text-editorial-on-surface"
+          className="min-w-0 max-w-full break-words border-l-4 border-primary pl-3 text-2xl font-bold text-editorial-on-surface sm:pl-4 sm:text-3xl"
           style={{ fontFamily: 'var(--font-headline)' }}
         >
           {title}
         </h2>
       ) : (
-        <SectionHeader label={title} />
+        <div className="min-w-0 max-w-full flex-1 basis-[min(100%,280px)]">
+          <SectionHeader label={title} />
+        </div>
       )}
       <Link
         href="/articles"
@@ -149,28 +157,30 @@ function HomeArticlesSection({
   if (sectionKey === 'trending') {
     if (carousel) {
       return (
-        <MotionEnter as="section" className="mb-14 md:mb-16">
+        <MotionEnter as="section" className="mb-14 min-w-0 max-w-full md:mb-16">
           {header}
-          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+          <div className="min-w-0 w-full max-w-full">
+            <div className={HOME_CAROUSEL_ROW}>
             {articles.map((article, i) => (
-              <div key={article.id} className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]">
+              <div key={article.id} className="w-[min(272px,calc(100vw-2.5rem))] shrink-0 snap-start sm:w-[min(280px,85vw)] md:w-[260px]">
                 <MotionEnter disabled={i > 4}>
                   <ArticleCard article={article} variant="compact" imagePriority={i === 0} />
                 </MotionEnter>
               </div>
             ))}
+            </div>
           </div>
         </MotionEnter>
       )
     }
     return (
-      <MotionEnter as="section" className="mb-14 md:mb-16">
+      <MotionEnter as="section" className="mb-14 min-w-0 max-w-full md:mb-16">
         {header}
-        <ol className="grid gap-3 sm:grid-cols-2">
+        <ol className="grid min-w-0 gap-3 sm:grid-cols-2">
           {articles.map((article, i) => (
             <li
               key={article.id}
-              className="flex gap-4 rounded-xl border border-border bg-card/50 p-4 scoop-motion-hover-depth"
+              className="flex min-w-0 gap-3 rounded-xl border border-border bg-card/50 p-3 sm:gap-4 sm:p-4 scoop-motion-hover-depth"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
                 {i + 1}
@@ -191,11 +201,12 @@ function HomeArticlesSection({
   if (carousel) {
     const emphasizeVideo = sectionKey === 'video'
     return (
-      <MotionEnter as="section" className="mb-14 md:mb-16">
+      <MotionEnter as="section" className="mb-14 min-w-0 max-w-full md:mb-16">
         {header}
-        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+        <div className="min-w-0 w-full max-w-full">
+          <div className={HOME_CAROUSEL_ROW}>
           {articles.map((article, i) => (
-            <div key={article.id} className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]">
+            <div key={article.id} className="w-[min(272px,calc(100vw-2.5rem))] shrink-0 snap-start sm:w-[min(280px,85vw)] md:w-[260px]">
               <MotionEnter disabled={i > 4}>
                 <ArticleCard
                   article={article}
@@ -206,6 +217,7 @@ function HomeArticlesSection({
               </MotionEnter>
             </div>
           ))}
+          </div>
         </div>
       </MotionEnter>
     )
@@ -213,11 +225,11 @@ function HomeArticlesSection({
 
   if (grid) {
     return (
-      <MotionEnter as="section" className="mb-14 md:mb-16">
+      <MotionEnter as="section" className="mb-14 min-w-0 max-w-full md:mb-16">
         {header}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid min-w-0 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {articles.map((article, i) => (
-            <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
+            <MotionEnter key={article.id} className="min-w-0 scoop-motion-hover-depth rounded-xl">
               <ArticleCard
                 article={article}
                 variant={sectionKey === 'video' ? 'compact' : 'default'}
@@ -233,9 +245,9 @@ function HomeArticlesSection({
 
   /* list */
   return (
-    <MotionEnter as="section" className="mb-14 md:mb-16">
+    <MotionEnter as="section" className="mb-14 min-w-0 max-w-full md:mb-16">
       {header}
-      <div className="grid gap-10 sm:grid-cols-2">
+      <div className="grid min-w-0 gap-8 sm:grid-cols-2 sm:gap-10">
         {articles.map((article, i) => (
           <MotionEnter key={article.id} disabled={i > 5}>
             <ArticleCard
@@ -282,27 +294,27 @@ export default async function HomePage() {
       {itemListJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       ) : null}
-      <div className="mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6 md:pb-12 lg:px-8">
-        <header className="mb-10">
+      <div className="mx-auto w-full min-w-0 max-w-7xl px-4 pb-24 pt-8 sm:px-6 md:pb-12 lg:px-8">
+        <header className="mb-10 min-w-0 max-w-full">
           <SectionHeader label="Accueil" className="mb-4" />
           <Heading
             as="h1"
             level="h1"
-            className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
+            className="break-words text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
             style={{ fontFamily: 'var(--font-headline)' }}
           >
             L&apos;Afrique, en continu
           </Heading>
-          <p className="mt-3 max-w-2xl text-editorial-secondary">
+          <p className="mt-3 max-w-2xl break-words text-editorial-secondary">
             Décryptages, reportages et analyses — la page d&apos;accueil suit l&apos;ordre défini dans le CMS (sections,
             encarts pub, mise en page par bloc).
           </p>
         </header>
 
         {blocks.map((block, i) => (
-          <div key={`${block.type}-${block.cmsKey}-${i}`}>
+          <div key={`${block.type}-${block.cmsKey}-${i}`} className="min-w-0 max-w-full">
             {block.type === 'hero' ? (
-              <MotionEnter as="section" className="mb-12 md:mb-14">
+              <MotionEnter as="section" className="mb-12 min-w-0 max-w-full md:mb-14">
                 {sponsorAd ? (
                   <div className="mb-4">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Partenaire</p>
@@ -316,20 +328,22 @@ export default async function HomePage() {
             {block.type === 'articles' ? <HomeArticlesSection block={block} /> : null}
 
             {block.type === 'rubriques' ? (
-              <div className="mb-14 space-y-14 md:mb-16">
+              <div className="mb-14 min-w-0 max-w-full space-y-14 md:mb-16">
                 <MotionEnter as="div">
                   <h2
-                    className="mb-8 border-l-4 border-primary pl-4 text-2xl font-bold text-editorial-on-surface md:text-3xl"
+                    className="mb-8 break-words border-l-4 border-primary pl-3 text-xl font-bold text-editorial-on-surface sm:pl-4 sm:text-2xl md:text-3xl"
                     style={{ fontFamily: 'var(--font-headline)' }}
                   >
                     {block.title}
                   </h2>
                 </MotionEnter>
                 {block.strips.map((strip) => (
-                  <MotionEnter as="section" key={strip.slug}>
-                    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-                      <SectionHeader label={strip.label} />
-                      <Button variant="ghost" size="sm" asChild>
+                  <MotionEnter as="section" key={strip.slug} className="min-w-0 max-w-full">
+                    <div className="mb-6 flex min-w-0 max-w-full flex-wrap items-end justify-between gap-3 gap-y-4">
+                      <div className="min-w-0 max-w-full flex-1 basis-[min(100%,240px)]">
+                        <SectionHeader label={strip.label} />
+                      </div>
+                      <Button variant="ghost" size="sm" className="shrink-0" asChild>
                         <Link href={strip.slug === 'actualites' ? '/articles' : `/category/${strip.slug}`}>
                           Voir la rubrique
                         </Link>
@@ -347,11 +361,11 @@ export default async function HomePage() {
                   if (!picked) return null
                   const wide = block.adSlotKey === AD_SLOT_KEYS.HOME_BOTTOM
                   return (
-                    <MotionEnter as="div" className="mb-14 flex justify-center" role="complementary" aria-label={block.title}>
+                    <MotionEnter as="div" className="mb-14 flex min-w-0 justify-center" role="complementary" aria-label={block.title}>
                       <AdSlotSection
                         slotKey={block.adSlotKey}
                         creative={picked.creative}
-                        className={wide ? 'w-full' : 'w-full max-w-[300px]'}
+                        className={wide ? 'w-full max-w-full' : 'w-full max-w-[min(100%,300px)]'}
                         label={block.title}
                       />
                     </MotionEnter>
