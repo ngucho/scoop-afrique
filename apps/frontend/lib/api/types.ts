@@ -22,6 +22,11 @@ export interface Article {
   created_at: string
   updated_at: string
   author?: { email: string | null } | null
+  /** Champs publics (profil journaliste) — pas d’email / contact. */
+  author_public?: {
+    bio: string | null
+    avatar_url: string | null
+  } | null
   category?: { id: string; name: string; slug: string } | null
 }
 
@@ -46,18 +51,54 @@ export interface Comment {
   author?: { email: string | null } | null
 }
 
+export interface ContributionAuthor {
+  profile_id: string
+  pseudo: string | null
+  display_name: string | null
+  avatar_url: string | null
+  email: string | null
+}
+
 export interface ReaderContribution {
   id: string
   user_id: string
+  article_id?: string | null
   kind: 'writing' | 'event'
   title: string
   body: string
   event_location: string | null
   event_starts_at: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'suspended'
+  is_anonymous?: boolean
+  upvote_count?: number
+  downvote_count?: number
+  comment_count?: number
   created_at: string
   updated_at: string
-  author?: { email: string | null } | null
+  author: ContributionAuthor | null
+}
+
+export interface ContributionComment {
+  id: string
+  contribution_id: string
+  parent_id: string | null
+  body: string
+  is_anonymous: boolean
+  created_at: string
+  author_email: string | null
+  author_pseudo: string | null
+  author_display_name: string | null
+  author_avatar_url: string | null
+  reactions: { emoji: string; count: number }[]
+  your_reaction_emojis: string[]
+}
+
+export interface TribuneFollowListRow {
+  profile_id: string
+  pseudo: string | null
+  display_name: string | null
+  avatar_url: string | null
+  followed_at: string
 }
 
 export interface MediaRecord {
@@ -93,12 +134,30 @@ export interface ReaderAnnouncement {
   title: string
   body: string
   audience: 'all' | 'subscribers' | 'guests'
+  link_url: string | null
+  placement: 'banner' | 'modal' | 'inline' | 'footer'
+  priority: number
   starts_at: string | null
   ends_at: string | null
   is_active: boolean
   created_by: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ReaderChromeSettings {
+  empty_ad_title: string | null
+  empty_ad_subtitle: string | null
+  updated_at: string
+}
+
+export interface WriterApiKeyRow {
+  id: string
+  key_prefix: string
+  label: string
+  last_used_at: string | null
+  revoked_at: string | null
+  created_at: string
 }
 
 export interface AdSlot {
@@ -184,6 +243,28 @@ export interface ReaderAdMetrics {
   totals: { impressions: number; clicks: number; ctr: number | null }
 }
 
+/** Single KPI snapshot row (admin time-series / dashboards). */
+export interface AudienceMetricSnapshot {
+  id: string
+  platform: string
+  metric_key: string
+  snapshot_date: string
+  country_code: string | null
+  value_numeric: string
+  source: string
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+/** Latest value per (platform, metric_key) — shape from GET /audience-metrics/latest. */
+export interface AudienceMetricLatestRow {
+  platform: string
+  metric_key: string
+  snapshot_date: string
+  value_numeric: string
+  country_code: string | null
+}
+
 export interface ReaderDashboardKpis {
   subscriberGrowth: { week_start: string; new_subscribers: number }[]
   adCtrBySlot: { slot_key: string; impressions: number; clicks: number; ctr: number | null }[]
@@ -202,6 +283,13 @@ export interface ReaderDashboardKpis {
     category_slug: string | null
   }[]
   newsletterTotals: { confirmed: number; pending: number; unsubscribed: number }
+  audienceLatest?: {
+    platform: string
+    metric_key: string
+    snapshot_date: string
+    value_numeric: string
+    country_code: string
+  }[]
 }
 
 /* Reader public announcement + ad placements */

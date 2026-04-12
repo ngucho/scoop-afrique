@@ -13,6 +13,7 @@ import {
 import type { Announcement } from '@/lib/api/types'
 import type { Category } from '@/lib/api/types'
 import { READER_CATEGORIES } from '@/lib/readerCategories'
+import { TribuneSecondaryNav } from '@/components/reader/TribuneSecondaryNav'
 
 function LogoBlock() {
   return (
@@ -42,6 +43,7 @@ export interface ReaderHeaderProps {
 
 export function ReaderHeader({ bannerAnnouncement, urgentBar, categories }: ReaderHeaderProps) {
   const pathname = usePathname()
+  const isTribune = pathname.startsWith('/tribune')
 
   const fromApi = categories.map((c) => ({ slug: c.slug, name: c.name }))
   const hasActualites = fromApi.some((c) => c.slug === 'actualites')
@@ -67,6 +69,8 @@ export function ReaderHeader({ bannerAnnouncement, urgentBar, categories }: Read
     const active = pathname === href || (pathname.startsWith('/category/') && pathname === href)
     return { href, label: cat.name, active }
   })
+
+  const drawerLinkClass = 'rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted'
 
   const banner =
     bannerAnnouncement ? (
@@ -96,6 +100,7 @@ export function ReaderHeader({ bannerAnnouncement, urgentBar, categories }: Read
       logoHref="/"
       mainNav={mainNav}
       categoryNav={categoryNav}
+      secondaryNav={isTribune ? <TribuneSecondaryNav /> : undefined}
       searchHref="/search"
       accountHref="/account"
       rightSlot={
@@ -114,6 +119,24 @@ export function ReaderHeader({ bannerAnnouncement, urgentBar, categories }: Read
         </div>
       }
       drawerFooterSlot={<ThemeToggle />}
+      mobileDrawerExtra={
+        isTribune ? (
+          <>
+            <div className="my-2 border-t border-border pt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+              Accès Tribune
+            </div>
+            <Link href="/tribune" className={drawerLinkClass} prefetch={false}>
+              Fil
+            </Link>
+            <Link href="/tribune/profile" className={drawerLinkClass} prefetch={false}>
+              Mon profil
+            </Link>
+            <Link href="/tribune/network" className={drawerLinkClass} prefetch={false}>
+              Réseau
+            </Link>
+          </>
+        ) : null
+      }
       brandsHref="https://brands.scoop-afrique.com"
     />
   )

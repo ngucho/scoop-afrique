@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, isNull, lte, or } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
-import { announcements } from '../db/schema.js'
+import { announcements, readerAnnouncements } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { CreateAnnouncementBody, UpdateAnnouncementBody } from '../schemas/announcements.js'
 
@@ -20,22 +20,56 @@ function rowToApi(row: typeof announcements.$inferSelect) {
   }
 }
 
+function readerAnnouncementToApi(row: typeof readerAnnouncements.$inferSelect) {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    placement: row.placement,
+    priority: row.priority,
+    link_url: row.linkUrl ?? null,
+    is_active: row.isActive,
+    starts_at: row.startsAt?.toISOString() ?? null,
+    ends_at: row.endsAt?.toISOString() ?? null,
+    created_at: row.createdAt.toISOString(),
+    updated_at: row.updatedAt.toISOString(),
+  }
+}
+
 export async function listActiveAnnouncements() {
   if (!config.database) return []
   const db = getDb()
   const now = new Date()
-  const rows = await db
-    .select()
-    .from(announcements)
-    .where(
-      and(
-        eq(announcements.isActive, true),
-        or(isNull(announcements.startsAt), lte(announcements.startsAt, now)),
-        or(isNull(announcements.endsAt), gte(announcements.endsAt, now))
-      )
-    )
-    .orderBy(desc(announcements.priority), desc(announcements.createdAt))
-  return rows.map(rowToApi)
+  const dateOk = and(
+    or(isNull(announcements.startsAt), lte(announcements.startsAt, now)),
+    or(isNull(announcements.endsAt), gte(announcements.endsAt, now)),
+  )
+  const readerDateOk = and(
+    or(isNull(readerAnnouncements.startsAt), lte(readerAnnouncements.startsAt, now)),
+    or(isNull(readerAnnouncements.endsAt), gte(readerAnnouncements.endsAt, now)),
+  )
+
+  const [legacyRows, readerRows] = await Promise.all([
+    db
+      .select()
+      .from(announcements)
+      .where(and(eq(announcements.isActive, true), dateOk))
+      .orderBy(desc(announcements.priority), desc(announcements.createdAt)),
+    db
+      .select()
+      .from(readerAnnouncements)
+      .where(and(eq(readerAnnouncements.isActive, true), readerDateOk))
+      .orderBy(desc(readerAnnouncements.priority), desc(readerAnnouncements.updatedAt)),
+  ])
+
+  const merged = [
+    ...legacyRows.map(rowToApi),
+    ...readerRows.map(readerAnnouncementToApi),
+  ].sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  })
+  return merged
 }
 
 export async function listAnnouncementsAdmin() {

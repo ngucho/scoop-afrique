@@ -1,7 +1,16 @@
 'use client'
 
 import { Button } from 'scoop'
-import { IconShare, IconCopy, IconCheck } from '@tabler/icons-react'
+import {
+  IconShare,
+  IconCopy,
+  IconCheck,
+  IconBrandWhatsapp,
+  IconBrandTelegram,
+  IconBrandX,
+  IconBrandFacebook,
+  IconBrandLinkedin,
+} from '@tabler/icons-react'
 import { useState } from 'react'
 
 const SHARE_LINKS = {
@@ -38,29 +47,29 @@ export function ShareButtons({ url, title, className }: ShareButtonsProps) {
         <IconShare className="h-4 w-4" />
         Partager
       </span>
-      <Button variant="outline" size="sm" asChild>
+      <Button variant="outline" size="icon-sm" asChild>
         <a href={SHARE_LINKS.whatsapp(url, title)} target="_blank" rel="noopener noreferrer" aria-label="Partager sur WhatsApp">
-          WhatsApp
+          <IconBrandWhatsapp className="h-4 w-4" aria-hidden />
         </a>
       </Button>
-      <Button variant="outline" size="sm" asChild>
+      <Button variant="outline" size="icon-sm" asChild>
         <a href={SHARE_LINKS.telegram(url, title)} target="_blank" rel="noopener noreferrer" aria-label="Partager sur Telegram">
-          Telegram
+          <IconBrandTelegram className="h-4 w-4" aria-hidden />
         </a>
       </Button>
-      <Button variant="outline" size="sm" asChild>
+      <Button variant="outline" size="icon-sm" asChild>
         <a href={SHARE_LINKS.twitter(url, title)} target="_blank" rel="noopener noreferrer" aria-label="Partager sur X">
-          X
+          <IconBrandX className="h-4 w-4" aria-hidden />
         </a>
       </Button>
-      <Button variant="outline" size="sm" asChild>
+      <Button variant="outline" size="icon-sm" asChild>
         <a href={SHARE_LINKS.facebook(url)} target="_blank" rel="noopener noreferrer" aria-label="Partager sur Facebook">
-          Facebook
+          <IconBrandFacebook className="h-4 w-4" aria-hidden />
         </a>
       </Button>
-      <Button variant="outline" size="sm" asChild>
+      <Button variant="outline" size="icon-sm" asChild>
         <a href={SHARE_LINKS.linkedin(url, title)} target="_blank" rel="noopener noreferrer" aria-label="Partager sur LinkedIn">
-          LinkedIn
+          <IconBrandLinkedin className="h-4 w-4" aria-hidden />
         </a>
       </Button>
       <Button variant="outline" size="sm" onClick={handleCopy} aria-label="Copier le lien">

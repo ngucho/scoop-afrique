@@ -24,6 +24,10 @@ import {
   IconLayoutGrid,
   IconMail,
   IconCalendar,
+  IconPalette,
+  IconKey,
+  IconChartBar,
+  IconPencil,
 } from '@tabler/icons-react'
 import { type AppRole, getVisibleNav, ROLE_LABELS, ROLE_COLORS } from '@/lib/admin/rbac'
 
@@ -41,6 +45,10 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   LayoutGrid: IconLayoutGrid,
   Mail: IconMail,
   Calendar: IconCalendar,
+  Palette: IconPalette,
+  Key: IconKey,
+  ChartBar: IconChartBar,
+  PenLine: IconPencil,
 }
 
 export function AdminLayoutClient({

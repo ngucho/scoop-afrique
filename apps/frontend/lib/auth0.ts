@@ -45,6 +45,10 @@ export interface UserMetadataFromToken {
   address?: string
   phone?: string
   sex?: string
+  public_bio?: string
+  public_avatar_url?: string
+  contact_private?: string
+  preferences?: string
 }
 
 /**

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { getReaderSession } from '@/lib/reader-auth0'
 
 export default async function ReaderAccountProtectedLayout({
@@ -10,5 +11,5 @@ export default async function ReaderAccountProtectedLayout({
   if (!session?.user) {
     redirect('/account/login')
   }
-  return <div className="min-h-screen bg-background">{children}</div>
+  return <ReaderLayout>{children}</ReaderLayout>
 }

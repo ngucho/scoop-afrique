@@ -13,8 +13,9 @@ interface PageProps {
 
 const STATUS_FILTERS = [
   { value: '', label: 'Tous' },
-  { value: 'pending', label: 'En attente' },
-  { value: 'approved', label: 'Approuvés' },
+  { value: 'pending', label: 'En attente (legacy)' },
+  { value: 'approved', label: 'Publiés' },
+  { value: 'suspended', label: 'Suspendus' },
   { value: 'rejected', label: 'Rejetés' },
 ]
 
@@ -43,6 +44,11 @@ export default async function AdminContributionsPage({ searchParams }: PageProps
         </Heading>
         <p className="mt-1 text-sm text-muted-foreground">
           {total} contribution{total !== 1 ? 's' : ''}
+        </p>
+        <p className="mt-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          Les nouvelles publications sont <strong className="text-foreground">acceptées automatiquement</strong> et
+          visibles sur la tribune. L’équipe intervient ici uniquement pour réguler : suspendre une publication (retrait
+          temporaire du fil), rejeter ou supprimer en cas de problème.
         </p>
       </div>
 
@@ -80,14 +86,18 @@ export default async function AdminContributionsPage({ searchParams }: PageProps
                             ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                             : row.status === 'approved'
                               ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                              : row.status === 'suspended'
+                                ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200'
+                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                         }`}
                       >
                         {row.status === 'pending'
                           ? 'En attente'
                           : row.status === 'approved'
-                            ? 'Approuvé'
-                            : 'Rejeté'}
+                            ? 'Publié'
+                            : row.status === 'suspended'
+                              ? 'Suspendu'
+                              : 'Rejeté'}
                       </span>
                       <span className="text-xs text-muted-foreground">{formatDate(row.created_at)}</span>
                     </div>

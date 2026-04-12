@@ -26,7 +26,7 @@ export async function requireReaderAuth(c: Context, next: Next) {
 
   const user = await getReaderAuthUser(c)
   if (!user) {
-    logger.authFail(path, 'INVALID_TOKEN', 'Not a valid reader token')
+    logger.authFail(path, 'INVALID_TOKEN', 'Not a valid API token for reader routes')
     return c.json({ error: 'Unauthorized', code: 'INVALID_READER_TOKEN' }, 401)
   }
 

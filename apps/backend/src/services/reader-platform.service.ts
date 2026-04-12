@@ -17,6 +17,7 @@ import {
   newsletterSubscribers,
   readerAnnouncements,
 } from '../db/schema.js'
+import { getLatestAudienceMetricsByKey } from './audience-metric.service.js'
 import type { AppRole } from './profile.service.js'
 
 function rowsFromExecute<T>(result: unknown): T[] {
@@ -56,6 +57,14 @@ export interface ReaderDashboardKpis {
   topCategories: { category_id: string | null; name: string; slug: string | null; article_count: number; total_views: number }[]
   topArticles: { id: string; title: string; slug: string; view_count: number; category_slug: string | null }[]
   newsletterTotals: { confirmed: number; pending: number; unsubscribed: number }
+  /** Latest ingested audience / social / site KPI snapshots (if any). */
+  audienceLatest: {
+    platform: string
+    metric_key: string
+    snapshot_date: string
+    value_numeric: string
+    country_code: string
+  }[]
 }
 
 export interface ReaderAdSlotMetricsRow {
@@ -150,10 +159,11 @@ export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
     .orderBy(desc(articles.viewCount))
     .limit(10)
 
-  const [conf, pend, unsub] = await Promise.all([
+  const [conf, pend, unsub, audienceLatest] = await Promise.all([
     db.select({ c: count() }).from(newsletterSubscribers).where(eq(newsletterSubscribers.status, 'confirmed')),
     db.select({ c: count() }).from(newsletterSubscribers).where(eq(newsletterSubscribers.status, 'pending')),
     db.select({ c: count() }).from(newsletterSubscribers).where(eq(newsletterSubscribers.status, 'unsubscribed')),
+    getLatestAudienceMetricsByKey(),
   ])
 
   return {
@@ -190,6 +200,13 @@ export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
       pending: pend[0]?.c ?? 0,
       unsubscribed: unsub[0]?.c ?? 0,
     },
+    audienceLatest: audienceLatest.map((a) => ({
+      platform: a.platform,
+      metric_key: a.metric_key,
+      snapshot_date: a.snapshot_date,
+      value_numeric: a.value_numeric,
+      country_code: a.country_code ?? '',
+    })),
   }
 }
 
@@ -274,6 +291,9 @@ export async function createAnnouncement(
     title: string
     body: string
     audience: 'all' | 'subscribers' | 'guests'
+    link_url?: string | null
+    placement?: 'banner' | 'modal' | 'inline' | 'footer'
+    priority?: number
     starts_at: string | null
     ends_at: string | null
     is_active: boolean
@@ -287,6 +307,9 @@ export async function createAnnouncement(
       title: data.title,
       body: data.body,
       audience: data.audience,
+      linkUrl: data.link_url ?? null,
+      placement: data.placement ?? 'banner',
+      priority: data.priority ?? 0,
       startsAt: data.starts_at ? new Date(data.starts_at) : null,
       endsAt: data.ends_at ? new Date(data.ends_at) : null,
       isActive: data.is_active,
@@ -302,6 +325,9 @@ export async function updateAnnouncement(
     title: string
     body: string
     audience: 'all' | 'subscribers' | 'guests'
+    link_url: string | null
+    placement: 'banner' | 'modal' | 'inline' | 'footer'
+    priority: number
     starts_at: string | null
     ends_at: string | null
     is_active: boolean
@@ -314,6 +340,9 @@ export async function updateAnnouncement(
       ...(data.title !== undefined ? { title: data.title } : {}),
       ...(data.body !== undefined ? { body: data.body } : {}),
       ...(data.audience !== undefined ? { audience: data.audience } : {}),
+      ...(data.link_url !== undefined ? { linkUrl: data.link_url } : {}),
+      ...(data.placement !== undefined ? { placement: data.placement } : {}),
+      ...(data.priority !== undefined ? { priority: data.priority } : {}),
       ...(data.starts_at !== undefined
         ? { startsAt: data.starts_at ? new Date(data.starts_at) : null }
         : {}),
@@ -389,6 +418,7 @@ export async function createAdCampaign(data: {
 export async function updateAdCampaign(
   id: string,
   data: Partial<{
+    slot_id: string
     name: string
     status: 'draft' | 'active' | 'paused' | 'ended'
     start_at: string | null
@@ -400,6 +430,7 @@ export async function updateAdCampaign(
   const [row] = await db
     .update(adCampaigns)
     .set({
+      ...(data.slot_id !== undefined ? { slotId: data.slot_id } : {}),
       ...(data.name !== undefined ? { name: data.name } : {}),
       ...(data.status !== undefined ? { status: data.status } : {}),
       ...(data.start_at !== undefined ? { startAt: data.start_at ? new Date(data.start_at) : null } : {}),
@@ -678,6 +709,9 @@ export function rowAnnouncement(a: typeof readerAnnouncements.$inferSelect) {
     title: a.title,
     body: a.body,
     audience: a.audience,
+    link_url: a.linkUrl ?? null,
+    placement: a.placement,
+    priority: a.priority,
     starts_at: a.startsAt?.toISOString() ?? null,
     ends_at: a.endsAt?.toISOString() ?? null,
     is_active: a.isActive,

@@ -25,6 +25,11 @@ export interface EditorialReaderHeaderProps {
   logoAriaLabel?: string
   mainNav: { href: string; label: string; active: boolean }[]
   categoryNav: { href: string; label: string; active: boolean }[]
+  /**
+   * Remplace la rangée « rubriques » (ex. Tribune : accès rapide).
+   * Si défini, `categoryNav` est ignoré pour cette rangée.
+   */
+  secondaryNav?: React.ReactNode
   searchHref: string
   searchAriaLabel?: string
   accountHref: string
@@ -33,6 +38,8 @@ export interface EditorialReaderHeaderProps {
   rightSlot?: React.ReactNode
   /** Ex. ThemeToggle sans masquage — affiché en bas du drawer mobile. */
   drawerFooterSlot?: React.ReactNode
+  /** Contenu supplémentaire dans le drawer (ex. liens Tribune). */
+  mobileDrawerExtra?: React.ReactNode
   brandsHref?: string
   brandsLabel?: string
   className?: string
@@ -49,12 +56,14 @@ export function EditorialReaderHeader({
   logoAriaLabel = 'Accueil',
   mainNav,
   categoryNav,
+  secondaryNav,
   searchHref,
   searchAriaLabel = 'Rechercher',
   accountHref,
   accountLabel = 'Compte',
   rightSlot,
   drawerFooterSlot,
+  mobileDrawerExtra,
   brandsHref,
   brandsLabel = 'Espace annonceurs',
   className,
@@ -122,13 +131,17 @@ export function EditorialReaderHeader({
         </div>
 
         <div className="mx-auto max-w-7xl overflow-x-auto border-t border-transparent px-4 pb-2 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
-          <nav className="flex items-center gap-6 py-2" aria-label="Rubriques">
-            {categoryNav.map((item) => (
-              <Link key={item.href} href={item.href} className={catLinkClass(item.active)}>
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          {secondaryNav ? (
+            <div className="py-2">{secondaryNav}</div>
+          ) : (
+            <nav className="flex items-center gap-6 py-2" aria-label="Rubriques">
+              {categoryNav.map((item) => (
+                <Link key={item.href} href={item.href} className={catLinkClass(item.active)}>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          )}
         </div>
       </header>
 
@@ -160,6 +173,7 @@ export function EditorialReaderHeader({
                   {item.label}
                 </Link>
               ))}
+              {mobileDrawerExtra}
               <Link href={searchHref} className={drawerLinkClass} onClick={() => setDrawerOpen(false)}>
                 Rechercher
               </Link>

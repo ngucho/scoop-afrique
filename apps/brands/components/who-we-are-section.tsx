@@ -10,7 +10,7 @@ export function WhoWeAreSection() {
           Qui sommes-nous ?
         </h2>
         <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-          Scoop Afrique est un média numérique né à Abidjan en 2024. Nous mélangeons rigueur d’information, esthétique
+          Scoop Afrique est un média numérique né à Abidjan en 2025. Nous mélangeons rigueur d’information, esthétique
           soignée et codes du divertissement pour parler à une audience majoritairement entre 18 et 34 ans, très présente en
           Côte d’Ivoire et dans la diaspora.
         </p>

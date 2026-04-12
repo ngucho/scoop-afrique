@@ -16,6 +16,8 @@ import type {
   ApiListResponse,
   ReaderDashboardKpis,
   ReaderAnnouncement,
+  ReaderChromeSettings,
+  WriterApiKeyRow,
   AdSlot,
   AdCampaign,
   HomepageSection,
@@ -23,6 +25,8 @@ import type {
   NewsletterCampaignRow,
   ReaderContribution,
   ReaderAdMetrics,
+  AudienceMetricSnapshot,
+  AudienceMetricLatestRow,
 } from '@/lib/api/types'
 
 async function getToken(): Promise<string | null> {
@@ -227,11 +231,66 @@ export async function fetchReaderKpis(): Promise<ReaderDashboardKpis | null> {
   }
 }
 
+export async function fetchAudienceMetricsRecent(params?: {
+  platform?: string
+  days?: number
+  limit?: number
+}): Promise<AudienceMetricSnapshot[]> {
+  const token = await getToken()
+  if (!token) return []
+  const sp = new URLSearchParams()
+  if (params?.platform) sp.set('platform', params.platform)
+  if (params?.days != null) sp.set('days', String(params.days))
+  if (params?.limit != null) sp.set('limit', String(params.limit))
+  try {
+    const res = await apiGetAuth<ApiListResponse<AudienceMetricSnapshot>>(
+      `/admin/reader/audience-metrics?${sp.toString()}`,
+      token,
+    )
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function fetchAudienceMetricsLatest(): Promise<AudienceMetricLatestRow[]> {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await apiGetAuth<{ data: AudienceMetricLatestRow[] }>('/admin/reader/audience-metrics/latest', token)
+    return res.data ?? []
+  } catch {
+    return []
+  }
+}
+
 export async function fetchAnnouncements(): Promise<ReaderAnnouncement[]> {
   const token = await getToken()
   if (!token) return []
   try {
     const res = await apiGetAuth<ApiListResponse<ReaderAnnouncement>>('/admin/reader/announcements', token)
+    return res.data
+  } catch {
+    return []
+  }
+}
+
+export async function fetchChromeSettings(): Promise<ReaderChromeSettings | null> {
+  const token = await getToken()
+  if (!token) return null
+  try {
+    const res = await apiGetAuth<ApiResponse<ReaderChromeSettings | null>>('/admin/reader/chrome-settings', token)
+    return res.data ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function fetchWriterApiKeys(): Promise<WriterApiKeyRow[]> {
+  const token = await getToken()
+  if (!token) return []
+  try {
+    const res = await apiGetAuth<ApiListResponse<WriterApiKeyRow>>('/admin/writer-api-keys', token)
     return res.data
   } catch {
     return []

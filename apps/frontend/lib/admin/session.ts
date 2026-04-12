@@ -14,6 +14,12 @@ export interface UserMetadata {
   address?: string
   phone?: string
   sex?: string
+  /** Carte auteur (lecteurs) — synchronisé Auth0 + base. */
+  public_bio?: string
+  public_avatar_url?: string
+  /** Non exposé sur le site lecteur. */
+  contact_private?: string
+  preferences?: string
 }
 
 /** Resolved admin session — built entirely from Auth0 (no backend call). */
@@ -55,6 +61,10 @@ export async function getAdminSession(): Promise<AdminSession | null> {
     address: rawMeta.address ?? undefined,
     phone: rawMeta.phone ?? undefined,
     sex: rawMeta.sex ?? undefined,
+    public_bio: (rawMeta.public_bio as string | undefined) ?? undefined,
+    public_avatar_url: (rawMeta.public_avatar_url as string | undefined) ?? undefined,
+    contact_private: (rawMeta.contact_private as string | undefined) ?? undefined,
+    preferences: (rawMeta.preferences as string | undefined) ?? undefined,
   }
 
   return {

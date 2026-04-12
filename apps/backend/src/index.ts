@@ -46,7 +46,12 @@ import adminAdsRoutes from './routes/admin/ads.js'
 import adminSubscribersRoutes from './routes/admin/subscribers.js'
 import adminDigestRoutes from './routes/admin/digest.js'
 import adminReaderPlatformRoutes from './routes/admin/reader-platform.js'
+import publicAudienceRoutes from './routes/public-audience.js'
+import tribuneRoutes from './routes/tribune.js'
 import crmRoutes from './routes/crm/index.js'
+import chromePublicRoutes from './routes/chrome-public.js'
+import writerArticlesRoutes from './routes/writer-articles.js'
+import adminWriterApiKeysRoutes from './routes/admin/writer-api-keys.js'
 
 assertConfig()
 
@@ -68,6 +73,7 @@ app.route(`${prefix}/newsletter`, newsletterRoutes)
 app.route(`${prefix}/reader`, readerRoutes)
 app.route(`${prefix}/digest`, digestRoutes)
 app.route(`${prefix}/announcements`, announcementsRoutes)
+app.route(`${prefix}/chrome`, chromePublicRoutes)
 app.route(`${prefix}/ads`, adsRoutes)
 app.route(`${prefix}/homepage`, homepagePublicRoutes)
 app.route(`${prefix}/devis`, devisRoutes)
@@ -75,6 +81,9 @@ app.route(`${prefix}/devis`, devisRoutes)
 // Comment routes use nested paths
 app.route(`${prefix}`, commentsRoutes) // /api/v1/articles/:id/comments + /api/v1/comments/:id
 app.route(`${prefix}/contributions`, contributionsRoutes)
+app.route(`${prefix}/public/audience`, publicAudienceRoutes)
+app.route(`${prefix}/tribune`, tribuneRoutes)
+app.route(`${prefix}/writer`, writerArticlesRoutes)
 
 /* ---- Admin API v1 ---- */
 app.route(`${prefix}/admin/articles`, adminArticlesRoutes)
@@ -83,6 +92,7 @@ app.route(`${prefix}/admin/contributions`, adminContributionsRoutes)
 app.route(`${prefix}/admin/categories`, adminCategoriesRoutes)
 app.route(`${prefix}/admin/media`, adminMediaRoutes)
 app.route(`${prefix}/admin/profile`, adminProfileRoutes)
+app.route(`${prefix}/admin/writer-api-keys`, adminWriterApiKeysRoutes)
 app.route(`${prefix}/admin/auth0-users`, adminAuth0UsersRoutes)
 app.route(`${prefix}/admin/notifications`, adminNotificationsRoutes)
 app.route(`${prefix}/admin/announcements`, adminAnnouncementsRoutes)

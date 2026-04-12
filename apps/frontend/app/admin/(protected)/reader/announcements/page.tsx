@@ -42,6 +42,9 @@ export default async function ReaderAnnouncementsPage() {
                 <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground sm:table-cell">
                   Audience
                 </th>
+                <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground lg:table-cell">
+                  Emplacement
+                </th>
                 <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">
                   Fenêtre
                 </th>
@@ -58,6 +61,12 @@ export default async function ReaderAnnouncementsPage() {
                   </td>
                   <td className="hidden px-4 py-3 sm:table-cell">
                     {AUDIENCE_LABELS[a.audience] ?? a.audience}
+                  </td>
+                  <td className="hidden px-4 py-3 text-muted-foreground lg:table-cell">
+                    <span className="text-xs">{a.placement}</span>
+                    {a.priority > 0 ? (
+                      <span className="ml-1 text-[10px] text-muted-foreground">· prio {a.priority}</span>
+                    ) : null}
                   </td>
                   <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
                     {a.starts_at || a.ends_at ? (
