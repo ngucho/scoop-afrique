@@ -253,11 +253,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 {article.title}
               </Heading>
               {article.excerpt ? (
-                <Text variant="lead" className="mt-4 text-lg text-editorial-secondary md:text-xl">
+                <Text variant="lead" className="mt-4 text-lg text-muted-foreground md:text-xl">
                   {article.excerpt}
                 </Text>
               ) : null}
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-editorial-outline-variant/15 py-6">
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-y border-border/80 py-6">
                 <div className="flex flex-wrap items-center gap-4">
                   <MetaBar
                     dateTime={article.published_at ?? undefined}
@@ -327,7 +327,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            <footer className="border-t border-editorial-outline-variant/15 pt-6">
+            <footer className="border-t border-border/80 pt-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <ShareButtons url={shareUrl} title={article.title} />
                 <LikeButton
