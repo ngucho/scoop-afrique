@@ -28,6 +28,7 @@ export const writerCreateArticleBodySchema = createArticleBodySchema
   .extend({
     body_text: z.string().min(1).max(200_000).optional(),
   })
+  .strict()
   .superRefine((data, ctx) => {
     const hasBodyText = typeof data.body_text === 'string' && data.body_text.trim().length > 0
     const c = data.content
@@ -49,6 +50,7 @@ export const writerUpdateArticleBodySchema = createArticleBodySchema
     /** Pas de publication via l’API — draft / review seulement. */
     status: z.enum(['draft', 'review']).optional(),
   })
+  .strict()
 
 export type WriterCreateArticleBody = z.infer<typeof writerCreateArticleBodySchema>
 export type WriterUpdateArticleBody = z.infer<typeof writerUpdateArticleBodySchema>
