@@ -3,7 +3,7 @@ import { Heading, Card, CardContent } from 'scoop'
 import { getAdminSession } from '@/lib/admin/session'
 import { canManageReaderOperations } from '@/lib/admin/rbac'
 import { fetchNewsletterCampaigns } from '@/lib/admin/fetchers'
-import { NewsletterCampaignForm } from './NewsletterCampaignForm'
+import { NewsletterCreateModal } from './NewsletterCreateModal'
 import { NewsletterCampaignRow } from './NewsletterCampaignRow'
 
 const CADENCE: Record<string, string> = {
@@ -29,23 +29,24 @@ export default async function ReaderNewslettersPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <Heading as="h1" level="h2">
-          Campagnes newsletter
-        </Heading>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Objet, pré-en-tête (preheader), corps en HTML (éditeur sur la fiche campagne), segments JSON et planification.
-          Accès <strong className="font-medium text-foreground">manager</strong> et{' '}
-          <strong className="font-medium text-foreground">admin</strong> uniquement.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Heading as="h1" level="h2">
+            Campagnes newsletter
+          </Heading>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Objet, pré-en-tête (preheader), corps en HTML (éditeur sur la fiche campagne), segments JSON et planification.
+            Accès <strong className="font-medium text-foreground">manager</strong> et{' '}
+            <strong className="font-medium text-foreground">admin</strong> uniquement.
+          </p>
+        </div>
+        <NewsletterCreateModal />
       </div>
-
-      <NewsletterCampaignForm />
 
       {campaigns.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            Aucune campagne. Créez un modèle ci-dessus.
+            Aucune campagne. Utilisez « Nouvelle campagne ».
           </CardContent>
         </Card>
       ) : (

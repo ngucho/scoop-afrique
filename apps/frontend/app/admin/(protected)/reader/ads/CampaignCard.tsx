@@ -11,8 +11,9 @@ import {
   AdminTable,
   AdSlotFrame,
   AdCreativeDisplay,
+  Dialog,
 } from 'scoop'
-import { Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import type { AdCampaign, AdCreative, AdSlot } from '@/lib/api/types'
 import {
   deleteAdCampaign,
@@ -43,6 +44,8 @@ function isoToDatetimeLocal(iso: string | null): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+const CREATIVE_DIALOG_CLASS = 'max-w-3xl w-full max-h-[90vh] overflow-y-auto'
+
 const FORMATS: { id: NonNullable<AdCreative['format']>; label: string }[] = [
   { id: 'native', label: 'Native (texte + image + CTA)' },
   { id: 'image', label: 'Image / bannière' },
@@ -65,6 +68,7 @@ export function CampaignCard({
   const [weight, setWeight] = useState(campaign.weight)
   const [startAt, setStartAt] = useState(isoToDatetimeLocal(campaign.start_at))
   const [endAt, setEndAt] = useState(isoToDatetimeLocal(campaign.end_at))
+  const [creativeModalOpen, setCreativeModalOpen] = useState(false)
   const [editingCreativeId, setEditingCreativeId] = useState<string | null>(null)
   const [headline, setHeadline] = useState('')
   const [body, setBody] = useState('')
@@ -186,6 +190,7 @@ export function CampaignCard({
           sort_order: sortOrder,
         })
         resetCreativeForm()
+        setCreativeModalOpen(false)
       } catch {
         alert('Erreur.')
       }
@@ -359,7 +364,10 @@ export function CampaignCard({
                   variant="text"
                   size="sm"
                   className="min-h-0 px-0 text-xs hover:underline"
-                  onClick={() => startEditCreative(cr)}
+                  onClick={() => {
+                    startEditCreative(cr)
+                    setCreativeModalOpen(true)
+                  }}
                 >
                   Modifier
                 </Button>
@@ -377,96 +385,129 @@ export function CampaignCard({
           />
         ) : null}
 
-        <form
-          onSubmit={addCreative}
-          className="grid gap-3 rounded-md border border-dashed border-border p-4 sm:grid-cols-2 lg:grid-cols-3"
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="gap-2 rounded-lg"
+            onClick={() => {
+              resetCreativeForm()
+              setCreativeModalOpen(true)
+            }}
+          >
+            <Plus className="h-4 w-4" aria-hidden />
+            Ajouter une créative
+          </Button>
+        </div>
+
+        <Dialog
+          open={creativeModalOpen}
+          onOpenChange={(o) => {
+            setCreativeModalOpen(o)
+            if (!o) resetCreativeForm()
+          }}
+          title={editingCreativeId ? 'Modifier la créative' : 'Nouvelle créative'}
+          description="Publicité reader"
+          className={CREATIVE_DIALOG_CLASS}
         >
-          {editingCreativeId ? (
-            <p className="sm:col-span-2 lg:col-span-3 text-sm font-medium text-primary">
-              Édition d’une créative existante — enregistrer pour appliquer ou annuler pour recommencer une nouvelle.
-            </p>
-          ) : null}
-          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <Label size="sm" className="text-muted-foreground">
-              Format créatif
-            </Label>
-            <Select
-              value={format}
-              onChange={(e) => setFormat(e.target.value as NonNullable<AdCreative['format']>)}
-              options={FORMATS.map((f) => ({ value: f.id, label: f.label }))}
-              className="h-10 max-w-md"
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label size="sm" className="text-muted-foreground">
-              Titre / accroche
-            </Label>
-            <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Titre court" />
-          </div>
-          <div className="space-y-1">
-            <Label size="sm" className="text-muted-foreground">
-              Poids créatif (A/B)
-            </Label>
-            <Input
-              type="number"
-              min={1}
-              max={100}
-              value={creativeWeight}
-              onChange={(e) => setCreativeWeight(Number(e.target.value) || 1)}
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <Label size="sm" className="text-muted-foreground">
-              Corps (native)
-            </Label>
-            <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Texte secondaire optionnel" />
-          </div>
-          <div className="space-y-1 sm:col-span-2 lg:col-span-2">
-            <Label size="sm" className="text-muted-foreground">
-              URL de destination
-            </Label>
-            <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} type="url" />
-          </div>
-          <div className="space-y-1">
-            <Label size="sm" className="text-muted-foreground">
-              Libellé CTA
-            </Label>
-            <Input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} placeholder="Ex. Découvrir" />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label size="sm" className="text-muted-foreground">
-              Image (URL)
-            </Label>
-            <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} type="url" placeholder="https://…" />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <Label size="sm" className="text-muted-foreground">
-              Vidéo YouTube (URL)
-            </Label>
-            <Input
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              type="url"
-              placeholder="https://youtube.com/…"
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <Label size="sm" className="text-muted-foreground">
-              Texte alternatif (accessibilité)
-            </Label>
-            <Input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Description courte du visuel" />
-          </div>
-          <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-3">
-            <Button type="submit" disabled={pending} variant="secondary" size="sm" className="rounded-lg">
-              {editingCreativeId ? 'Enregistrer la créative' : 'Ajouter la créative'}
-            </Button>
+          <form
+            onSubmit={addCreative}
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {editingCreativeId ? (
-              <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={resetCreativeForm}>
-                Annuler l’édition
-              </Button>
+              <p className="sm:col-span-2 lg:col-span-3 text-sm font-medium text-primary">
+                Édition d’une créative existante.
+              </p>
             ) : null}
-          </div>
-        </form>
+            <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+              <Label size="sm" className="text-muted-foreground">
+                Format créatif
+              </Label>
+              <Select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as NonNullable<AdCreative['format']>)}
+                options={FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+                className="h-10 max-w-md"
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label size="sm" className="text-muted-foreground">
+                Titre / accroche
+              </Label>
+              <Input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Titre court" />
+            </div>
+            <div className="space-y-1">
+              <Label size="sm" className="text-muted-foreground">
+                Poids créatif (A/B)
+              </Label>
+              <Input
+                type="number"
+                min={1}
+                max={100}
+                value={creativeWeight}
+                onChange={(e) => setCreativeWeight(Number(e.target.value) || 1)}
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+              <Label size="sm" className="text-muted-foreground">
+                Corps (native)
+              </Label>
+              <Input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Texte secondaire optionnel" />
+            </div>
+            <div className="space-y-1 sm:col-span-2 lg:col-span-2">
+              <Label size="sm" className="text-muted-foreground">
+                URL de destination
+              </Label>
+              <Input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} type="url" />
+            </div>
+            <div className="space-y-1">
+              <Label size="sm" className="text-muted-foreground">
+                Libellé CTA
+              </Label>
+              <Input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} placeholder="Ex. Découvrir" />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label size="sm" className="text-muted-foreground">
+                Image (URL)
+              </Label>
+              <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} type="url" placeholder="https://…" />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label size="sm" className="text-muted-foreground">
+                Vidéo YouTube (URL)
+              </Label>
+              <Input
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                type="url"
+                placeholder="https://youtube.com/…"
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+              <Label size="sm" className="text-muted-foreground">
+                Texte alternatif (accessibilité)
+              </Label>
+              <Input value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="Description courte du visuel" />
+            </div>
+            <div className="flex flex-wrap items-end gap-2 sm:col-span-2 lg:col-span-3">
+              <Button type="submit" disabled={pending} variant="secondary" size="sm" className="rounded-lg">
+                {editingCreativeId ? 'Enregistrer la créative' : 'Ajouter la créative'}
+              </Button>
+              {editingCreativeId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={resetCreativeForm}
+                >
+                  Nouvelle créative
+                </Button>
+              ) : null}
+            </div>
+          </form>
+        </Dialog>
       </CardContent>
     </Card>
   )

@@ -17,7 +17,15 @@ type Draft = {
   endAt: string
 }
 
-export function AdCampaignForm({ slots }: { slots: AdSlot[] }) {
+export function AdCampaignForm({
+  slots,
+  embedInModal = false,
+  onSuccess,
+}: {
+  slots: AdSlot[]
+  embedInModal?: boolean
+  onSuccess?: () => void
+}) {
   const getDefaults = useCallback((): Draft => {
     return {
       name: '',
@@ -51,18 +59,15 @@ export function AdCampaignForm({ slots }: { slots: AdSlot[] }) {
           end_at: form.endAt ? new Date(form.endAt).toISOString() : null,
         })
         clearDraft()
+        onSuccess?.()
       } catch {
         alert('Erreur.')
       }
     })
   }
 
-  return (
-    <AdminFormSection
-      title="Nouvelle campagne"
-      description="Choisissez l’emplacement (clé affichée sur le site), puis optionnellement une fenêtre de diffusion. Les campagnes actives hors plage ne s’affichent pas. Le brouillon est conservé sur cet appareil jusqu’à envoi réussi."
-    >
-      <form onSubmit={submit} className="space-y-3">
+  const formInner = (
+    <form onSubmit={submit} className="space-y-3">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2">
             <Label size="sm" className="text-muted-foreground">
@@ -150,6 +155,26 @@ export function AdCampaignForm({ slots }: { slots: AdSlot[] }) {
           </Button>
         </div>
       </form>
+  )
+
+  if (embedInModal) {
+    return (
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">
+          Emplacement (clé sur le site), fenêtre de diffusion optionnelle. Brouillon conservé localement jusqu’à création
+          réussie.
+        </p>
+        {formInner}
+      </div>
+    )
+  }
+
+  return (
+    <AdminFormSection
+      title="Nouvelle campagne"
+      description="Choisissez l’emplacement (clé affichée sur le site), puis optionnellement une fenêtre de diffusion. Les campagnes actives hors plage ne s’affichent pas. Le brouillon est conservé sur cet appareil jusqu’à envoi réussi."
+    >
+      {formInner}
     </AdminFormSection>
   )
 }
