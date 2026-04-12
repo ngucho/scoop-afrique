@@ -21,7 +21,7 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo, imag
       <article className="group flex min-w-0 max-w-full flex-col gap-4 md:flex-row">
         <Link
           href={href}
-          className="relative aspect-[16/10] w-full max-w-full shrink-0 overflow-hidden rounded-lg bg-editorial-surface-container md:w-[42%] md:max-w-[42%]"
+          className="relative aspect-[16/10] w-full max-w-full shrink-0 overflow-hidden rounded-lg bg-muted md:w-[42%] md:max-w-[42%]"
         >
           {article.cover_image_url ? (
             <img
@@ -37,18 +37,18 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo, imag
         </Link>
         <div className="min-w-0 flex-1">
           {cat ? (
-            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-editorial-tertiary">{cat}</span>
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-primary">{cat}</span>
           ) : null}
           <Link href={href}>
                        <h3
-              className="mb-2 line-clamp-3 text-xl font-bold leading-tight text-editorial-on-surface transition-colors group-hover:text-primary sm:text-2xl"
+              className="mb-2 line-clamp-3 text-xl font-bold leading-tight text-foreground transition-colors group-hover:text-primary sm:text-2xl"
               style={{ fontFamily: 'var(--font-headline)' }}
             >
               {article.title}
             </h3>
           </Link>
           {article.excerpt ? (
-            <p className="line-clamp-2 text-sm text-editorial-secondary">{article.excerpt}</p>
+            <p className="line-clamp-2 text-sm text-muted-foreground">{article.excerpt}</p>
           ) : null}
         </div>
       </article>

@@ -87,17 +87,17 @@ export function ArticleCommentsSection({ articleId }: ArticleCommentsSectionProp
   }
 
   return (
-    <section className="mt-16 rounded-[2rem] bg-editorial-surface-low p-6 md:p-12">
+    <section className="mt-16 rounded-[2rem] bg-muted p-6 md:p-12">
       <div className="mb-8 flex items-center gap-4">
         <IconEdit className="h-8 w-8 shrink-0 text-primary" aria-hidden />
-        <h2 className="text-2xl font-bold tracking-tight text-editorial-on-surface md:text-3xl" style={{ fontFamily: 'var(--font-headline)' }}>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl" style={{ fontFamily: 'var(--font-headline)' }}>
           L&apos;avis des lecteurs
         </h2>
       </div>
 
-      <div className="mb-8 rounded-2xl bg-editorial-surface-lowest p-6 shadow-[var(--shadow-lg)] outline outline-1 outline-editorial-outline-variant/10">
+      <div className="mb-8 rounded-2xl border border-border/60 bg-card p-6 shadow-[var(--shadow-lg)]">
         {!authenticated ? (
-          <p className="text-sm text-editorial-secondary">
+          <p className="text-sm text-muted-foreground">
             <Link
               href={`/reader/auth/login?returnTo=${encodeURIComponent(pathname || '/articles')}`}
               className="font-semibold text-primary underline-offset-4 hover:underline"
@@ -118,9 +118,9 @@ export function ArticleCommentsSection({ articleId }: ArticleCommentsSectionProp
               onChange={(e) => setDraft(e.target.value)}
               rows={4}
               placeholder="Partagez votre analyse ou votre point de vue sur ce sujet…"
-              className="w-full resize-y border-0 bg-transparent text-sm font-medium text-editorial-on-surface placeholder:text-editorial-secondary/70 focus:ring-0 focus:outline-none"
+              className="w-full resize-y border-0 bg-transparent text-sm font-medium text-foreground placeholder:text-muted-foreground/80 focus:ring-0 focus:outline-none"
             />
-            <div className="mt-4 flex justify-end border-t border-editorial-outline-variant/15 pt-4">
+            <div className="mt-4 flex justify-end border-t border-border/80 pt-4">
               <button
                 type="button"
                 onClick={() => void submit()}
@@ -133,32 +133,32 @@ export function ArticleCommentsSection({ articleId }: ArticleCommentsSectionProp
             </div>
           </>
         )}
-        {message ? <p className="mt-3 text-sm text-editorial-secondary">{message}</p> : null}
+        {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
       </div>
 
       <div className="space-y-6">
         {loading ? (
-          <p className="text-sm text-editorial-secondary">Chargement des commentaires…</p>
+          <p className="text-sm text-muted-foreground">Chargement des commentaires…</p>
         ) : total === 0 ? (
-          <p className="text-sm text-editorial-secondary">Soyez le premier à réagir après publication des contributions approuvées.</p>
+          <p className="text-sm text-muted-foreground">Soyez le premier à réagir après publication des contributions approuvées.</p>
         ) : (
           comments.map((c) => (
             <article
               key={c.id}
-              className="rounded-2xl border-l-2 border-primary/20 bg-editorial-surface-lowest p-6"
+              className="rounded-2xl border border-border/50 border-l-2 border-l-primary/30 bg-card p-6"
             >
               <div className="mb-3 flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-editorial-tertiary-container text-xs font-bold text-[var(--editorial-tertiary)]">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
                   {initialsFromEmail(c.author?.email)}
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-editorial-on-surface">
+                  <p className="text-xs font-bold text-foreground">
                     {c.author?.email?.split('@')[0] ?? 'Lecteur'}
                   </p>
-                  <p className="text-[10px] uppercase tracking-wide text-editorial-secondary">{formatDate(c.created_at)}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{formatDate(c.created_at)}</p>
                 </div>
               </div>
-              <p className="text-sm leading-relaxed text-editorial-on-surface/90 whitespace-pre-wrap">{c.body}</p>
+              <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">{c.body}</p>
             </article>
           ))
         )}

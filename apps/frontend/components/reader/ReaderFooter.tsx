@@ -58,7 +58,7 @@ function FooterLink({
 
 export function ReaderFooter() {
   return (
-    <footer className="relative mt-auto w-full overflow-hidden bg-editorial-surface-low">
+    <footer className="relative mt-auto w-full overflow-hidden bg-muted">
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
         <span className="whitespace-nowrap text-[18vw] font-black uppercase leading-none tracking-tighter text-foreground/5 md:text-[15vw]">
           <span className="font-[var(--font-scoop)]">SCOOP</span>
