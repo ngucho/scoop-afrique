@@ -3,7 +3,7 @@ import { Heading, Card, CardContent, AdminTable } from 'scoop'
 import { getAdminSession } from '@/lib/admin/session'
 import { canManageReaderOperations } from '@/lib/admin/rbac'
 import { fetchAdSlots, fetchAdCampaigns, fetchAdMetrics } from '@/lib/admin/fetchers'
-import { AdCampaignForm } from './AdCampaignForm'
+import { AdCampaignCreateModal } from './AdCampaignCreateModal'
 import { CampaignCard } from './CampaignCard'
 
 const STATUS: Record<string, string> = {
@@ -26,14 +26,17 @@ export default async function ReaderAdsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <Heading as="h1" level="h2">
-          Publicité — emplacements & campagnes
-        </Heading>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Emplacements prédéfinis, campagnes avec pondération et créatives (image, native, vidéo). Les impressions et
-          clics sont agrégés par emplacement pour le CTR et le reporting.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Heading as="h1" level="h2">
+            Publicité — emplacements & campagnes
+          </Heading>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Emplacements prédéfinis, campagnes avec pondération et créatives (image, native, vidéo). Les impressions et
+            clics sont agrégés par emplacement pour le CTR et le reporting.
+          </p>
+        </div>
+        <AdCampaignCreateModal slots={slots} />
       </div>
 
       {metrics ? (
@@ -101,8 +104,6 @@ export default async function ReaderAdsPage() {
         </Card>
       </section>
 
-      <AdCampaignForm slots={slots} />
-
       <section>
         <Heading as="h2" level="h4" className="mb-3">
           Campagnes
@@ -110,7 +111,7 @@ export default async function ReaderAdsPage() {
         {campaigns.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              Aucune campagne. Créez-en une ci-dessus.
+              Aucune campagne. Utilisez « Nouvelle campagne ».
             </CardContent>
           </Card>
         ) : (

@@ -4,7 +4,7 @@ import { getAdminSession } from '@/lib/admin/session'
 import { canEditAnnouncements } from '@/lib/admin/rbac'
 import { fetchAnnouncements } from '@/lib/admin/fetchers'
 import { formatDateShort } from '@/lib/formatDate'
-import { AnnouncementForm } from './AnnouncementForm'
+import { AnnouncementCreateModal } from './AnnouncementCreateModal'
 import { AnnouncementRowActions } from './AnnouncementRowActions'
 
 const AUDIENCE_LABELS: Record<string, string> = {
@@ -22,16 +22,17 @@ export default async function ReaderAnnouncementsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Heading as="h1" level="h2">
-          Annonces reader
-        </Heading>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Bannières et messages affichés sur la plateforme reader. Chaque modification est journalisée côté API.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Heading as="h1" level="h2">
+            Annonces reader
+          </Heading>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Bannières et messages affichés sur la plateforme reader. Chaque modification est journalisée côté API.
+          </p>
+        </div>
+        <AnnouncementCreateModal />
       </div>
-
-      <AnnouncementForm />
 
       {rows.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-border">
@@ -100,7 +101,7 @@ export default async function ReaderAnnouncementsPage() {
       ) : (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Aucune annonce. Créez-en une ci-dessus.
+            Aucune annonce. Utilisez « Nouvelle annonce ».
           </CardContent>
         </Card>
       )}
