@@ -42,6 +42,7 @@
     { "idx": 37, "version": "7", "when": 1743900000000, "tag": "0037_tribune_anonymous_follows", "breakpoints": true },
     { "idx": 38, "version": "7", "when": 1743986400000, "tag": "0038_contribution_comment_reactions", "breakpoints": true },
     { "idx": 39, "version": "7", "when": 1744072800000, "tag": "0039_journalist_profile_fields", "breakpoints": true },
-    { "idx": 40, "version": "7", "when": 1744159200000, "tag": "0040_reader_chrome_writer_api", "breakpoints": true }
+    { "idx": 40, "version": "7", "when": 1744159200000, "tag": "0040_reader_chrome_writer_api", "breakpoints": true },
+    { "idx": 41, "version": "7", "when": 1744245600000, "tag": "0041_homepage_inline_ad_sections", "breakpoints": true }
   ]
 }

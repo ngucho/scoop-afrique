@@ -9,7 +9,15 @@ import { useFormDraftState } from '@/hooks/useFormDraft'
 
 type Draft = { title: string; subtitle: string }
 
-export function ChromeSettingsForm({ initial }: { initial: ReaderChromeSettings | null }) {
+export function ChromeSettingsForm({
+  initial,
+  embedInModal = false,
+  onSuccess,
+}: {
+  initial: ReaderChromeSettings | null
+  embedInModal?: boolean
+  onSuccess?: () => void
+}) {
   const getDefaults = useCallback(
     (): Draft => ({
       title: initial?.empty_ad_title ?? '',
@@ -32,17 +40,19 @@ export function ChromeSettingsForm({ initial }: { initial: ReaderChromeSettings 
           empty_ad_subtitle: form.subtitle.trim() || null,
         })
         clearDraft()
-        setMsg('Enregistré. Le site reader sera mis à jour sous peu.')
+        if (embedInModal) {
+          onSuccess?.()
+        } else {
+          setMsg('Enregistré. Le site reader sera mis à jour sous peu.')
+        }
       } catch {
         setMsg('Erreur lors de l’enregistrement.')
       }
     })
   }
 
-  return (
-    <Card>
-      <CardContent className="p-6">
-        <form onSubmit={save} className="space-y-4">
+  const formBody = (
+    <form onSubmit={save} className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Textes affichés dans les emplacements publicitaires <strong>sans création publicitaire</strong> (message
             Scoop.Afrique + CTA réseaux). Laisser vide pour les libellés par défaut. Brouillon sauvegardé localement
@@ -65,7 +75,13 @@ export function ChromeSettingsForm({ initial }: { initial: ReaderChromeSettings 
               placeholder="Suivez-nous sur les réseaux… (défaut)"
             />
           </div>
-          {msg ? <p className="text-sm text-muted-foreground">{msg}</p> : null}
+          {msg ? (
+            <p
+              className={`text-sm ${msg.includes('Erreur') ? 'text-destructive' : 'text-muted-foreground'}`}
+            >
+              {msg}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={pending} className="inline-flex items-center gap-2">
               {pending ? <IconLoader2 className="h-4 w-4 animate-spin" /> : <IconDeviceFloppy className="h-4 w-4" />}
@@ -76,7 +92,13 @@ export function ChromeSettingsForm({ initial }: { initial: ReaderChromeSettings 
             </Button>
           </div>
         </form>
-      </CardContent>
+  )
+
+  if (embedInModal) return formBody
+
+  return (
+    <Card>
+      <CardContent className="p-6">{formBody}</CardContent>
     </Card>
   )
 }

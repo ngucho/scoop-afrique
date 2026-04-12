@@ -2,20 +2,33 @@ import type { Article, ArticlesResponse, Category } from '@/lib/api/types'
 import type { HomepageSection } from '@/lib/api/types'
 import { apiGet } from '@/lib/api/client'
 import { READER_CATEGORIES } from '@/lib/readerCategories'
+import { AD_SLOT_KEYS, type AdSlotKey } from '@/lib/readerAds'
 
 const POOL = 48
+
+export type HomeInlineAdSlotKey = Extract<AdSlotKey, 'HOME_MID_1' | 'HOME_BOTTOM'>
 
 export interface HomeSectionContext {
   articles: Article[]
   categories: Category[]
 }
 
-/** Block titles overridable from homepage CMS. */
-export interface HomeBlockTitles {
-  latest: string
-  trending: string
-  editors: string
-  video: string
+const KNOWN_SECTION_KEYS = new Set([
+  'top_stories',
+  'latest',
+  'video',
+  'trending',
+  'editors',
+  'rubriques',
+  'partnership_strip',
+  'home_ad_mid',
+  'home_ad_bottom',
+])
+
+function inlineAdSlotKey(row: HomepageSection): HomeInlineAdSlotKey | null {
+  if (row.key === 'home_ad_mid') return AD_SLOT_KEYS.HOME_MID_1
+  if (row.key === 'home_ad_bottom') return AD_SLOT_KEYS.HOME_BOTTOM
+  return null
 }
 
 async function getCategories(): Promise<Category[]> {
@@ -86,22 +99,42 @@ function articleMatchesVideoSection(article: Article, tag: string): boolean {
   return (article.tags ?? []).some((x) => String(x).toLowerCase() === t)
 }
 
-export interface HomeSections {
-  featured: Article | null
-  latest: Article[]
-  videoArticles: Article[]
-  trending: Article[]
-  editorsPicks: Article[]
-  categoryStrips: { slug: string; label: string; articles: Article[] }[]
-}
+/** Ordered blocks for the reader homepage (CMS `sort_order`, visibility, layout). */
+export type HomePageBlock =
+  | {
+      type: 'hero'
+      cmsKey: 'top_stories'
+      title: string
+      article: Article
+    }
+  | {
+      type: 'articles'
+      cmsKey: string
+      sectionKey: 'latest' | 'video' | 'trending' | 'editors'
+      title: string
+      layout: HomepageSection['layout']
+      articles: Article[]
+    }
+  | {
+      type: 'rubriques'
+      cmsKey: 'rubriques'
+      title: string
+      layout: HomepageSection['layout']
+      strips: { slug: string; label: string; articles: Article[] }[]
+    }
+  | {
+      type: 'inline_ad'
+      cmsKey: 'home_ad_mid' | 'home_ad_bottom'
+      adSlotKey: HomeInlineAdSlotKey
+      title: string
+    }
 
 export interface BuildHomeSectionsResult extends HomeSectionContext {
-  sections: HomeSections
-  titles: HomeBlockTitles
+  blocks: HomePageBlock[]
 }
 
 /**
- * Builds homepage sections from article pool + optional CMS (visibility, titles, limits).
+ * Builds homepage blocks from the article pool + CMS (order, visibility, titles, limits, layout).
  */
 export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
   const [articles, categories, cmsRows] = await Promise.all([
@@ -110,64 +143,130 @@ export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
     getCmsHomepageSections(),
   ])
 
-  const cms = Object.fromEntries(cmsRows.map((r) => [r.key, r])) as Record<string, HomepageSection>
   const used = new Set<string>()
+  const blocks: HomePageBlock[] = []
 
-  const featured =
-    cms.top_stories?.is_visible === false ? null : articles[0] ?? null
-  if (featured) used.add(featured.id)
-
-  const maxLatest = numConfig(cms.latest?.config, 'max_items', 10)
-  let latest = takeUnique(excludeIds(articles, used), used, maxLatest)
-  if (cms.latest?.is_visible === false) latest = []
-
-  const videoTag = strConfig(cms.video?.config, 'tag', 'video')
-  const maxVideo = numConfig(cms.video?.config, 'max_items', 8)
-  const videoPool = [...articles].sort(byViewCount).filter((a) => articleMatchesVideoSection(a, videoTag))
-  let videoArticles = takeUnique(excludeIds(videoPool, used), used, maxVideo)
-  if (cms.video?.is_visible === false) videoArticles = []
-
-  const maxTrend = numConfig(cms.trending?.config, 'max_items', 5)
-  const trendingPool = [...articles].sort(byViewCount)
-  let trending = takeUnique(excludeIds(trendingPool, used), used, maxTrend)
-  if (cms.trending?.is_visible === false) trending = []
-
-  const maxEditors = numConfig(cms.editors?.config, 'max_items', 4)
-  let editorsPicks = takeUnique(excludeIds(articles, used), used, maxEditors)
-  if (cms.editors?.is_visible === false) editorsPicks = []
+  const sorted = [...cmsRows]
+    .filter((r) => r.is_visible && r.key !== 'partnership_strip')
+    .sort((a, b) => a.sort_order - b.sort_order)
 
   const categorySlugSet = new Set(categories.map((c) => c.slug))
-  const strips: { slug: string; label: string; articles: Article[] }[] = []
 
-  if (cms.rubriques?.is_visible !== false) {
-    const perStrip = numConfig(cms.rubriques?.config, 'max_per_strip', 2)
-    for (const rc of READER_CATEGORIES.slice(0, 6)) {
-      if (!categorySlugSet.has(rc.slug)) continue
-      const inCat = articles.filter((a) => a.category?.slug === rc.slug)
-      const picked = takeUnique(excludeIds(inCat, used), used, perStrip)
-      if (picked.length === 0) continue
-      strips.push({ slug: rc.slug, label: rc.label, articles: picked })
+  for (const row of sorted) {
+    if (!KNOWN_SECTION_KEYS.has(row.key)) continue
+
+    switch (row.key) {
+      case 'home_ad_mid':
+      case 'home_ad_bottom': {
+        const adSlotKey = inlineAdSlotKey(row)
+        if (!adSlotKey) break
+        blocks.push({
+          type: 'inline_ad',
+          cmsKey: row.key,
+          adSlotKey,
+          title: row.title,
+        })
+        break
+      }
+      case 'top_stories': {
+        const picked = takeUnique(excludeIds(articles, used), used, 1)
+        const article = picked[0]
+        if (!article) break
+        blocks.push({
+          type: 'hero',
+          cmsKey: 'top_stories',
+          title: row.title,
+          article,
+        })
+        break
+      }
+      case 'latest': {
+        const maxLatest = numConfig(row.config, 'max_items', 10)
+        const latest = takeUnique(excludeIds(articles, used), used, maxLatest)
+        if (latest.length === 0) break
+        blocks.push({
+          type: 'articles',
+          cmsKey: row.key,
+          sectionKey: 'latest',
+          title: row.title,
+          layout: row.layout,
+          articles: latest,
+        })
+        break
+      }
+      case 'video': {
+        const videoTag = strConfig(row.config, 'tag', 'video')
+        const maxVideo = numConfig(row.config, 'max_items', 8)
+        const videoPool = [...articles].sort(byViewCount).filter((a) => articleMatchesVideoSection(a, videoTag))
+        const videoArticles = takeUnique(excludeIds(videoPool, used), used, maxVideo)
+        if (videoArticles.length === 0) break
+        blocks.push({
+          type: 'articles',
+          cmsKey: row.key,
+          sectionKey: 'video',
+          title: row.title,
+          layout: row.layout,
+          articles: videoArticles,
+        })
+        break
+      }
+      case 'trending': {
+        const maxTrend = numConfig(row.config, 'max_items', 5)
+        const trendingPool = [...articles].sort(byViewCount)
+        const trending = takeUnique(excludeIds(trendingPool, used), used, maxTrend)
+        if (trending.length === 0) break
+        blocks.push({
+          type: 'articles',
+          cmsKey: row.key,
+          sectionKey: 'trending',
+          title: row.title,
+          layout: row.layout,
+          articles: trending,
+        })
+        break
+      }
+      case 'editors': {
+        const maxEditors = numConfig(row.config, 'max_items', 4)
+        const editorsPicks = takeUnique(excludeIds(articles, used), used, maxEditors)
+        if (editorsPicks.length === 0) break
+        blocks.push({
+          type: 'articles',
+          cmsKey: row.key,
+          sectionKey: 'editors',
+          title: row.title,
+          layout: row.layout,
+          articles: editorsPicks,
+        })
+        break
+      }
+      case 'rubriques': {
+        const strips: { slug: string; label: string; articles: Article[] }[] = []
+        const perStrip = numConfig(row.config, 'max_per_strip', 2)
+        for (const rc of READER_CATEGORIES.slice(0, 6)) {
+          if (!categorySlugSet.has(rc.slug)) continue
+          const inCat = articles.filter((a) => a.category?.slug === rc.slug)
+          const picked = takeUnique(excludeIds(inCat, used), used, perStrip)
+          if (picked.length === 0) continue
+          strips.push({ slug: rc.slug, label: rc.label, articles: picked })
+        }
+        if (strips.length === 0) break
+        blocks.push({
+          type: 'rubriques',
+          cmsKey: 'rubriques',
+          title: row.title,
+          layout: row.layout,
+          strips,
+        })
+        break
+      }
+      default:
+        break
     }
-  }
-
-  const titles: HomeBlockTitles = {
-    latest: cms.latest?.title ?? 'Dernières actualités',
-    trending: cms.trending?.title ?? 'Les plus lus',
-    editors: cms.editors?.title ?? 'Sélection de la rédaction',
-    video: cms.video?.title ?? 'Vidéos',
   }
 
   return {
     articles,
     categories,
-    sections: {
-      featured,
-      latest,
-      videoArticles,
-      trending,
-      editorsPicks,
-      categoryStrips: strips,
-    },
-    titles,
+    blocks,
   }
 }

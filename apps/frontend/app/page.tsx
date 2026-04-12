@@ -7,8 +7,10 @@ import { FeaturedHero } from '@/components/reader/FeaturedHero'
 import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { HomeNewsletterCta } from '@/components/reader/HomeNewsletterCta'
 import { config } from '@/lib/config'
-import { buildHomeSections } from '@/lib/homeSections'
+import { buildHomeSections, type HomePageBlock } from '@/lib/homeSections'
 import { fetchAdPlacements, pickCreativeForSlot, AD_SLOT_KEYS } from '@/lib/readerAds'
+import type { Article } from '@/lib/api/types'
+import type { HomepageSection } from '@/lib/api/types'
 
 export const revalidate = 30
 
@@ -18,7 +20,7 @@ export const metadata: Metadata = {
   title: 'Actualités panafricaines — Scoop.Afrique',
   description:
     "Le média digital qui décrypte l'Afrique autrement. Actualités, politique, culture, sport, société. Articles, newsletter, vidéos et podcasts.",
-   openGraph: {
+  openGraph: {
     title: 'Scoop.Afrique — Actualités & articles panafricains',
     description: "Le média digital qui décrypte l'Afrique autrement.",
     url: SITE_URL,
@@ -31,33 +33,249 @@ export const metadata: Metadata = {
   alternates: { canonical: SITE_URL },
 }
 
+function collectJsonLdArticles(blocks: HomePageBlock[]): Article[] {
+  const out: Article[] = []
+  const seen = new Set<string>()
+  const push = (a: Article) => {
+    if (seen.has(a.id)) return
+    seen.add(a.id)
+    out.push(a)
+  }
+  for (const b of blocks) {
+    if (b.type === 'hero') {
+      push(b.article)
+      continue
+    }
+    if (b.type === 'articles') {
+      for (const a of b.articles) {
+        push(a)
+        if (out.length >= 12) return out
+      }
+      continue
+    }
+    if (b.type === 'rubriques') {
+      for (const strip of b.strips) {
+        for (const a of strip.articles) {
+          push(a)
+          if (out.length >= 12) return out
+        }
+      }
+    }
+  }
+  return out
+}
+
+function hasEditorialHomeContent(blocks: HomePageBlock[]): boolean {
+  for (const b of blocks) {
+    if (b.type === 'hero') return true
+    if (b.type === 'articles' && b.articles.length > 0) return true
+    if (b.type === 'rubriques' && b.strips.some((s) => s.articles.length > 0)) return true
+  }
+  return false
+}
+
+function HomeRubriqueStripArticles({
+  layout,
+  articles,
+}: {
+  layout: HomepageSection['layout']
+  articles: Article[]
+}) {
+  if (layout === 'carousel') {
+    return (
+      <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+        {articles.map((article, i) => (
+          <div key={article.id} className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]">
+            <MotionEnter disabled={i > 4}>
+              <ArticleCard article={article} variant="compact" imagePriority={i === 0} />
+            </MotionEnter>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (layout === 'featured_grid') {
+    return (
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {articles.map((article, i) => (
+          <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
+            <ArticleCard article={article} imagePriority={i < 2} />
+          </MotionEnter>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      {articles.map((article) => (
+        <ArticleCard key={article.id} article={article} variant="row" />
+      ))}
+    </div>
+  )
+}
+
+function HomeArticlesSection({
+  block,
+}: {
+  block: Extract<HomePageBlock, { type: 'articles' }>
+}) {
+  const { title, layout, articles, sectionKey } = block
+  const carousel = layout === 'carousel'
+  const grid = layout === 'featured_grid'
+
+  const header = (
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4 md:mb-8">
+      {sectionKey === 'latest' ? (
+        <h2
+          className="border-l-4 border-primary pl-4 text-3xl font-bold text-editorial-on-surface"
+          style={{ fontFamily: 'var(--font-headline)' }}
+        >
+          {title}
+        </h2>
+      ) : (
+        <SectionHeader label={title} />
+      )}
+      <Link
+        href="/articles"
+        className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
+      >
+        Tout voir <span aria-hidden>→</span>
+      </Link>
+    </div>
+  )
+
+  if (sectionKey === 'trending') {
+    if (carousel) {
+      return (
+        <MotionEnter as="section" className="mb-14 md:mb-16">
+          {header}
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+            {articles.map((article, i) => (
+              <div key={article.id} className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]">
+                <MotionEnter disabled={i > 4}>
+                  <ArticleCard article={article} variant="compact" imagePriority={i === 0} />
+                </MotionEnter>
+              </div>
+            ))}
+          </div>
+        </MotionEnter>
+      )
+    }
+    return (
+      <MotionEnter as="section" className="mb-14 md:mb-16">
+        {header}
+        <ol className="grid gap-3 sm:grid-cols-2">
+          {articles.map((article, i) => (
+            <li
+              key={article.id}
+              className="flex gap-4 rounded-xl border border-border bg-card/50 p-4 scoop-motion-hover-depth"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
+                {i + 1}
+              </span>
+              <div className="min-w-0">
+                <Link href={`/articles/${article.slug}`} className="font-semibold leading-snug hover:text-primary">
+                  {article.title}
+                </Link>
+                <p className="mt-1 text-xs text-muted-foreground">{article.view_count?.toLocaleString('fr-FR')} vues</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </MotionEnter>
+    )
+  }
+
+  if (carousel) {
+    const emphasizeVideo = sectionKey === 'video'
+    return (
+      <MotionEnter as="section" className="mb-14 md:mb-16">
+        {header}
+        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+          {articles.map((article, i) => (
+            <div key={article.id} className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]">
+              <MotionEnter disabled={i > 4}>
+                <ArticleCard
+                  article={article}
+                  variant="compact"
+                  emphasizeVideo={emphasizeVideo}
+                  imagePriority={i === 0}
+                />
+              </MotionEnter>
+            </div>
+          ))}
+        </div>
+      </MotionEnter>
+    )
+  }
+
+  if (grid) {
+    return (
+      <MotionEnter as="section" className="mb-14 md:mb-16">
+        {header}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {articles.map((article, i) => (
+            <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
+              <ArticleCard
+                article={article}
+                variant={sectionKey === 'video' ? 'compact' : 'default'}
+                emphasizeVideo={sectionKey === 'video'}
+                imagePriority={i < 2}
+              />
+            </MotionEnter>
+          ))}
+        </div>
+      </MotionEnter>
+    )
+  }
+
+  /* list */
+  return (
+    <MotionEnter as="section" className="mb-14 md:mb-16">
+      {header}
+      <div className="grid gap-10 sm:grid-cols-2">
+        {articles.map((article, i) => (
+          <MotionEnter key={article.id} disabled={i > 5}>
+            <ArticleCard
+              article={article}
+              variant="row"
+              emphasizeVideo={sectionKey === 'video'}
+              imagePriority={i < 2}
+            />
+          </MotionEnter>
+        ))}
+      </div>
+    </MotionEnter>
+  )
+}
+
 export default async function HomePage() {
-  const [{ sections, titles }, placements] = await Promise.all([buildHomeSections(), fetchAdPlacements()])
+  const [{ blocks }, placements] = await Promise.all([buildHomeSections(), fetchAdPlacements()])
   const { slots, creatives_by_slot } = placements
-  const midAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_MID_1)
-  const bottomAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_BOTTOM)
   const sponsorAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_HERO_SPONSOR)
 
-  const { featured, latest, videoArticles, trending, editorsPicks, categoryStrips } = sections
-  const hasArticles = !!featured || latest.length > 0
+  const jsonLdList = collectJsonLdArticles(blocks)
+  const hasEditorial = hasEditorialHomeContent(blocks)
 
-  const itemListJsonLd = hasArticles
+  const itemListJsonLd = jsonLdList.length > 0
     ? {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
         name: 'À la une — Scoop.Afrique',
-        numberOfItems: [featured, ...latest].filter(Boolean).length,
-        itemListElement: [featured, ...latest]
-          .filter(Boolean)
-          .slice(0, 12)
-          .map((a, i) => ({
-            '@type': 'ListItem',
-            position: i + 1,
-            url: `${SITE_URL}/articles/${a!.slug}`,
-            name: a!.title,
-          })),
+        numberOfItems: jsonLdList.length,
+        itemListElement: jsonLdList.slice(0, 12).map((a, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          url: `${SITE_URL}/articles/${a.slug}`,
+          name: a.title,
+        })),
       }
     : null
+
+  const videoBlockIndex = blocks.findIndex((b) => b.type === 'articles' && b.sectionKey === 'video')
+  const mobileNewsletterAfterIndex = videoBlockIndex >= 0 ? videoBlockIndex : Math.min(1, Math.max(0, blocks.length - 1))
 
   return (
     <ReaderLayout>
@@ -76,158 +294,84 @@ export default async function HomePage() {
             L&apos;Afrique, en continu
           </Heading>
           <p className="mt-3 max-w-2xl text-editorial-secondary">
-            Décryptages, reportages et analyses — une sélection modulaire mise à jour depuis la rédaction.
+            Décryptages, reportages et analyses — la page d&apos;accueil suit l&apos;ordre défini dans le CMS (sections,
+            encarts pub, mise en page par bloc).
           </p>
         </header>
 
-        {featured ? (
-          <MotionEnter as="section" className="mb-12">
-            {sponsorAd ? (
-              <div className="mb-4">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Partenaire</p>
-                <AdSlotSection slotKey={AD_SLOT_KEYS.HOME_HERO_SPONSOR} creative={sponsorAd.creative} label="Sponsor" />
+        {blocks.map((block, i) => (
+          <div key={`${block.type}-${block.cmsKey}-${i}`}>
+            {block.type === 'hero' ? (
+              <MotionEnter as="section" className="mb-12 md:mb-14">
+                {sponsorAd ? (
+                  <div className="mb-4">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Partenaire</p>
+                    <AdSlotSection slotKey={AD_SLOT_KEYS.HOME_HERO_SPONSOR} creative={sponsorAd.creative} label="Sponsor" />
+                  </div>
+                ) : null}
+                <FeaturedHero article={block.article} />
+              </MotionEnter>
+            ) : null}
+
+            {block.type === 'articles' ? <HomeArticlesSection block={block} /> : null}
+
+            {block.type === 'rubriques' ? (
+              <div className="mb-14 space-y-14 md:mb-16">
+                <MotionEnter as="div">
+                  <h2
+                    className="mb-8 border-l-4 border-primary pl-4 text-2xl font-bold text-editorial-on-surface md:text-3xl"
+                    style={{ fontFamily: 'var(--font-headline)' }}
+                  >
+                    {block.title}
+                  </h2>
+                </MotionEnter>
+                {block.strips.map((strip) => (
+                  <MotionEnter as="section" key={strip.slug}>
+                    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+                      <SectionHeader label={strip.label} />
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={strip.slug === 'actualites' ? '/articles' : `/category/${strip.slug}`}>
+                          Voir la rubrique
+                        </Link>
+                      </Button>
+                    </div>
+                    <HomeRubriqueStripArticles layout={block.layout} articles={strip.articles} />
+                  </MotionEnter>
+                ))}
               </div>
             ) : null}
-            <FeaturedHero article={featured} />
-          </MotionEnter>
-        ) : null}
 
-        {latest.length > 0 ? (
-          <MotionEnter as="section" className="mb-16">
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-              <h2
-                className="border-l-4 border-primary pl-4 text-3xl font-bold text-editorial-on-surface"
-                style={{ fontFamily: 'var(--font-headline)' }}
-              >
-                {titles.latest}
-              </h2>
-              <Link
-                href="/articles"
-                className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
-              >
-                Tout voir <span aria-hidden>→</span>
-              </Link>
-            </div>
-            <div className="grid gap-10 sm:grid-cols-2">
-              {latest.map((article, i) => (
-                <MotionEnter key={article.id} disabled={i > 5}>
-                  <ArticleCard article={article} variant="row" imagePriority={i < 2} />
-                </MotionEnter>
-              ))}
-            </div>
-          </MotionEnter>
-        ) : null}
+            {block.type === 'inline_ad'
+              ? (() => {
+                  const picked = pickCreativeForSlot(slots, creatives_by_slot, block.adSlotKey)
+                  if (!picked) return null
+                  const wide = block.adSlotKey === AD_SLOT_KEYS.HOME_BOTTOM
+                  return (
+                    <MotionEnter as="div" className="mb-14 flex justify-center" role="complementary" aria-label={block.title}>
+                      <AdSlotSection
+                        slotKey={block.adSlotKey}
+                        creative={picked.creative}
+                        className={wide ? 'w-full' : 'w-full max-w-[300px]'}
+                        label={block.title}
+                      />
+                    </MotionEnter>
+                  )
+                })()
+              : null}
 
-        {videoArticles.length > 0 ? (
-          <MotionEnter as="section" className="mb-16">
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <SectionHeader label={titles.video} />
-              <Link
-                href="/articles"
-                className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
-              >
-                Tout voir <span aria-hidden>→</span>
-              </Link>
-            </div>
-            <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
-              {videoArticles.map((article, i) => (
-                <div
-                  key={article.id}
-                  className="w-[min(280px,85vw)] shrink-0 snap-start md:w-[260px]"
-                >
-                  <MotionEnter disabled={i > 4}>
-                    <ArticleCard article={article} variant="compact" emphasizeVideo imagePriority={i === 0} />
-                  </MotionEnter>
-                </div>
-              ))}
-            </div>
-          </MotionEnter>
-        ) : null}
-
-        <div className="mb-14 md:hidden">
-          <HomeNewsletterCta />
-        </div>
-
-        {trending.length > 0 ? (
-          <MotionEnter as="section" className="mb-14">
-            <SectionHeader label={titles.trending} className="mb-6" />
-            <ol className="grid gap-3 sm:grid-cols-2">
-              {trending.map((article, i) => (
-                <li
-                  key={article.id}
-                  className="flex gap-4 rounded-xl border border-border bg-card/50 p-4 scoop-motion-hover-depth"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <Link href={`/articles/${article.slug}`} className="font-semibold leading-snug hover:text-primary">
-                      {article.title}
-                    </Link>
-                    <p className="mt-1 text-xs text-muted-foreground">{article.view_count?.toLocaleString('fr-FR')} vues</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </MotionEnter>
-        ) : null}
-
-        {editorsPicks.length > 0 ? (
-          <MotionEnter as="section" className="mb-14">
-            <SectionHeader label={titles.editors} className="mb-6" />
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {editorsPicks.map((article, i) => (
-                <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
-                  <ArticleCard article={article} imagePriority={i < 2} />
-                </MotionEnter>
-              ))}
-            </div>
-          </MotionEnter>
-        ) : null}
-
-        {midAd ? (
-          <MotionEnter as="div" className="mb-14 flex justify-center">
-            <AdSlotSection
-              slotKey={AD_SLOT_KEYS.HOME_MID_1}
-              creative={midAd.creative}
-              className="w-full max-w-[300px]"
-            />
-          </MotionEnter>
-        ) : null}
-
-        {categoryStrips.length > 0 ? (
-          <div className="space-y-14">
-            {categoryStrips.map((strip) => (
-              <MotionEnter as="section" key={strip.slug}>
-                <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-                  <SectionHeader label={strip.label} />
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={strip.slug === 'actualites' ? '/articles' : `/category/${strip.slug}`}>
-                      Voir la rubrique
-                    </Link>
-                  </Button>
-                </div>
-                <div className="grid gap-6 md:grid-cols-2">
-                  {strip.articles.map((article) => (
-                    <ArticleCard key={article.id} article={article} variant="row" />
-                  ))}
-                </div>
-              </MotionEnter>
-            ))}
+            {i === mobileNewsletterAfterIndex ? (
+              <div className="mb-14 md:hidden">
+                <HomeNewsletterCta />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        ))}
 
         <div className="mb-14 hidden md:block">
           <HomeNewsletterCta />
         </div>
 
-        {bottomAd ? (
-          <MotionEnter as="div" className="mb-14 flex justify-center">
-            <AdSlotSection slotKey={AD_SLOT_KEYS.HOME_BOTTOM} creative={bottomAd.creative} className="w-full" />
-          </MotionEnter>
-        ) : null}
-
-        {!hasArticles ? (
+        {!hasEditorial ? (
           <div className="rounded-xl border border-border bg-muted/30 px-6 py-16 text-center sm:px-12">
             <Badge className="mb-4" variant="muted">
               À venir
