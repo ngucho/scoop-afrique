@@ -10,6 +10,7 @@ import { ArticleContentBlocks } from '@/components/reader/ArticleContentBlocks'
 import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { ArticleContextRail } from '@/components/reader/ArticleContextRail'
 import { ArticleCommentsSection } from '@/components/reader/ArticleCommentsSection'
+import { ArticleAuthorCard } from '@/components/reader/ArticleAuthorCard'
 import { Heading, Text, MetaBar, Thumbnail, StickyRail } from 'scoop'
 import { apiGet } from '@/lib/api/client'
 import type { ArticleResponse, LikesResponse } from '@/lib/api/types'
@@ -343,15 +344,24 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               </div>
             ) : null}
 
+            <ArticleAuthorCard
+              displayName={
+                article.author_display_name ?? article.author?.email?.split('@')[0] ?? 'Rédaction'
+              }
+              authorPublic={article.author_public}
+            />
+
             <ArticleCommentsSection articleId={article.id} />
           </article>
 
           <aside className="mt-10 space-y-8 lg:col-span-4 lg:mt-0">
             <StickyRail offset="6rem" className="space-y-8">
               <ArticleContextRail title={railTitle} articles={contextArticles} />
-              {railAd ? (
-                <AdSlotSection slotKey={AD_SLOT_KEYS.ARTICLE_RAIL} creative={railAd.creative} articleId={article.id} />
-              ) : null}
+              <AdSlotSection
+                slotKey={AD_SLOT_KEYS.ARTICLE_RAIL}
+                creative={railAd?.creative ?? null}
+                articleId={article.id}
+              />
             </StickyRail>
           </aside>
         </div>

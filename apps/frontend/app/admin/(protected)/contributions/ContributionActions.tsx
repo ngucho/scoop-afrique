@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { IconCheck, IconX, IconTrash, IconLoader2 } from '@tabler/icons-react'
+import { IconCheck, IconX, IconTrash, IconLoader2, IconFlag } from '@tabler/icons-react'
 import { ConfirmDialog } from 'scoop'
 import { deleteReaderContribution, moderateReaderContribution } from '@/lib/admin/actions'
 
@@ -18,6 +18,12 @@ export function ContributionActions({ id, status }: { id: string; status: string
   function handleReject() {
     startTransition(async () => {
       await moderateReaderContribution(id, 'rejected')
+    })
+  }
+
+  function handleSuspend() {
+    startTransition(async () => {
+      await moderateReaderContribution(id, 'suspended')
     })
   }
 
@@ -44,7 +50,7 @@ export function ContributionActions({ id, status }: { id: string; status: string
             <IconCheck className="h-4 w-4" />
           </button>
         )}
-        {status !== 'rejected' && (
+        {status !== 'rejected' && status !== 'suspended' && (
           <button
             type="button"
             onClick={handleReject}
@@ -52,6 +58,16 @@ export function ContributionActions({ id, status }: { id: string; status: string
             className="rounded p-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
           >
             <IconX className="h-4 w-4" />
+          </button>
+        )}
+        {(status === 'approved' || status === 'pending') && (
+          <button
+            type="button"
+            onClick={handleSuspend}
+            title="Suspendre (retrait du fil public)"
+            className="rounded p-1.5 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+          >
+            <IconFlag className="h-4 w-4" />
           </button>
         )}
         <button

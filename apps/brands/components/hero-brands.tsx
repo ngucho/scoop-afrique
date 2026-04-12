@@ -30,7 +30,7 @@ export function HeroBrands() {
       <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 py-16 sm:px-8 md:px-12 md:py-20 lg:px-20">
         <div className="max-w-2xl">
           <p className="mb-3 font-mono text-[11px] uppercase tracking-widest text-primary/90 sm:text-xs">
-            Média panafricain · Abidjan · fondé en 2026
+            Média panafricain · Abidjan · fondé en 2025
           </p>
           <h1 className="mb-4 font-sans text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl md:text-4xl">
             La voix créative de la <span className="text-primary">jeunesse afro-francophone</span> — et votre partenaire

@@ -20,11 +20,11 @@ export default function AccountLoginPage() {
         }
         footer={
           <>
-            <Link href="/account" className="block hover:text-foreground">
-              Autres options compte
+            <Link href="/" className="block hover:text-foreground">
+              Retour à l&apos;accueil
             </Link>
-            <Link href="/" className="mt-4 block text-primary hover:underline">
-              ← Retour à l&apos;accueil
+            <Link href="/tribune" className="mt-4 block text-primary hover:underline">
+              Tribune Scoop.Afrique
             </Link>
           </>
         }

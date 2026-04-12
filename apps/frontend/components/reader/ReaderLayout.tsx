@@ -8,6 +8,9 @@ import { ReaderMobileDock } from './ReaderMobileDock'
 import { apiGet } from '@/lib/api/client'
 import type { Category } from '@/lib/api/types'
 import { fetchAnnouncements, announcementTickerItems, splitAnnouncementsForChrome } from '@/lib/readerAnnouncements'
+import { fetchReaderChromeFallback } from '@/lib/readerChrome'
+import { ReaderAdFallbackProvider } from '@/components/reader/ReaderAdFallbackContext'
+import { cn } from 'scoop'
 
 async function getCategories(): Promise<Category[]> {
   try {
@@ -18,16 +21,25 @@ async function getCategories(): Promise<Category[]> {
   }
 }
 
-export async function ReaderLayout({ children }: { children: React.ReactNode }) {
-  const [categories, announcements, partnershipStrip] = await Promise.all([
+export async function ReaderLayout({
+  children,
+  /** Réseau Tribune : pas de bandeau pub « global top » (emplacements dédiés dans la zone). */
+  variant = 'default',
+}: {
+  children: React.ReactNode
+  variant?: 'default' | 'tribune'
+}) {
+  const [categories, announcements, partnershipStrip, emptyAdCopy] = await Promise.all([
     getCategories(),
     fetchAnnouncements(),
     isPartnershipStripEnabled(),
+    fetchReaderChromeFallback(),
   ])
   const { bar, tickerSource, urgentBar } = splitAnnouncementsForChrome(announcements)
   const tickerItems = announcementTickerItems(tickerSource)
 
   return (
+    <ReaderAdFallbackProvider value={emptyAdCopy}>
     <div className="flex min-h-screen flex-col bg-editorial-surface text-editorial-on-surface">
       <a
         href="#main-content"
@@ -36,8 +48,15 @@ export async function ReaderLayout({ children }: { children: React.ReactNode }) 
         Aller au contenu principal
       </a>
       <ReaderHeader bannerAnnouncement={bar} urgentBar={urgentBar} categories={categories} />
-      <main id="main-content" tabIndex={-1} className="flex flex-1 flex-col pb-24 outline-none md:pb-12">
-        <GlobalTopAdStrip />
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className={cn(
+          'flex flex-1 flex-col pb-24 outline-none md:pb-12',
+          variant === 'tribune' && 'bg-gradient-to-b from-background via-muted/20 to-background',
+        )}
+      >
+        {variant === 'default' ? <GlobalTopAdStrip /> : null}
         {tickerItems.length > 0 ? <ReaderChrome tickerItems={tickerItems} /> : null}
         {children}
       </main>
@@ -45,5 +64,6 @@ export async function ReaderLayout({ children }: { children: React.ReactNode }) 
       <ReaderFooter />
       <ReaderMobileDock />
     </div>
+    </ReaderAdFallbackProvider>
   )
 }

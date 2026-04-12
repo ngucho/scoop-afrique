@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react'
 import {
   AdSlotFrame,
   AdCreativeDisplay,
-  AdSlotEmptyState,
   type AdCreativeDisplayModel,
   type AdCreativeSlotLayout,
 } from 'scoop'
+import { ScoopSocialAdFallback } from '@/components/reader/ScoopSocialAdFallback'
 import { config } from '@/lib/config'
 import type { AdCreative } from '@/lib/api/types'
 import { getAdSlotLayout, adSlotFrameDensity } from '@/lib/adSlotLayouts'
@@ -107,7 +107,7 @@ export function AdSlotRenderer({
       metadata: { format: creative ? resolveFormat(creative) : undefined },
     })
 
-  const defaultFallback = <AdSlotEmptyState slotKey={slotKey} />
+  const defaultFallback = <ScoopSocialAdFallback slotKey={slotKey} slotLayout={slotLayout} />
 
   const content = creative ? (
     <AdCreativeDisplay
