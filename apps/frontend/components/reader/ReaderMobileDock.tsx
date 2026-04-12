@@ -13,7 +13,7 @@ export function ReaderMobileDock() {
   const pathname = usePathname()
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex h-[4.5rem] items-center justify-around border-t border-editorial-outline-variant/15 bg-editorial-surface-lowest/90 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 flex h-[4.5rem] max-w-[100vw] items-center justify-around border-t border-editorial-outline-variant/15 bg-editorial-surface-lowest/90 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:px-2 md:hidden"
       aria-label="Navigation mobile"
     >
       <Link href="/" className={dockLinkClass(pathname === '/')} aria-current={pathname === '/' ? 'page' : undefined}>
