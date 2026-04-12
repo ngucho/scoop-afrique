@@ -18,8 +18,11 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo, imag
   if (variant === 'row') {
     const cat = article.category?.name
     return (
-      <article className="group flex flex-col gap-4 md:flex-row">
-        <Link href={href} className="relative aspect-[16/10] w-full shrink-0 overflow-hidden rounded-lg bg-editorial-surface-container md:w-[42%]">
+      <article className="group flex min-w-0 max-w-full flex-col gap-4 md:flex-row">
+        <Link
+          href={href}
+          className="relative aspect-[16/10] w-full max-w-full shrink-0 overflow-hidden rounded-lg bg-editorial-surface-container md:w-[42%] md:max-w-[42%]"
+        >
           {article.cover_image_url ? (
             <img
               src={article.cover_image_url}
@@ -37,8 +40,8 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo, imag
             <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-editorial-tertiary">{cat}</span>
           ) : null}
           <Link href={href}>
-            <h3
-              className="mb-2 line-clamp-3 text-2xl font-bold leading-tight text-editorial-on-surface transition-colors group-hover:text-primary"
+                       <h3
+              className="mb-2 line-clamp-3 text-xl font-bold leading-tight text-editorial-on-surface transition-colors group-hover:text-primary sm:text-2xl"
               style={{ fontFamily: 'var(--font-headline)' }}
             >
               {article.title}

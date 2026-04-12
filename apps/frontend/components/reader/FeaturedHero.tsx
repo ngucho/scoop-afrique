@@ -13,10 +13,10 @@ export function FeaturedHero({ article, imageFetchPriority = 'high' }: FeaturedH
   const label = article.category?.name ?? 'À la une'
 
   return (
-    <section className="mb-12">
-      <div className="group cursor-pointer overflow-hidden rounded-xl bg-editorial-surface-low shadow-[var(--shadow-md)] transition-[box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-[var(--shadow-lg)]">
-        <div className="grid gap-0 md:grid-cols-12">
-          <div className="relative min-h-[280px] overflow-hidden md:col-span-8 md:min-h-[420px] lg:min-h-[520px]">
+    <section className="mb-12 w-full min-w-0 max-w-full">
+      <div className="group max-w-full cursor-pointer overflow-hidden rounded-xl bg-editorial-surface-low shadow-[var(--shadow-md)] transition-[box-shadow] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-[var(--shadow-lg)]">
+        <div className="grid min-w-0 gap-0 md:grid-cols-12">
+          <div className="relative min-h-[240px] min-w-0 overflow-hidden sm:min-h-[280px] md:col-span-8 md:min-h-[420px] lg:min-h-[520px]">
             {article.cover_image_url ? (
               <img
                 src={article.cover_image_url}
@@ -30,16 +30,16 @@ export function FeaturedHero({ article, imageFetchPriority = 'high' }: FeaturedH
               <div className="h-full min-h-[280px] bg-editorial-surface-container md:min-h-[420px]" />
             )}
           </div>
-          <div className="flex flex-col justify-center bg-editorial-surface-lowest p-6 md:col-span-4 md:p-8">
+          <div className="flex min-w-0 flex-col justify-center break-words bg-editorial-surface-lowest p-4 sm:p-6 md:col-span-4 md:p-8">
             <span className="mb-4 block text-[10px] font-black uppercase tracking-[0.2em] text-primary">{label}</span>
             <h2
-              className="mb-4 text-3xl font-bold leading-[1.1] text-editorial-on-surface md:text-4xl lg:text-5xl"
+              className="mb-4 text-2xl font-bold leading-[1.15] text-editorial-on-surface sm:text-3xl md:text-4xl lg:text-5xl"
               style={{ fontFamily: 'var(--font-headline)' }}
             >
               {article.title}
             </h2>
             {article.excerpt ? (
-              <p className="mb-8 text-lg leading-relaxed text-editorial-secondary">{article.excerpt}</p>
+              <p className="mb-8 text-base leading-relaxed text-editorial-secondary sm:text-lg">{article.excerpt}</p>
             ) : null}
             <div className="mt-auto flex items-center gap-3">
               <div className="flex min-w-0 flex-col">
