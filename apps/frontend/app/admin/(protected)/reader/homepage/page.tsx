@@ -25,10 +25,13 @@ export default async function ReaderHomepagePage() {
           Page d&apos;accueil — sections
         </Heading>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ces réglages pilotent la page d&apos;accueil publique (titres, ordre, visibilité, limites). La section{' '}
-          <strong className="font-medium text-foreground">partnership_strip</strong> contrôle uniquement le bandeau
-          partenariats au-dessus du footer sur tout le site lecteur — activez « Visible sur le site » pour l&apos;afficher.
-          Réservé aux rôles <strong className="font-medium text-foreground">manager</strong> et{' '}
+          Chaque section s’ouvre dans une modale via « Configurer la section » pour gagner de la place. Les lignes{' '}
+          <strong className="font-medium text-foreground">home_ad_mid</strong> et{' '}
+          <strong className="font-medium text-foreground">home_ad_bottom</strong> insèrent les encarts pub à la position
+          voulue (champ ordre). La section{' '}
+          <strong className="font-medium text-foreground">partnership_strip</strong> contrôle le bandeau partenariats au-dessus
+          du footer sur tout le site lecteur. Réservé aux rôles{' '}
+          <strong className="font-medium text-foreground">manager</strong> et{' '}
           <strong className="font-medium text-foreground">admin</strong>.
         </p>
       </div>

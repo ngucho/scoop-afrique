@@ -22,7 +22,13 @@ type Draft = {
   linkUrl: string
 }
 
-export function AnnouncementForm() {
+export function AnnouncementForm({
+  embedInModal = false,
+  onSuccess,
+}: {
+  embedInModal?: boolean
+  onSuccess?: () => void
+} = {}) {
   const getDefaults = useCallback(
     (): Draft => ({
       title: '',
@@ -55,6 +61,7 @@ export function AnnouncementForm() {
           ends_at: null,
         })
         clearDraft()
+        onSuccess?.()
       } catch {
         alert('Erreur lors de la création.')
       }
@@ -64,10 +71,20 @@ export function AnnouncementForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-3 rounded-lg border border-border bg-card p-4"
+      className={
+        embedInModal
+          ? 'space-y-3'
+          : 'space-y-3 rounded-lg border border-border bg-card p-4'
+      }
     >
-      <p className="text-sm font-medium">Nouvelle annonce</p>
-      <p className="text-xs text-muted-foreground">Brouillon conservé localement jusqu’à envoi réussi.</p>
+      {embedInModal ? (
+        <p className="text-xs text-muted-foreground">Brouillon conservé localement jusqu’à envoi réussi.</p>
+      ) : (
+        <>
+          <p className="text-sm font-medium">Nouvelle annonce</p>
+          <p className="text-xs text-muted-foreground">Brouillon conservé localement jusqu’à envoi réussi.</p>
+        </>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Titre</label>

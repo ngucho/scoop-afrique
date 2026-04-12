@@ -15,7 +15,13 @@ type Draft = {
   sendAt: string
 }
 
-export function NewsletterCampaignForm() {
+export function NewsletterCampaignForm({
+  embedInModal = false,
+  onSuccess,
+}: {
+  embedInModal?: boolean
+  onSuccess?: () => void
+} = {}) {
   const getDefaults = useCallback(
     (): Draft => ({
       name: '',
@@ -53,6 +59,7 @@ export function NewsletterCampaignForm() {
           send_at: form.sendAt ? new Date(form.sendAt).toISOString() : null,
         })
         clearDraft()
+        onSuccess?.()
       } catch {
         alert('Erreur.')
       }
@@ -60,8 +67,13 @@ export function NewsletterCampaignForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 rounded-lg border border-border bg-card p-4">
-      <p className="text-sm font-medium">Nouvelle campagne</p>
+    <form
+      onSubmit={submit}
+      className={
+        embedInModal ? 'space-y-3' : 'space-y-3 rounded-lg border border-border bg-card p-4'
+      }
+    >
+      {embedInModal ? null : <p className="text-sm font-medium">Nouvelle campagne</p>}
       <p className="text-xs text-muted-foreground">Brouillon sauvegardé localement jusqu’à création réussie.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>

@@ -22,8 +22,8 @@ export default async function AudienceMetricsPage() {
           KPI &amp; audience (séries temporelles)
         </Heading>
         <p className="mt-1 text-sm text-muted-foreground">
-          Saisie manuelle ou jobs d’ingestion vers la table <span className="font-mono text-xs">audience_metric_snapshots</span>
-          . Lecture réservée au back-office (éditeur+) ; même rôle peut poster un point.
+          Saisie manuelle (modale, listes plateforme / métrique / source) ou jobs d’ingestion vers{' '}
+          <span className="font-mono text-xs">audience_metric_snapshots</span>. Lecture et saisie : éditeur et plus.
         </p>
       </div>
       <AudienceMetricsClient recent={recent} latest={latest} userRole={session.role} />
