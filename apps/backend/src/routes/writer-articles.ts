@@ -47,11 +47,17 @@ app.post('/articles', async (c) => {
       ? bodyTextToTipTapDoc(body_text.trim())
       : rest.content
 
+  const resolvedAuthor =
+    rest.author_display_name?.trim() ||
+    (await articleService.getDefaultAuthorDisplayForProfile(profileId)) ||
+    null
+
   const article = await articleService.createArticle(
     {
       ...rest,
       content,
       status: 'draft',
+      author_display_name: resolvedAuthor ?? undefined,
     },
     profileId,
   )

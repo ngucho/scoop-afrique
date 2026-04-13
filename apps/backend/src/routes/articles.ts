@@ -31,9 +31,10 @@ app.get('/', async (c) => {
     limit,
     status: 'published',
   })
+  const presented = data.map((a) => articleService.presentArticleForPublicApi(a))
   // Cache article lists for 30s, serve stale for 5 min while revalidating
   c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
-  return c.json({ data, total, page, limit })
+  return c.json({ data: presented, total, page, limit })
 })
 
 /* --- Get single article (view tracking) --- */
@@ -51,7 +52,7 @@ app.get('/:id', async (c) => {
 
   // Cache single articles for 60s, stale for 10 min
   c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=600')
-  return c.json({ data: article })
+  return c.json({ data: articleService.presentArticleForPublicApi(article) })
 })
 
 /* --- Like count + liked state --- */

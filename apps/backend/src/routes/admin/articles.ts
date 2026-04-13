@@ -32,6 +32,11 @@ function requireDatabase(c: import('hono').Context) {
 
 const app = new Hono<AppEnv>()
 
+function toAdminArticlePayload(a: articleService.ArticleWithAuthor) {
+  const { reader_public_display_name: _r, ...rest } = a
+  return rest
+}
+
 // All admin routes require authentication
 app.use('*', requireAuth)
 
@@ -53,7 +58,7 @@ app.get('/', async (c) => {
     limit,
     allowAllStatuses: true,
   })
-  return c.json({ data, total })
+  return c.json({ data: data.map(toAdminArticlePayload), total })
 })
 
 /* --- Get single article --- */
@@ -61,7 +66,7 @@ app.get('/:id', async (c) => {
   const id = c.req.param('id')
   const article = await articleService.getArticleByIdOrSlug(id, false)
   if (!article) return c.json({ error: 'Not found' }, 404)
-  return c.json({ data: article })
+  return c.json({ data: toAdminArticlePayload(article) })
 })
 
 /* --- Create article (journalist+) --- */

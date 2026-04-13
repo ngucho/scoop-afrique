@@ -51,7 +51,8 @@ Bienvenue dans la documentation du monorepo **Scoop Afrique**. Tous les document
 | Document | Description |
 |----------|-------------|
 | [auth0-actions/README.md](./auth0-actions/README.md) | Présentation des Actions Auth0 utilisées. |
-| [auth0-actions/post-login-add-user-metadata.js](./auth0-actions/post-login-add-user-metadata.js) | Code de l'Action Post-Login (claim `user_metadata`). |
+| [auth0-actions/post-login-add-user-metadata.js](./auth0-actions/post-login-add-user-metadata.js) | Action Post-Login : rôle reader + claim `user_metadata`. |
+| [auth0-actions/post-user-registration-assign-reader.js](./auth0-actions/post-user-registration-assign-reader.js) | Action Post User Registration : assigne `reader` au premier signup. |
 
 ---
 

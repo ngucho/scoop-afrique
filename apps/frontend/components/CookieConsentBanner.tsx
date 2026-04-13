@@ -47,6 +47,10 @@ export function CookieConsentBanner() {
             className="font-medium text-primary underline underline-offset-2 hover:no-underline"
           >
             Politique de confidentialité
+          </Link>{' '}
+          —{' '}
+          <Link href="/cgu" className="font-medium text-primary underline underline-offset-2 hover:no-underline">
+            CGU
           </Link>
         </p>
         <div className="flex shrink-0 gap-3">
