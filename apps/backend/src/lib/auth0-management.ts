@@ -6,7 +6,7 @@
  *
  * Requires a Machine-to-Machine application in Auth0 with:
  * - Grant: Client Credentials
- * - API: Auth0 Management API with scopes: update:users, read:users
+ * - API: Auth0 Management API with scopes: read:users, read:roles, update:users
  *
  * @see https://auth0.com/docs/secure/tokens/access-tokens/management-api-access-tokens
  * @see https://auth0.com/docs/manage-users/user-accounts/metadata/manage-metadata-api
@@ -131,4 +131,48 @@ export async function listAuth0Users(
     picture: u.picture ?? null,
   }))
   return { users, total: data.total ?? users.length }
+}
+
+/** Auth0 role objects returned by GET /api/v2/users/:id/roles */
+interface Auth0RoleRef {
+  id: string
+  name?: string
+}
+
+/** List roles assigned to a user (Management API). */
+export async function listAuth0UserRoles(userId: string): Promise<Auth0RoleRef[] | null> {
+  const token = await getManagementAccessToken()
+  if (!token || !config.auth0Management) return null
+
+  const { domain } = config.auth0Management
+  const res = (await fetch(
+    `https://${domain}/api/v2/users/${encodeURIComponent(userId)}/roles`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  )) as FetchResponse
+
+  if (!res.ok) return null
+  const data = (await res.json()) as Auth0RoleRef[]
+  return Array.isArray(data) ? data : []
+}
+
+/** Add roles to a user (does not remove existing). */
+export async function addAuth0UserRoles(userId: string, roleIds: string[]): Promise<boolean> {
+  if (roleIds.length === 0) return true
+  const token = await getManagementAccessToken()
+  if (!token || !config.auth0Management) return false
+
+  const { domain } = config.auth0Management
+  const res = (await fetch(
+    `https://${domain}/api/v2/users/${encodeURIComponent(userId)}/roles`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ roles: roleIds }),
+    },
+  )) as FetchResponse
+
+  return res.ok
 }

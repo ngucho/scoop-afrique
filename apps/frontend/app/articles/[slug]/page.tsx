@@ -109,13 +109,14 @@ function ArticleJsonLd({
     published_at: string | null
     updated_at: string
     cover_image_url: string | null
+    og_image_url?: string | null
     author_display_name?: string | null
     author?: { email: string | null } | null
     category?: { name: string; slug: string } | null
   }
   shareUrl: string
 }) {
-  const image = absoluteImage(article.cover_image_url)
+  const image = absoluteImage(article.og_image_url ?? article.cover_image_url)
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',

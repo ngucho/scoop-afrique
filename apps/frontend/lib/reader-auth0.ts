@@ -40,6 +40,21 @@ export async function getReaderSession() {
   return readerAuth0.getSession()
 }
 
+/**
+ * Auth0 federated logout requires `post_logout_redirect_uri` to be an **absolute** URL listed under
+ * Application → Allowed Logout URLs. Relative paths like `/account/login` are rejected.
+ *
+ * @param returnPath Path on this app, must start with `/` (e.g. `/account/login`).
+ */
+export function readerLogoutHref(returnPath: string): string {
+  const base = (process.env.APP_BASE_URL ?? '').replace(/\/$/, '')
+  const path = returnPath.startsWith('/') ? returnPath : `/${returnPath}`
+  if (!base) {
+    return '/reader/auth/logout'
+  }
+  return `/reader/auth/logout?returnTo=${encodeURIComponent(`${base}${path}`)}`
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> {
   try {
     const [, payloadB64] = token.split('.')
@@ -69,5 +84,15 @@ export async function getReaderAccessToken(): Promise<{
     }
   } catch {
     return null
+  }
+}
+
+/** Force a refresh from Auth0 (e.g. after backend assigned the reader role). */
+export async function refreshReaderAccessToken(): Promise<boolean> {
+  try {
+    const result = await readerAuth0.getAccessToken({ refresh: true })
+    return Boolean(result?.token)
+  } catch {
+    return false
   }
 }

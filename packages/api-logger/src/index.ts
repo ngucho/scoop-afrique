@@ -41,6 +41,18 @@ function formatEntry(entry: ApiLogEntry): string {
   if (entry.durationMs != null) parts.push(`${entry.durationMs}ms`)
   if (entry.error) parts.push(`— ${entry.error}`)
   if (entry.stack) parts.push(`\n${entry.stack}`)
+  // Structured auth / debug fields (omitted from the short line above in older builds)
+  if (entry.code != null) parts.push(`code=${String(entry.code)}`)
+  if (entry.reason != null) parts.push(`reason=${String(entry.reason)}`)
+  if (entry.detail) parts.push(String(entry.detail))
+  if (entry.decode_ok != null) parts.push(`decode_ok=${String(entry.decode_ok)}`)
+  if (entry.token_summary != null) {
+    try {
+      parts.push(`token_summary=${JSON.stringify(entry.token_summary)}`)
+    } catch {
+      parts.push('token_summary=<unserializable>')
+    }
+  }
   return parts.filter(Boolean).join(' ')
 }
 
