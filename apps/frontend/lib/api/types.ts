@@ -135,7 +135,7 @@ export interface ReaderAnnouncement {
   body: string
   audience: 'all' | 'subscribers' | 'guests'
   link_url: string | null
-  placement: 'banner' | 'modal' | 'inline' | 'footer'
+  placement: 'banner' | 'modal' | 'inline' | 'footer' | 'sidebar'
   priority: number
   starts_at: string | null
   ends_at: string | null
@@ -298,7 +298,7 @@ export interface Announcement {
   id: string
   title: string
   body: string
-  placement: 'banner' | 'modal' | 'inline' | 'footer'
+  placement: 'banner' | 'modal' | 'inline' | 'footer' | 'sidebar'
   priority: number
   link_url: string | null
   is_active: boolean

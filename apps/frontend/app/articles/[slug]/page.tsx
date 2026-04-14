@@ -11,7 +11,8 @@ import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { ArticleContextRail } from '@/components/reader/ArticleContextRail'
 import { ArticleCommentsSection } from '@/components/reader/ArticleCommentsSection'
 import { ArticleAuthorCard } from '@/components/reader/ArticleAuthorCard'
-import { Heading, Text, MetaBar, Thumbnail, StickyRail } from 'scoop'
+import { Heading, Text, MetaBar, StickyRail } from 'scoop'
+import { ReaderCoverImage } from '@/components/reader/ReaderCoverImage'
 import { apiGet } from '@/lib/api/client'
 import type { ArticleResponse, LikesResponse } from '@/lib/api/types'
 import { config } from '@/lib/config'
@@ -285,13 +286,15 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               <p className="sr-only">Publié le {formatDate(article.published_at)}</p>
             </header>
 
-            {hasCoverImage && (
-              <div className="relative -mx-4 mb-12 overflow-hidden rounded-xl sm:mx-0 md:-mx-6">
-                <Thumbnail
+            {hasCoverImage && coverImageUrl && (
+              <div className="relative -mx-4 mb-12 overflow-hidden rounded-xl shadow-[var(--shadow-lg)] sm:mx-0 md:-mx-6">
+                <ReaderCoverImage
                   src={coverImageUrl}
                   alt={`Illustration — ${article.title}`}
-                  aspectRatio="video"
-                  className="w-full rounded-xl shadow-[var(--shadow-lg)]"
+                  aspectClassName="aspect-video"
+                  className="rounded-xl"
+                  sizes="(max-width: 1024px) 100vw, 66vw"
+                  priority
                 />
               </div>
             )}

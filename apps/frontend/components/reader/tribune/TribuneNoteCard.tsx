@@ -345,7 +345,10 @@ export function TribuneNoteCard({
   }
 
   return (
-    <article className="border-b border-border/60 px-4 py-4 transition-colors hover:bg-muted/10">
+    <article
+      id={`tribune-contribution-${c.id}`}
+      className="scroll-mt-28 border-b border-border/60 px-4 py-4 transition-colors hover:bg-muted/10"
+    >
       <div className="flex gap-3">
         <div className="shrink-0">
           {anon ? (

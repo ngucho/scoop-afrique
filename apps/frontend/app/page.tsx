@@ -9,6 +9,9 @@ import { HomeNewsletterCta } from '@/components/reader/HomeNewsletterCta'
 import { config } from '@/lib/config'
 import { buildHomeSections, type HomePageBlock } from '@/lib/homeSections'
 import { fetchAdPlacements, pickCreativeForSlot, AD_SLOT_KEYS } from '@/lib/readerAds'
+import { fetchAnnouncements, homeSidebarAnnouncements } from '@/lib/readerAnnouncements'
+import { fetchTribuneSnapshotContributions } from '@/lib/tribuneSnapshot'
+import { HomeLeftRail } from '@/components/reader/HomeLeftRail'
 import type { Article } from '@/lib/api/types'
 import type { HomepageSection } from '@/lib/api/types'
 
@@ -264,7 +267,13 @@ function HomeArticlesSection({
 }
 
 export default async function HomePage() {
-  const [{ blocks }, placements] = await Promise.all([buildHomeSections(), fetchAdPlacements()])
+  const [{ blocks }, placements, tribuneSnapshot, allAnnouncements] = await Promise.all([
+    buildHomeSections(),
+    fetchAdPlacements(),
+    fetchTribuneSnapshotContributions(5),
+    fetchAnnouncements(),
+  ])
+  const sidebarAnnouncements = homeSidebarAnnouncements(allAnnouncements)
   const { slots, creatives_by_slot } = placements
   const sponsorAd = pickCreativeForSlot(slots, creatives_by_slot, AD_SLOT_KEYS.HOME_HERO_SPONSOR)
 
@@ -295,6 +304,8 @@ export default async function HomePage() {
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }} />
       ) : null}
       <div className="mx-auto w-full min-w-0 max-w-7xl px-4 pb-24 pt-8 sm:px-6 md:pb-12 lg:px-8">
+        <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:gap-12 lg:items-start">
+          <div className="min-w-0 max-w-full lg:col-start-2 lg:row-start-1">
         <header className="mb-10 min-w-0 max-w-full">
           <SectionHeader label="Accueil" className="mb-4" />
           <Heading
@@ -412,6 +423,15 @@ export default async function HomePage() {
             </Button>
           </div>
         )}
+          </div>
+
+          <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+            <HomeLeftRail
+              contributions={tribuneSnapshot}
+              sidebarAnnouncements={sidebarAnnouncements}
+            />
+          </div>
+        </div>
       </div>
     </ReaderLayout>
   )
