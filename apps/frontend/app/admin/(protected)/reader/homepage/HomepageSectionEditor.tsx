@@ -21,7 +21,7 @@ import { useFormDraftState } from '@/hooks/useFormDraft'
 
 const SECTION_HELP: Record<string, string> = {
   top_stories:
-    'Bloc « à la une » : premier article en hero. Désactiver masque tout le hero.',
+    'Bloc « à la une » : image en 16:9 fixe côté lecteur. Sans article manuel (ou hors fenêtre de dates), le hero affiche l’article le plus lu sur 7 jours (puis repli sur le classement toutes vues).',
   latest: 'Grille des derniers articles. `max_items` limite le nombre de cartes.',
   trending: 'Articles triés par vues (`sort: views` dans le JSON avancé).',
   video: 'Section carrousel ; utilisez le JSON pour un filtre par tag (ex. `"tag":"video"`).',
@@ -44,6 +44,14 @@ function numOrEmpty(v: string): number | undefined {
   return Number.isFinite(n) ? n : undefined
 }
 
+function isoToDatetimeLocalValue(iso: string | undefined): string {
+  if (!iso || typeof iso !== 'string') return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 type SectionDraft = {
   title: string
   layout: HomepageSection['layout']
@@ -52,6 +60,9 @@ type SectionDraft = {
   maxItems: string
   maxPerStrip: string
   tagFilter: string
+  featuredArticleId: string
+  featuredStarts: string
+  featuredEnds: string
   configJson: string
 }
 
@@ -75,6 +86,13 @@ function buildDefaults(section: HomepageSection): SectionDraft {
           ? cfg.max_per_strip
           : '',
     tagFilter: typeof cfg.tag === 'string' ? cfg.tag : '',
+    featuredArticleId: typeof cfg.featured_article_id === 'string' ? cfg.featured_article_id : '',
+    featuredStarts: isoToDatetimeLocalValue(
+      typeof cfg.featured_starts_at === 'string' ? cfg.featured_starts_at : undefined,
+    ),
+    featuredEnds: isoToDatetimeLocalValue(
+      typeof cfg.featured_ends_at === 'string' ? cfg.featured_ends_at : undefined,
+    ),
     configJson: JSON.stringify(section.config ?? {}, null, 2),
   }
 }
@@ -120,6 +138,21 @@ export function HomepageSectionEditor({
     else delete merged.max_per_strip
     if (form.tagFilter.trim()) merged.tag = form.tagFilter.trim()
     else delete merged.tag
+
+    if (section.key === 'top_stories') {
+      if (form.featuredArticleId.trim()) merged.featured_article_id = form.featuredArticleId.trim()
+      else delete merged.featured_article_id
+      if (form.featuredStarts.trim()) {
+        const iso = new Date(form.featuredStarts)
+        if (!Number.isNaN(iso.getTime())) merged.featured_starts_at = iso.toISOString()
+        else delete merged.featured_starts_at
+      } else delete merged.featured_starts_at
+      if (form.featuredEnds.trim()) {
+        const iso = new Date(form.featuredEnds)
+        if (!Number.isNaN(iso.getTime())) merged.featured_ends_at = iso.toISOString()
+        else delete merged.featured_ends_at
+      } else delete merged.featured_ends_at
+    }
 
     startTransition(async () => {
       try {
@@ -242,18 +275,62 @@ export function HomepageSectionEditor({
             className="border-dashed"
           >
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1">
-                <Label size="sm" className="text-muted-foreground">
-                  max_items
-                </Label>
-                <Input
-                  type="number"
-                  min={0}
-                  placeholder="ex. 10"
-                  value={form.maxItems}
-                  onChange={(e) => setForm((f) => ({ ...f, maxItems: e.target.value }))}
-                />
-              </div>
+              {section.key === 'top_stories' ? (
+                <div className="space-y-3 sm:col-span-2">
+                  <p className="text-xs font-medium text-foreground">À la une — choix rédactionnel</p>
+                  <div className="space-y-1">
+                    <Label size="sm" className="text-muted-foreground">
+                      ID ou slug de l&apos;article (publié)
+                    </Label>
+                    <Input
+                      value={form.featuredArticleId}
+                      onChange={(e) => setForm((f) => ({ ...f, featuredArticleId: e.target.value }))}
+                      placeholder="uuid ou slug"
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label size="sm" className="text-muted-foreground">
+                        Début d&apos;affichage (optionnel)
+                      </Label>
+                      <Input
+                        type="datetime-local"
+                        value={form.featuredStarts}
+                        onChange={(e) => setForm((f) => ({ ...f, featuredStarts: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label size="sm" className="text-muted-foreground">
+                        Fin d&apos;affichage (optionnel)
+                      </Label>
+                      <Input
+                        type="datetime-local"
+                        value={form.featuredEnds}
+                        onChange={(e) => setForm((f) => ({ ...f, featuredEnds: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Laisser les dates vides : l&apos;article reste « à la une » tant que l&apos;ID est renseigné. Après la
+                    fin, ou sans ID : l&apos;article le plus lu sur 7 jours est utilisé automatiquement.
+                  </p>
+                </div>
+              ) : null}
+              {section.key !== 'top_stories' ? (
+                <div className="space-y-1">
+                  <Label size="sm" className="text-muted-foreground">
+                    max_items
+                  </Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="ex. 10"
+                    value={form.maxItems}
+                    onChange={(e) => setForm((f) => ({ ...f, maxItems: e.target.value }))}
+                  />
+                </div>
+              ) : null}
               {section.key === 'rubriques' ? (
                 <div className="space-y-1">
                   <Label size="sm" className="text-muted-foreground">

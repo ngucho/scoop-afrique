@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @scoop-afrique/api-logger run build",
     "dev": "tsx watch src/index.ts",
     "prebuild": "pnpm --filter @scoop-afrique/api-logger run build",
     "build": "tsc && node scripts/copy-pdf-templates.js",

@@ -6,9 +6,14 @@ import { IconLoader2, IconPlus } from '@tabler/icons-react'
 import { createAnnouncement } from '@/lib/admin/actions'
 import { useFormDraftState } from '@/hooks/useFormDraft'
 
-const PLACEMENT_OPTIONS: { value: 'banner' | 'modal' | 'inline' | 'footer'; label: string }[] = [
+const PLACEMENT_OPTIONS: { value: 'banner' | 'modal' | 'inline' | 'footer' | 'sidebar'; label: string; hint?: string }[] = [
   { value: 'banner', label: 'Bandeau principal (haut de page)' },
   { value: 'footer', label: 'Fil info / secondaire' },
+  {
+    value: 'sidebar',
+    label: 'Accueil — colonne gauche',
+    hint: 'Offres d’emploi, anniversaires de rubrique, messages éditoriaux courts. N’apparaît pas dans le bandeau ni le fil défilant.',
+  },
   { value: 'modal', label: 'Modal (réservé)' },
   { value: 'inline', label: 'Dans le corps des articles' },
 ]
@@ -17,7 +22,7 @@ type Draft = {
   title: string
   body: string
   audience: 'all' | 'subscribers' | 'guests'
-  placement: 'banner' | 'modal' | 'inline' | 'footer'
+  placement: 'banner' | 'modal' | 'inline' | 'footer' | 'sidebar'
   priority: number
   linkUrl: string
 }
@@ -118,11 +123,16 @@ export function AnnouncementForm({
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
           >
             {PLACEMENT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
+              <option key={o.value} value={o.value} title={o.hint}>
                 {o.label}
               </option>
             ))}
           </select>
+          {PLACEMENT_OPTIONS.find((o) => o.value === form.placement)?.hint ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {PLACEMENT_OPTIONS.find((o) => o.value === form.placement)?.hint}
+            </p>
+          ) : null}
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-muted-foreground">Priorité (0–999)</label>

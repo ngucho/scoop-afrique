@@ -43,6 +43,8 @@
     { "idx": 38, "version": "7", "when": 1743986400000, "tag": "0038_contribution_comment_reactions", "breakpoints": true },
     { "idx": 39, "version": "7", "when": 1744072800000, "tag": "0039_journalist_profile_fields", "breakpoints": true },
     { "idx": 40, "version": "7", "when": 1744159200000, "tag": "0040_reader_chrome_writer_api", "breakpoints": true },
-    { "idx": 41, "version": "7", "when": 1744245600000, "tag": "0041_homepage_inline_ad_sections", "breakpoints": true }
+    { "idx": 41, "version": "7", "when": 1744245600000, "tag": "0041_homepage_inline_ad_sections", "breakpoints": true },
+    { "idx": 42, "version": "7", "when": 1744332000000, "tag": "0042_announcement_sidebar_placement", "breakpoints": true },
+    { "idx": 43, "version": "7", "when": 1744418400000, "tag": "0043_article_view_events", "breakpoints": true }
   ]
 }

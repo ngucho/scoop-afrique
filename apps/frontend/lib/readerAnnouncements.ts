@@ -10,9 +10,18 @@ export async function fetchAnnouncements(): Promise<Announcement[]> {
   }
 }
 
+/** Home left rail only — jobs, celebrations, etc. (not header / ticker). */
+export function homeSidebarAnnouncements(announcements: Announcement[]) {
+  return [...announcements]
+    .filter((a) => a.placement === 'sidebar')
+    .sort((a, b) => b.priority - a.priority)
+}
+
 /** Top bar: first banner placement, else first item. Ticker: remaining items (no duplicate of bar). */
 export function splitAnnouncementsForChrome(announcements: Announcement[]) {
-  const sorted = [...announcements].sort((a, b) => b.priority - a.priority)
+  const sorted = [...announcements]
+    .filter((a) => a.placement !== 'sidebar')
+    .sort((a, b) => b.priority - a.priority)
   const bar =
     sorted.find((a) => a.placement === 'banner') ?? sorted[0] ?? null
   const rest = bar ? sorted.filter((a) => a.id !== bar.id) : sorted

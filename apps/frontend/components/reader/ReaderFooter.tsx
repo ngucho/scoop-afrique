@@ -24,6 +24,7 @@ const FOOTER_LINKS = {
     { label: 'Contact', href: '/contact' },
     { label: 'Politique de confidentialité', href: '/politique-de-confidentialite' },
     { label: 'Mentions légales', href: '/mentions-legales' },
+    { label: 'CGU', href: '/cgu' },
   ],
 } as const
 
@@ -124,6 +125,12 @@ export function ReaderFooter() {
               className="font-mono text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
             >
               Mentions légales
+            </Link>
+            <Link
+              href="/cgu"
+              className="font-mono text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+            >
+              CGU
             </Link>
           </div>
         </div>
