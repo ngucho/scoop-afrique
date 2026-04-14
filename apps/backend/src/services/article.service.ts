@@ -10,7 +10,7 @@
  */
 import { eq, and, desc, sql, or, ilike, isNotNull } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
-import { articles, categories, profiles, readerPublicProfiles } from '../db/schema.js'
+import { articles, articleViewEvents, categories, profiles, readerPublicProfiles } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { CreateArticleBody, UpdateArticleBody } from '../schemas/article.js'
 import type { AppRole } from './profile.service.js'
@@ -52,6 +52,15 @@ export interface ArticleWithAuthor extends Article {
   author?: { email: string | null } | null
   author_public?: { bio: string | null; avatar_url: string | null } | null
   category?: { id: string; name: string; slug: string } | null
+  /** From reader_public_profiles; stripped in admin JSON; used for public author fallback. */
+  reader_public_display_name?: string | null
+}
+
+/** Published rows for sitemap (minimal fields, no drafts). */
+export interface SitemapArticleEntry {
+  slug: string
+  published_at: string | null
+  updated_at: string
 }
 
 export interface ListOptions {
@@ -67,6 +76,50 @@ export interface ListOptions {
 }
 
 /* ---------- Helpers ---------- */
+
+function displayNameFromEmail(email: string | null | undefined): string | null {
+  if (!email || typeof email !== 'string') return null
+  const local = email.split('@')[0]?.trim()
+  if (!local) return null
+  const words = local.replace(/[._-]+/g, ' ').trim()
+  if (!words) return null
+  return words.replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+/**
+ * Public JSON: OG image falls back to cover; author line uses article field, then reader profile, then email-derived label.
+ */
+export function presentArticleForPublicApi(article: ArticleWithAuthor): ArticleWithAuthor {
+  const mergedName =
+    article.author_display_name?.trim() ||
+    article.reader_public_display_name?.trim() ||
+    displayNameFromEmail(article.author?.email ?? null)
+  const { reader_public_display_name: _r, ...rest } = article
+  return {
+    ...rest,
+    og_image_url: article.og_image_url ?? article.cover_image_url,
+    author_display_name: mergedName?.trim() || null,
+  }
+}
+
+/** Default byline when Writer API omits author_display_name. */
+export async function getDefaultAuthorDisplayForProfile(profileId: string): Promise<string | null> {
+  if (!config.database) return null
+  const db = getDb()
+  const [row] = await db
+    .select({
+      email: profiles.email,
+      displayName: readerPublicProfiles.displayName,
+    })
+    .from(profiles)
+    .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
+    .where(eq(profiles.id, profileId))
+    .limit(1)
+  if (!row) return null
+  const dn = row.displayName?.trim()
+  if (dn) return dn
+  return displayNameFromEmail(row.email)
+}
 
 /** Recursively extract plain text from TipTap JSON for word count. */
 function extractText(node: unknown): string {
@@ -161,6 +214,7 @@ function toArticleWithAuthor(
     journalistPublicAvatarUrl?: string | null
     readerPublicBio?: string | null
     readerPublicAvatarUrl?: string | null
+    readerPublicDisplayName?: string | null
   }
   const bioJournalist = r.journalistPublicBio?.trim() ?? ''
   const bioReader = r.readerPublicBio?.trim() ?? ''
@@ -171,6 +225,7 @@ function toArticleWithAuthor(
   const hasPublic = !!(mergedBio || mergedAvatar)
   return {
     ...toArticle(r),
+    reader_public_display_name: r.readerPublicDisplayName?.trim() || null,
     author: r.authorEmail != null ? { email: r.authorEmail } : null,
     author_public: hasPublic
       ? {
@@ -257,12 +312,14 @@ export async function listArticles(
       createdAt: articles.createdAt,
       updatedAt: articles.updatedAt,
       authorEmail: profiles.email,
+      readerPublicDisplayName: readerPublicProfiles.displayName,
       catId: categories.id,
       catName: categories.name,
       catSlug: categories.slug,
     })
     .from(articles)
     .leftJoin(profiles, eq(articles.authorId, profiles.id))
+    .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
     .leftJoin(categories, eq(articles.categoryId, categories.id))
     .where(whereClause)
     .orderBy(desc(articles.publishedAt))
@@ -325,6 +382,7 @@ export async function getArticleByIdOrSlug(
       journalistPublicAvatarUrl: profiles.journalistPublicAvatarUrl,
       readerPublicBio: readerPublicProfiles.bio,
       readerPublicAvatarUrl: readerPublicProfiles.avatarUrl,
+      readerPublicDisplayName: readerPublicProfiles.displayName,
       catId: categories.id,
       catName: categories.name,
       catSlug: categories.slug,
@@ -354,11 +412,69 @@ export async function incrementViewCount(articleId: string): Promise<void> {
     await db.execute(sql`SELECT increment_view_count(${articleId}::uuid)`)
   } catch {
     try {
-      await db.update(articles).set({ viewCount: sql`${articles.viewCount} + 1` }).where(eq(articles.id, articleId))
+      await db.insert(articleViewEvents).values({ articleId })
+      await db
+        .update(articles)
+        .set({ viewCount: sql`${articles.viewCount} + 1` })
+        .where(eq(articles.id, articleId))
     } catch {
       // Silently fail — view count is non-critical
     }
   }
+}
+
+/** Article IDs with the most view events in the last `days` days (published only). */
+export async function listPublishedArticleIdsByRecentViewEvents(days: number, limit: number): Promise<string[]> {
+  if (!config.database) return []
+  const db = getDb()
+  const d = Math.min(Math.max(days, 1), 90)
+  const lim = Math.min(Math.max(limit, 1), 25)
+  const since = new Date(Date.now() - d * 86400000)
+  const rows = await db.execute(
+    sql`
+    SELECT e.article_id AS "article_id"
+    FROM article_view_events e
+    INNER JOIN articles a ON a.id = e.article_id
+    WHERE e.created_at >= ${since}
+      AND a.status = 'published'
+      AND a.published_at IS NOT NULL
+    GROUP BY e.article_id
+    ORDER BY COUNT(*)::int DESC
+    LIMIT ${lim}
+  `,
+  )
+  const list = rows as unknown as { article_id: string }[]
+  return list.map((r) => r.article_id).filter(Boolean)
+}
+
+export async function listTopPublishedArticleIdsByAllTimeViews(limit: number): Promise<string[]> {
+  if (!config.database) return []
+  const db = getDb()
+  const lim = Math.min(Math.max(limit, 1), 25)
+  const rows = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(and(eq(articles.status, 'published'), isNotNull(articles.publishedAt)))
+    .orderBy(desc(articles.viewCount), desc(articles.publishedAt))
+    .limit(lim)
+  return rows.map((r) => r.id)
+}
+
+/** For homepage hero fallback: recent view events first, then all-time view_count. */
+export async function getPublishedArticlesMostReadForHero(
+  days: number,
+  maxCandidates: number,
+): Promise<ArticleWithAuthor[]> {
+  let ids = await listPublishedArticleIdsByRecentViewEvents(days, maxCandidates)
+  if (ids.length === 0) {
+    ids = await listTopPublishedArticleIdsByAllTimeViews(maxCandidates)
+  }
+  const out: ArticleWithAuthor[] = []
+  for (const id of ids) {
+    const a = await getArticleByIdOrSlug(id, true)
+    if (a) out.push(a)
+  }
+  return out
 }
 
 /* ---------- Create ---------- */
@@ -481,6 +597,44 @@ export async function updateArticle(
     .where(eq(articles.id, id))
     .returning()
   return row ? toArticle(row) : null
+}
+
+/* ---------- Sitemap (published only) ---------- */
+
+export async function listPublishedArticleSitemapEntries(options: {
+  page: number
+  limit: number
+}): Promise<{ data: SitemapArticleEntry[]; total: number }> {
+  if (!config.database) return { data: [], total: 0 }
+  const db = getDb()
+  const limit = Math.min(Math.max(options.limit, 1), 1000)
+  const offset = ((options.page ?? 1) - 1) * limit
+  const whereClause = and(eq(articles.status, 'published'), isNotNull(articles.publishedAt))
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(articles)
+    .where(whereClause)
+  const total = countRow?.count ?? 0
+
+  const rows = await db
+    .select({
+      slug: articles.slug,
+      publishedAt: articles.publishedAt,
+      updatedAt: articles.updatedAt,
+    })
+    .from(articles)
+    .where(whereClause)
+    .orderBy(desc(articles.publishedAt))
+    .limit(limit)
+    .offset(offset)
+
+  const data: SitemapArticleEntry[] = rows.map((r) => ({
+    slug: r.slug,
+    published_at: r.publishedAt?.toISOString() ?? null,
+    updated_at: r.updatedAt.toISOString(),
+  }))
+  return { data, total }
 }
 
 /* ---------- Delete ---------- */

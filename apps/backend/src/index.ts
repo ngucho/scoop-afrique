@@ -52,6 +52,7 @@ import crmRoutes from './routes/crm/index.js'
 import chromePublicRoutes from './routes/chrome-public.js'
 import writerArticlesRoutes from './routes/writer-articles.js'
 import adminWriterApiKeysRoutes from './routes/admin/writer-api-keys.js'
+import sitemapPublicRoutes from './routes/sitemap.js'
 
 assertConfig()
 
@@ -84,6 +85,7 @@ app.route(`${prefix}/contributions`, contributionsRoutes)
 app.route(`${prefix}/public/audience`, publicAudienceRoutes)
 app.route(`${prefix}/tribune`, tribuneRoutes)
 app.route(`${prefix}/writer`, writerArticlesRoutes)
+app.route(`${prefix}/sitemap`, sitemapPublicRoutes)
 
 /* ---- Admin API v1 ---- */
 app.route(`${prefix}/admin/articles`, adminArticlesRoutes)

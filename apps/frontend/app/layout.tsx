@@ -5,6 +5,7 @@ import { Auth0Provider } from '@auth0/nextjs-auth0/client'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { CookieConsentBanner } from '@/components/CookieConsentBanner'
+import { ReaderEngagementToast } from '@/components/reader/ReaderEngagementToast'
 import { SiteJsonLd } from '@/components/seo/SiteJsonLd'
 import { config } from '@/lib/config'
 import './globals.css'
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Auth0Provider>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             {children}
+            <ReaderEngagementToast />
             <CookieConsentBanner />
           </ThemeProvider>
         </Auth0Provider>

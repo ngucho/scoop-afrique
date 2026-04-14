@@ -316,7 +316,7 @@ If the backoffice shows "no permissions" or users are redirected to the reader p
 
 A user’s access token will contain the **union of permissions** from all their assigned roles. If a user has no roles, `permissions` will be empty and the app will redirect them to the reader.
 
-**Separation employés / lecteurs:** le backend n’accepte les routes « employé » que si le JWT contient **au moins une permission staff** (articles, médias, CRM, `manage:users`, etc.). Les routes **reader** (`/api/v1/reader/*`) exigent **`access:reader`** **sans** aucune permission staff. Le rôle **reader** ne doit donc avoir que **`access:reader`**. Voir la section **13**.
+**Separation employés / lecteurs:** le backend n’accepte les routes « employé » que si le JWT contient **au moins une permission staff** (articles, médias, CRM, `manage:users`, etc.). Les routes **reader** (`/api/v1/reader/*`) acceptent **`access:reader`** ou un jeton employé ; pour un abonné seul, le rôle **reader** doit donc inclure **`access:reader`** dans le JWT (RBAC). Le rôle **reader** ne doit porter **que** **`access:reader`** côté Auth0 (pas de permissions rédaction sur ce rôle). Voir la section **13**.
 
 ### 10.4 Frontend audience
 
@@ -328,56 +328,44 @@ A user’s access token will contain the **union of permissions** from all their
 
 ---
 
-## 11. Add user_metadata to tokens + default **reader** role (Post-Login Action)
+## 11. user_metadata dans les jetons + rôle **reader** (backend + Action légère)
 
 By default, **user_metadata** (firstname, lastname, etc.) is not in the access or ID token. The app’s **authorization** comes from Auth0 **RBAC** (`permissions` in the JWT), not from a `role` field in `user_metadata`.
 
-**Policy:** any user who has **no Auth0 role** yet (typical first signup) gets the **`reader`** role automatically, so their access token includes **`access:reader`**. Your team upgrades accounts in the Dashboard by assigning **journalist** / **editor** / **manager** / **admin** (and can remove **reader** if you want only staff permissions on that user).
+**Policy:** un compte qui appelle une route **`/api/v1/reader/*`** avec un JWT **valide** mais **sans** permission API (`access:reader` ni permission employé) déclenche côté **backend** l’assignation du rôle **reader** via **Management API** si cet utilisateur ne l’a pas encore. Le rôle **reader** doit inclure **`access:reader`** sur votre API (§4 / §10). Le serveur répond **`401`** + code **`SESSION_REFRESH_NEEDED`** ; le frontend **rafraîchit** le jeton et **réessaie** une fois.
 
-Implementation: a **Post-Login Action** that (1) calls the **Management API** to assign the **reader** role when `GET /api/v2/users/:id/roles` returns an empty list, and (2) copies `user_metadata` into namespaced custom claims (as before).
+Variables backend : **`AUTH0_MANAGEMENT_CLIENT_ID`**, **`AUTH0_MANAGEMENT_CLIENT_SECRET`**, **`AUTH0_READER_ROLE_ID`**. Voir `apps/backend/.env.example`.
 
-Canonical script: **`docs/auth0-actions/post-login-add-user-metadata.js`** (copy the whole file into Auth0).
+Canonical script Action (métadonnées seules) : **`docs/auth0-actions/post-login-add-user-metadata.js`** (**SCRIPT_REVISION 4**, sans secrets).
 
-### 11.1 Machine-to-Machine app (Management API)
+### 11.1 Machine-to-Machine app (Management API) — backend
 
-1. **Applications** → **Create Application** → **Machine to Machine** (e.g. `Actions — assign default roles`).
-2. Authorize it for **Auth0 Management API**.
-3. Enable **all** of these scopes (omitting **`read:roles`** causes **403** on `GET .../users/:id/roles` and the Action log `list user roles failed 403`):
-   - **`read:users`**
-   - **`read:roles`**
-   - **`update:users`**
-4. **Save** the application, then note the **Client ID** and **Client Secret**.
+1. **Applications** → **Machine to Machine** → autoriser **Auth0 Management API** avec **`read:users`**, **`read:roles`**, **`update:users`**.
+2. Renseigner **`AUTH0_MANAGEMENT_CLIENT_ID`** / **`AUTH0_MANAGEMENT_CLIENT_SECRET`** dans **`apps/backend/.env`**.
 
-### 11.2 Reader role ID
+### 11.2 Reader role ID (backend)
 
-1. **User Management** → **Roles** → open the **reader** role (create it per §4 if needed — permission **`access:reader` only**).
-2. Copy the role **ID** from the URL or use the Management API `GET /api/v2/roles`.
+1. **User Management** → **Roles** → **reader** (permission **`access:reader` only**).
+2. Copier l’ID du rôle → **`AUTH0_READER_ROLE_ID`**.
 
-### 11.3 Create the Action
+### 11.3 Post-Login Action (métadonnées uniquement)
 
-1. **Actions** → **Library** → **Build Custom**.
-2. **Name:** e.g. `Post-login: reader default + user_metadata`.
-3. **Trigger:** **Login / Post Login**.
-4. Paste the contents of **`docs/auth0-actions/post-login-add-user-metadata.js`**.
-5. **Secrets** (same Action → tab **Secrets**):
+1. **Actions** → **Build Custom** → **Login / Post Login** → coller **`docs/auth0-actions/post-login-add-user-metadata.js`** (aucun secret).
+2. **Flows** → **Login** → Apply.
 
-| Secret | Value |
-|--------|--------|
-| `AUTH0_DOMAIN` | Your tenant host only, e.g. `scoop-afrique.eu.auth0.com` |
-| `MGMT_CLIENT_ID` | M2M Client ID from §11.1 |
-| `MGMT_CLIENT_SECRET` | M2M Client Secret |
-| `READER_ROLE_ID` | UUID of the **reader** role |
+Retirer du flux **Post User Registration** toute ancienne Action d'assignation de rôle ; **`post-user-registration-assign-reader.js`** est un no-op (voir **`docs/auth0-actions/README.md`**).
+### 11.6 Empty `permissions` but `aud` is correct (reader / Tribune 401)
 
-6. **Deploy** the Action.
-7. **Actions** → **Flows** → **Login**: drag this Action into the flow, then **Apply**.
+If server logs show `reason=TOKEN_MISSING_API_PERMISSIONS`, `aud_match=true`, and `permissions_count=0`:
 
-If you omit the secrets, the Action still adds `user_metadata` claims when present, but **will not** assign **reader** automatically.
-
-**Troubleshooting `list user roles failed 403`:** The M2M app’s **Auth0 Management API** authorization is missing **`read:roles`** (or the app was not saved after adding scopes). Add **`read:roles`**, save, and re-run the Action test.
-
-**Troubleshooting `list user roles failed 404`:** The Management API has **no user** matching `event.user.user_id`. Common causes: (1) **Action → Test** uses Auth0’s **sample payload** — replace **`user.user_id`** with a real ID from **Dashboard → Users** (e.g. `auth0|…` or `google-oauth2|…`), or verify by logging in for real instead of the built-in test. (2) **`AUTH0_DOMAIN`** must be the **canonical tenant host** (e.g. `your-tenant.eu.auth0.com`), **no** `https://`, **no** trailing slash — not a custom login domain.
-
-**First login / token timing:** On some tenants, the access token for the **current** session may be minted before RBAC picks up the newly assigned role. If `permissions` is empty on first login, ask the user to **log out and log in again** (or refresh the session). For the cleanest first-time token, you can duplicate the same “assign **reader** if no roles” block in a **Post User Registration** Action (trigger **User Registration**).
+1. **API (Resource Server)** → **Settings** → **RBAC**: **Enable RBAC** = On, **Add Permissions in the Access Token** = On. Save.
+2. **API** → **Permissions**: ensure **`access:reader`** exists.
+3. **User Management** → **Roles** → **reader** → **Permissions**: attach **`access:reader`** for your API (not only “Application” grants — the **role** must include the API permission).
+4. **Applications** → your **Reader** app (`azp` in the JWT) → **APIs** tab: authorize it for your API (same identifier as `AUTH0_AUDIENCE`).
+5. **Backend** : `AUTH0_READER_ROLE_ID`, Management API credentials, et logs `reader_bootstrap` (assignation du rôle ou erreur Management).
+6. **User Management** → **Users** → **Roles** : après un premier appel reader, le rôle **reader** doit apparaître si l’assignation backend a réussi.
+7. Si le rôle est présent mais **`permissions`** reste vide : problème RBAC / application non autorisée sur l’API — corriger §10 puis **rafraîchir** la session (le flux `SESSION_REFRESH_NEEDED` le fait une fois automatiquement).
+8. **Rôle ajouté manuellement** dans le Dashboard : tant que l’utilisateur garde l’ancienne session, le JWT peut encore avoir `permissions: []` jusqu’au prochain refresh / re-login.
 
 ### 11.4 Reading the claims
 
@@ -389,16 +377,12 @@ The backend currently gets profile data from the database (synced from Auth0); y
 ### 11.5 Reader metadata, staff roles, and journalist fields
 
 **Do you need to change the Post-Login Action when we add form fields in Admin → Profil?**  
-Usually **no**. The canonical script (**`docs/auth0-actions/post-login-add-user-metadata.js`**, **SCRIPT_REVISION 2**) sets
-
-`api.accessToken.setCustomClaim('…/user_metadata', event.user.user_metadata)`
-
-so **every** key stored in Auth0 **user_metadata** is included in the token in one object. New keys (e.g. `public_bio`, `contact_private`) appear automatically after the user saves their profile and **logs in again** (or refreshes the session). You only need to edit the Action if you stop copying the whole object or add custom logic.
+Usually **no**. The canonical script (**`docs/auth0-actions/post-login-add-user-metadata.js`**, **SCRIPT_REVISION 4**) copies **`event.user.user_metadata`** into the token, so new keys appear after the user saves their profile and **logs in again** (or refreshes the session).
 
 **Default reader vs staff (who can “upgrade”):**
 
-1. **First signup:** the Action assigns the **reader** role when the user has **no roles** yet (Management API). That role carries **`access:reader`** so they can use the Tribune and reader APIs.
-2. **Staff (rédaction):** only an **administrator** adds roles such as **journalist**, **editor**, etc., in the Auth0 Dashboard (or via your processes). The Action does **not** remove **reader** when staff is added—whether a user has **both** reader + staff or **only** staff is an **RBAC configuration choice**:
+1. **First accès reader API:** le **backend** assigne le rôle **reader** via Management API si l’utilisateur ne l’a pas encore (voir §11).
+2. **Staff (rédaction):** only an **administrator** adds roles such as **journalist**, **editor**, etc., in the Auth0 Dashboard (or via your processes). Whether a user has **both** reader + staff or **only** staff is an **RBAC configuration choice**:
    - **Both roles:** one login can use backoffice and Tribune (simple for the same person).
    - **Staff only** (reader removed): backoffice works; Tribune treats them as “rédaction only” until they use a **reader** login (as in the Tribune banner).
 
@@ -430,19 +414,19 @@ Les lecteurs utilisent les chemins **`/reader/auth/*`** et un **cookie de sessio
 
 ### 13.1 Créer ou étendre l’application
 
-**Option A — une seule application (admin + reader):** ouvrir l’app backoffice existante et ajouter aux **Allowed Callback URLs** : `http://localhost:3001/reader/auth/callback` (et production). Ne pas définir `READER_AUTH0_*` sur le frontend (repli sur `AUTH0_CLIENT_ID` / secret).
+**Option A — une seule application (admin + reader):** ouvrir l’app backoffice existante et ajouter aux **Allowed Callback URLs** : `http://localhost:3001/reader/auth/callback` (et production). Ajouter aux **Allowed Logout URLs** les URL absolues de retour après déconnexion lecteur (ex. `http://localhost:3001/account/login` et l’équivalent production), en plus de l’origine du site si besoin. Ne pas définir `READER_AUTH0_*` sur le frontend (repli sur `AUTH0_CLIENT_ID` / secret).
 
 **Option B — application Reader dédiée :**
 
 1. **Applications** → **Create Application** → type **Regular Web Application** (ex. `Scoop Afrique Reader`).
 2. **Allowed Callback URLs:** `http://localhost:3001/reader/auth/callback` (et l’équivalent production).
-3. **Allowed Logout URLs** / **Allowed Web Origins:** base du site reader (même host que le frontend).
+3. **Allowed Logout URLs** / **Allowed Web Origins:** même host que le frontend. Pour la déconnexion, Auth0 n’accepte que des **URL absolues** dans `post_logout_redirect_uri` : ajoutez au minimum l’origine (`http://localhost:3001`, `https://votre-domaine.com`) **et** chaque page de retour utilisée après logout, par ex. `http://localhost:3001/account/login` et `https://votre-domaine.com/account/login` (le frontend construit ces URLs à partir de `APP_BASE_URL`).
 4. Dans **APIs** → votre API Scoop Afrique → autoriser cette application et lui accorder **`access:reader`** (les permissions staff restent optionnelles pour cette app).
 
 ### 13.2 Rôle et utilisateurs
 
 1. Créer le rôle **`reader`** (section 4) avec la permission **`access:reader` uniquement**.
-2. Assigner ce rôle aux comptes « grand public » (abonnés, compte préférences, digest). Ne pas leur assigner *journalist* / *editor* / etc.
+2. L’assignation aux nouveaux comptes se fait via le **backend** (§11) au premier appel reader ; vous pouvez toujours ajuster les rôles manuellement dans le Dashboard pour la rédaction (**journalist** / **editor** / etc.).
 
 ### 13.3 Variables d’environnement
 
@@ -452,12 +436,12 @@ Les lecteurs utilisent les chemins **`/reader/auth/*`** et un **cookie de sessio
 - Optionnel: `READER_AUTH0_DOMAIN` si différent du tenant admin.
 - `AUTH0_AUDIENCE` — **identique** à l’API (pour inclure `permissions` dans le token).
 
-**Backend** (`apps/backend/.env`) : pas de variable reader dédiée. La distinction staff / lecteur repose uniquement sur les **permissions** du JWT.
+**Backend** (`apps/backend/.env`) : **`AUTH0_READER_ROLE_ID`** (ID du rôle *reader*) + identifiants **Management API** pour l’assignation automatique (§11). La distinction staff / lecteur dans le JWT repose sur les **permissions** RBAC.
 
 ### 13.4 Comportement côté code
 
 - **`verifyAuth0Token`** (routes employés) : exige **au moins une** permission dans `STAFF_API_PERMISSIONS` (`apps/backend/src/lib/api-permissions.ts`).
-- **`verifyReaderAuth0Token`** (routes `/api/v1/reader/*`) : exige **`access:reader`** **et** **aucune** permission staff (voir `isReaderAccountOnly`). Un compte avec rôles fusionnés journalist+reader doit utiliser les routes employé pour les APIs staff ; les préférences abonné reader restent réservées aux jetons « reader seul ».
+- **Routes `/api/v1/reader/*`** : le middleware accepte un jeton avec **`access:reader`** **ou** au moins une permission employé (voir `inspectTokenForReaderRoutes` dans `apps/backend/src/lib/auth0.ts`). Le jeton doit quand même exposer ces permissions via **RBAC** (tableau `permissions` non vide pour les comptes reader seuls).
 
 ---
 

@@ -77,8 +77,7 @@ export default function AboutPage() {
             la jeunesse africaine francophone un média rapide, créatif et ancré dans le réel — loin des discours lissés.
             Aujourd’hui, nous comptons plus de{' '}
             <strong className="text-foreground">1,4 million d’abonnés cumulés</strong> sur l’ensemble de nos comptes, avec
-            une présence particulièrement forte sur TikTok et Facebook (chiffres mars 2026, analytics internes — identiques
-            à notre media kit).
+            une présence particulièrement forte sur TikTok et Facebook.
           </p>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
             Nous produisons des formats courts et longs : interviews, micro-trottoirs, couvertures live, jeux avec des

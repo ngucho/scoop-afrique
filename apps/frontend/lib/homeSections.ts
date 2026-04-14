@@ -93,6 +93,61 @@ function strConfig(config: Record<string, unknown> | undefined, key: string, fal
   return fallback
 }
 
+function isManualFeaturedWindowActive(startsRaw: unknown, endsRaw: unknown, now: Date): boolean {
+  const parse = (v: unknown): Date | null => {
+    if (typeof v !== 'string' || !v.trim()) return null
+    const d = new Date(v.trim())
+    return Number.isNaN(d.getTime()) ? null : d
+  }
+  const start = parse(startsRaw)
+  const end = parse(endsRaw)
+  if (start && now < start) return false
+  if (end && now > end) return false
+  return true
+}
+
+async function resolveHeroArticle(
+  row: HomepageSection,
+  pool: Article[],
+  used: Set<string>,
+): Promise<Article | null> {
+  const cfg = row.config ?? {}
+  const rawId = cfg.featured_article_id
+  const featuredId =
+    typeof rawId === 'string' && rawId.trim() !== '' ? rawId.trim() : null
+
+  if (featuredId && isManualFeaturedWindowActive(cfg.featured_starts_at, cfg.featured_ends_at, new Date())) {
+    try {
+      const res = await apiGet<{ data: Article }>(
+        `/articles/${encodeURIComponent(featuredId)}?track_view=false`,
+        { revalidate: 30 },
+      )
+      const a = res.data
+      if (a?.id && a.status === 'published') {
+        used.add(a.id)
+        return a
+      }
+    } catch {
+      // manual article missing or unpublished → fallback
+    }
+  }
+
+  try {
+    const res = await apiGet<{ data: Article[] }>(`/articles/most-read?days=7&limit=12`, { revalidate: 60 })
+    for (const a of res.data ?? []) {
+      if (a?.id && a.status === 'published' && !used.has(a.id)) {
+        used.add(a.id)
+        return a
+      }
+    }
+  } catch {
+    // API offline → pool
+  }
+
+  const picked = takeUnique(excludeIds(pool, used), used, 1)
+  return picked[0] ?? null
+}
+
 function articleMatchesVideoSection(article: Article, tag: string): boolean {
   const t = tag.toLowerCase()
   if (article.video_url && String(article.video_url).trim() !== '') return true
@@ -169,8 +224,7 @@ export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
         break
       }
       case 'top_stories': {
-        const picked = takeUnique(excludeIds(articles, used), used, 1)
-        const article = picked[0]
+        const article = await resolveHeroArticle(row, articles, used)
         if (!article) break
         blocks.push({
           type: 'hero',

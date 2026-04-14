@@ -15,6 +15,7 @@ import {
   real,
   numeric,
   uniqueIndex,
+  index,
   pgEnum,
   primaryKey,
 } from 'drizzle-orm/pg-core'
@@ -185,6 +186,7 @@ export const announcementPlacementEnum = pgEnum('announcement_placement', [
   'modal',
   'inline',
   'footer',
+  'sidebar',
 ])
 export const digestJobStatusEnum = pgEnum('digest_job_status', [
   'pending',
@@ -246,6 +248,22 @@ export const articles = pgTable('articles', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/** One row per article page view — used for « most read » windows (e.g. last 7 days). */
+export const articleViewEvents = pgTable(
+  'article_view_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => articles.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('article_view_events_article_created_idx').on(t.articleId, t.createdAt),
+    index('article_view_events_created_idx').on(t.createdAt),
+  ],
+)
 
 export const articleLikes = pgTable('article_likes', {
   id: uuid('id').primaryKey().defaultRandom(),

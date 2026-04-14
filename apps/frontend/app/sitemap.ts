@@ -1,17 +1,35 @@
 import type { MetadataRoute } from 'next'
 import { apiGet } from '@/lib/api/client'
 import { config } from '@/lib/config'
-import type { Article, Category } from '@/lib/api/types'
+import type { Category } from '@/lib/api/types'
 
 const SITE_URL = config.siteUrl
 
-async function getArticles(): Promise<Article[]> {
+type SitemapArticleRow = {
+  slug: string
+  published_at: string | null
+  updated_at: string
+}
+
+async function getPublishedArticlesForSitemap(): Promise<SitemapArticleRow[]> {
+  const limit = 500
+  let page = 1
+  const out: SitemapArticleRow[] = []
   try {
-    const res = await apiGet<{ data: Article[] }>('/articles?limit=5000&page=1', { revalidate: 3600 })
-    return res.data ?? []
+    for (;;) {
+      const res = await apiGet<{
+        data: SitemapArticleRow[]
+        total: number
+      }>(`/sitemap/articles?page=${page}&limit=${limit}`, { revalidate: 3600 })
+      const batch = res.data ?? []
+      out.push(...batch)
+      if (batch.length === 0 || out.length >= (res.total ?? 0)) break
+      page += 1
+    }
   } catch {
     return []
   }
+  return out
 }
 
 async function getCategories(): Promise<Category[]> {
@@ -24,7 +42,7 @@ async function getCategories(): Promise<Category[]> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [articles, categories] = await Promise.all([getArticles(), getCategories()])
+  const [articles, categories] = await Promise.all([getPublishedArticlesForSitemap(), getCategories()])
   const now = new Date().toISOString()
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -35,6 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/contact`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/mentions-legales`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/politique-de-confidentialite`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${SITE_URL}/cgu`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/podcast`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/video`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${SITE_URL}/a-propos`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
@@ -43,7 +62,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]
 
   const articlePages: MetadataRoute.Sitemap = articles
-    .filter((a) => a.status === 'published' && a.slug)
+    .filter((a) => a.slug)
     .map((article) => ({
       url: `${SITE_URL}/articles/${article.slug}`,
       lastModified: article.updated_at ?? article.published_at ?? now,

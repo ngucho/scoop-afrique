@@ -33,7 +33,7 @@ const announcementBody = z.object({
   body: z.string().min(1).max(10000),
   audience: z.enum(['all', 'subscribers', 'guests']),
   link_url: z.string().url().nullable().optional().or(z.literal('').transform(() => null)),
-  placement: z.enum(['banner', 'modal', 'inline', 'footer']).optional(),
+  placement: z.enum(['banner', 'modal', 'inline', 'footer', 'sidebar']).optional(),
   priority: z.number().int().min(0).max(999).optional(),
   starts_at: z.string().datetime().nullable().optional(),
   ends_at: z.string().datetime().nullable().optional(),

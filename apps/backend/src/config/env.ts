@@ -47,6 +47,9 @@ const envSchema = z.object({
     ),
   AUTH0_AUDIENCE: z.string().min(1).optional(),
 
+  /** Auth0 Role ID for default reader (Management API assigns on first API hit if JWT has no API permissions). */
+  AUTH0_READER_ROLE_ID: z.string().min(1).optional(),
+
   // Auth0 Management API (M2M app for user_metadata, password). Either set these or AUTH0_CLIENT_ID / AUTH0_CLIENT_SECRET.
   AUTH0_MANAGEMENT_CLIENT_ID: z.string().min(1).optional(),
   AUTH0_MANAGEMENT_CLIENT_SECRET: z.string().min(1).optional(),
@@ -120,6 +123,8 @@ export const config = {
       ? { domain: env.AUTH0_DOMAIN, audience: env.AUTH0_AUDIENCE }
       : null,
 
+  auth0ReaderRoleId: env.AUTH0_READER_ROLE_ID?.trim() || null,
+
   auth0Management:
     env.AUTH0_DOMAIN &&
     (env.AUTH0_MANAGEMENT_CLIENT_ID ?? env.AUTH0_CLIENT_ID) &&
@@ -185,5 +190,15 @@ export function assertConfig(): void {
   }
   if (config.auth0 === null && config.nodeEnv === 'production') {
     throw new Error('AUTH0_DOMAIN and AUTH0_AUDIENCE are required in production')
+  }
+  if (
+    config.nodeEnv === 'production' &&
+    config.auth0 &&
+    config.auth0Management &&
+    !config.auth0ReaderRoleId
+  ) {
+    console.warn(
+      '[config] AUTH0_READER_ROLE_ID is unset — assign default reader role in Auth0 Dashboard or set this variable for automatic assignment on first API call',
+    )
   }
 }

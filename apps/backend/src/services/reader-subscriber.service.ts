@@ -1,6 +1,7 @@
 /**
  * Reader subscriber preferences (Auth0 reader app users).
  */
+import { createHash } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { readerSubscribers } from '../db/schema.js'
@@ -12,6 +13,20 @@ export type DigestFrequency = z.infer<typeof digestFrequencySchema>
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
+}
+
+function hasUsableEmail(raw: string): boolean {
+  const n = normalizeEmail(raw)
+  return n.length > 0 && n.includes('@')
+}
+
+/**
+ * Auth0 access tokens often omit `email` (e.g. Google + API audience). DB columns are NOT NULL with a unique `email_normalized`, so we use a stable synthetic address per `sub` (no real mail sent to it).
+ */
+function syntheticReaderEmail(auth0Sub: string): { email: string; emailNormalized: string } {
+  const h = createHash('sha256').update(auth0Sub, 'utf8').digest('hex').slice(0, 32)
+  const email = `reader-${h}@noemail.scoop-afrique.invalid`
+  return { email, emailNormalized: email }
 }
 
 function randomToken(): string {
@@ -69,9 +84,12 @@ export async function getOrCreateReaderSubscriber(
 ): Promise<ReaderSubscriberRow> {
   if (!config.database) {
     const token = randomToken()
+    const store = hasUsableEmail(email)
+      ? { email: email.trim(), emailNormalized: normalizeEmail(email) }
+      : syntheticReaderEmail(auth0Sub)
     return {
       auth0_sub: auth0Sub,
-      email,
+      email: store.email,
       topic_category_ids: [],
       digest_frequency: 'weekly',
       unsubscribed_at: null,
@@ -83,7 +101,8 @@ export async function getOrCreateReaderSubscriber(
   }
 
   const db = getDb()
-  const normalized = normalizeEmail(email)
+  const incomingNorm = normalizeEmail(email)
+  const jwtHasEmail = hasUsableEmail(email)
 
   const [existing] = await db
     .select()
@@ -92,13 +111,12 @@ export async function getOrCreateReaderSubscriber(
     .limit(1)
 
   if (existing) {
-    const emailChanged = normalizeEmail(existing.email) !== normalized
-    if (emailChanged) {
+    if (jwtHasEmail && normalizeEmail(existing.email) !== incomingNorm) {
       const [updated] = await db
         .update(readerSubscribers)
         .set({
-          email,
-          emailNormalized: normalized,
+          email: email.trim(),
+          emailNormalized: incomingNorm,
           updatedAt: new Date(),
         })
         .where(eq(readerSubscribers.auth0Sub, auth0Sub))
@@ -112,12 +130,16 @@ export async function getOrCreateReaderSubscriber(
   const freq: DigestFrequency = 'weekly'
   const nextAt = computeNextDigestAt(freq)
 
+  const store = jwtHasEmail
+    ? { email: email.trim(), emailNormalized: incomingNorm }
+    : syntheticReaderEmail(auth0Sub)
+
   const [created] = await db
     .insert(readerSubscribers)
     .values({
       auth0Sub,
-      email,
-      emailNormalized: normalized,
+      email: store.email,
+      emailNormalized: store.emailNormalized,
       topicCategoryIds: [],
       digestFrequency: freq,
       unsubscribeToken: unsubToken,

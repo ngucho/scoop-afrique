@@ -1,7 +1,10 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Play } from 'lucide-react'
-import { Card, CardContent, Heading, Text, Thumbnail, MetaBar } from 'scoop'
+import { Card, CardContent, Heading, Text, MetaBar } from 'scoop'
 import type { Article } from '@/lib/api/types'
+import { ReaderCoverImage } from '@/components/reader/ReaderCoverImage'
+import { absoluteReaderImageUrl } from '@/lib/readerImageSrc'
 
 interface ArticleCardProps {
   article: Article
@@ -17,21 +20,23 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo, imag
 
   if (variant === 'row') {
     const cat = article.category?.name
+    const rowSrc = absoluteReaderImageUrl(article.cover_image_url)
     return (
       <article className="group flex min-w-0 max-w-full flex-col gap-4 md:flex-row">
         <Link
           href={href}
-          className="relative aspect-[16/10] w-full max-w-full shrink-0 overflow-hidden rounded-lg bg-muted md:w-[42%] md:max-w-[42%]"
+          className="relative block aspect-[16/10] w-full max-w-full shrink-0 overflow-hidden rounded-lg bg-muted md:w-[42%] md:max-w-[42%]"
         >
-          {article.cover_image_url ? (
-            <img
-              src={article.cover_image_url}
+          {rowSrc ? (
+            <Image
+              src={rowSrc}
               alt={`Illustration — ${article.title}`}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+              fill
               sizes="(max-width: 768px) 100vw, 42vw"
+              className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
               loading={imagePriority ? 'eager' : 'lazy'}
-              decoding="async"
-              fetchPriority={imagePriority ? 'high' : 'low'}
+              priority={imagePriority}
+              quality={80}
             />
           ) : null}
         </Link>
@@ -58,18 +63,18 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo, imag
   if (variant === 'compact') {
     const showPlay = emphasizeVideo && !!article.video_url
     return (
-      <Link href={href} className="block hover-lift">
+      <Link href={href} className="group block hover-lift">
         <Card variant="news" className="overflow-hidden transition-shadow">
           <div className="relative">
             {article.cover_image_url ? (
-              <Thumbnail
+              <ReaderCoverImage
                 src={article.cover_image_url}
                 alt={`Illustration — ${article.title}`}
-                aspectRatio="video"
-                className="w-full"
-                loading={imagePriority ? 'eager' : 'lazy'}
-                decoding="async"
-                fetchPriority={imagePriority ? 'high' : 'low'}
+                aspectClassName="aspect-video"
+                className="w-full rounded-none"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 320px"
+                priority={imagePriority}
+                imgClassName="transition-transform duration-500 group-hover:scale-105"
               />
             ) : (
               <div className="aspect-video w-full bg-muted" />
@@ -97,17 +102,17 @@ export function ArticleCard({ article, variant = 'default', emphasizeVideo, imag
   }
 
   return (
-    <Link href={href} className="block hover-lift">
+    <Link href={href} className="group block hover-lift">
       <Card variant="news" className="overflow-hidden transition-shadow">
         {article.cover_image_url ? (
-          <Thumbnail
+          <ReaderCoverImage
             src={article.cover_image_url}
             alt={`Illustration — ${article.title}`}
-            aspectRatio="video"
-            className="w-full"
-            loading={imagePriority ? 'eager' : 'lazy'}
-            decoding="async"
-            fetchPriority={imagePriority ? 'high' : 'low'}
+            aspectClassName="aspect-video"
+            className="w-full rounded-none"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 400px"
+            priority={imagePriority}
+            imgClassName="transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
           <div className="aspect-video w-full bg-muted" />
