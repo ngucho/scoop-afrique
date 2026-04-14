@@ -292,7 +292,7 @@ export async function createAnnouncement(
     body: string
     audience: 'all' | 'subscribers' | 'guests'
     link_url?: string | null
-    placement?: 'banner' | 'modal' | 'inline' | 'footer'
+    placement?: 'banner' | 'modal' | 'inline' | 'footer' | 'sidebar'
     priority?: number
     starts_at: string | null
     ends_at: string | null
@@ -326,7 +326,7 @@ export async function updateAnnouncement(
     body: string
     audience: 'all' | 'subscribers' | 'guests'
     link_url: string | null
-    placement: 'banner' | 'modal' | 'inline' | 'footer'
+    placement: 'banner' | 'modal' | 'inline' | 'footer' | 'sidebar'
     priority: number
     starts_at: string | null
     ends_at: string | null

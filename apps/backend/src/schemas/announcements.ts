@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const announcementPlacementSchema = z.enum(['banner', 'modal', 'inline', 'footer'])
+export const announcementPlacementSchema = z.enum(['banner', 'modal', 'inline', 'footer', 'sidebar'])
 
 export const createAnnouncementBodySchema = z.object({
   title: z.string().min(1).max(500),

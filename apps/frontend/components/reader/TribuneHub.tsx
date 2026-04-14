@@ -78,6 +78,18 @@ export function TribuneHub({
   }, [reload, filter, sort])
 
   useEffect(() => {
+    const hash = typeof window !== 'undefined' ? window.location.hash : ''
+    if (!hash.startsWith('#tribune-contribution-')) return
+    const raw = hash.slice('#tribune-contribution-'.length)
+    if (!raw) return
+    const el = document.getElementById(`tribune-contribution-${raw}`)
+    if (!el) return
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [list, pathname])
+
+  useEffect(() => {
     fetch('/api/reader-session')
       .then((r) => r.json())
       .then(

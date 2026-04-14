@@ -10,7 +10,7 @@
  */
 import { eq, and, desc, sql, or, ilike, isNotNull } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
-import { articles, categories, profiles, readerPublicProfiles } from '../db/schema.js'
+import { articles, articleViewEvents, categories, profiles, readerPublicProfiles } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { CreateArticleBody, UpdateArticleBody } from '../schemas/article.js'
 import type { AppRole } from './profile.service.js'
@@ -412,11 +412,69 @@ export async function incrementViewCount(articleId: string): Promise<void> {
     await db.execute(sql`SELECT increment_view_count(${articleId}::uuid)`)
   } catch {
     try {
-      await db.update(articles).set({ viewCount: sql`${articles.viewCount} + 1` }).where(eq(articles.id, articleId))
+      await db.insert(articleViewEvents).values({ articleId })
+      await db
+        .update(articles)
+        .set({ viewCount: sql`${articles.viewCount} + 1` })
+        .where(eq(articles.id, articleId))
     } catch {
       // Silently fail — view count is non-critical
     }
   }
+}
+
+/** Article IDs with the most view events in the last `days` days (published only). */
+export async function listPublishedArticleIdsByRecentViewEvents(days: number, limit: number): Promise<string[]> {
+  if (!config.database) return []
+  const db = getDb()
+  const d = Math.min(Math.max(days, 1), 90)
+  const lim = Math.min(Math.max(limit, 1), 25)
+  const since = new Date(Date.now() - d * 86400000)
+  const rows = await db.execute(
+    sql`
+    SELECT e.article_id AS "article_id"
+    FROM article_view_events e
+    INNER JOIN articles a ON a.id = e.article_id
+    WHERE e.created_at >= ${since}
+      AND a.status = 'published'
+      AND a.published_at IS NOT NULL
+    GROUP BY e.article_id
+    ORDER BY COUNT(*)::int DESC
+    LIMIT ${lim}
+  `,
+  )
+  const list = rows as unknown as { article_id: string }[]
+  return list.map((r) => r.article_id).filter(Boolean)
+}
+
+export async function listTopPublishedArticleIdsByAllTimeViews(limit: number): Promise<string[]> {
+  if (!config.database) return []
+  const db = getDb()
+  const lim = Math.min(Math.max(limit, 1), 25)
+  const rows = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(and(eq(articles.status, 'published'), isNotNull(articles.publishedAt)))
+    .orderBy(desc(articles.viewCount), desc(articles.publishedAt))
+    .limit(lim)
+  return rows.map((r) => r.id)
+}
+
+/** For homepage hero fallback: recent view events first, then all-time view_count. */
+export async function getPublishedArticlesMostReadForHero(
+  days: number,
+  maxCandidates: number,
+): Promise<ArticleWithAuthor[]> {
+  let ids = await listPublishedArticleIdsByRecentViewEvents(days, maxCandidates)
+  if (ids.length === 0) {
+    ids = await listTopPublishedArticleIdsByAllTimeViews(maxCandidates)
+  }
+  const out: ArticleWithAuthor[] = []
+  for (const id of ids) {
+    const a = await getArticleByIdOrSlug(id, true)
+    if (a) out.push(a)
+  }
+  return out
 }
 
 /* ---------- Create ---------- */

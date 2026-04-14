@@ -15,6 +15,17 @@ import { normalizePublicSearchQuery } from '../lib/search-query.js'
 
 const app = new Hono()
 
+/* --- Most-read (hero fallback; no view increment) — must be before /:id --- */
+app.get('/most-read', async (c) => {
+  if (!config.database) return c.json({ data: [] })
+  const days = Math.min(Math.max(Number(c.req.query('days')) || 7, 1), 90)
+  const limit = Math.min(Math.max(Number(c.req.query('limit')) || 8, 1), 15)
+  const list = await articleService.getPublishedArticlesMostReadForHero(days, limit)
+  const presented = list.map((a) => articleService.presentArticleForPublicApi(a))
+  c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
+  return c.json({ data: presented })
+})
+
 /* --- List published articles --- */
 app.get('/', async (c) => {
   if (!config.database) return c.json({ data: [], total: 0 })
@@ -45,8 +56,10 @@ app.get('/:id', async (c) => {
   const article = await articleService.getArticleByIdOrSlug(id, onlyPublished)
   if (!article) return c.json({ error: 'Not found' }, 404)
 
-  // Fire-and-forget view count increment for published articles
-  if (article.status === 'published') {
+  // Fire-and-forget view count increment for published articles (skip for server-side embeds, e.g. homepage hero)
+  const trackRaw = c.req.query('track_view')
+  const track = trackRaw !== '0' && trackRaw !== 'false'
+  if (track && article.status === 'published') {
     articleService.incrementViewCount(article.id).catch(() => {})
   }
 
