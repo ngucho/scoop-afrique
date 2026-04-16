@@ -8,6 +8,10 @@ import { config } from '../../config/env.js'
 import * as reader from '../../services/reader-platform.service.js'
 import * as chromeSettings from '../../services/chrome-settings.service.js'
 import * as audienceMetrics from '../../services/audience-metric.service.js'
+import {
+  previewNewsletterWeeklyDigestArticles,
+  runNewsletterWeeklyDigest,
+} from '../../services/digest.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
@@ -117,6 +121,10 @@ const nlCampaignBody = z.object({
 
 const nlCampaignPatch = nlCampaignBody.partial().extend({
   last_sent_at: z.string().datetime().nullable().optional(),
+})
+
+const weeklyDigestSendBody = z.object({
+  dry_run: z.boolean().optional(),
 })
 
 /* --- KPIs (editor+): used by dashboard --- */
@@ -474,6 +482,39 @@ app.patch('/homepage-sections/:id', requireRole('manager', 'admin'), async (c) =
     metadata: parsed.data,
   })
   return c.json({ data: reader.rowHomepageSection(row) })
+})
+
+/* --- Weekly newsletter digest → confirmed mailing-list subscribers (editor+) --- */
+app.post('/newsletter-weekly-digest/preview', requireRole('editor', 'manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const articles = await previewNewsletterWeeklyDigestArticles(8)
+  return c.json({ data: { articles } })
+})
+
+app.post('/newsletter-weekly-digest/send', requireRole('editor', 'manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const user = c.get('user')
+  const parsed = weeklyDigestSendBody.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
+  }
+  const result = await runNewsletterWeeklyDigest({ dryRun: parsed.data.dry_run === true })
+  await reader.appendAudit({
+    actorId: user.id,
+    entityType: 'newsletter_weekly_digest',
+    entityId: result.jobId || null,
+    action: parsed.data.dry_run ? 'dry_run' : 'send',
+    metadata: {
+      article_ids: result.articleIds,
+      recipients_attempted: result.recipientsAttempted,
+      recipients_sent: result.recipientsSent,
+      recipients_failed: result.recipientsFailed,
+      error: result.error ?? null,
+    },
+  })
+  return c.json({ data: result })
 })
 
 /* --- Subscribers (manager+) --- */

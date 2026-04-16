@@ -211,6 +211,19 @@ export interface HomepageSection {
   updated_at: string
 }
 
+/** Article row returned by weekly digest preview API (ranking for mailing). */
+export interface DigestArticlePickRow {
+  id: string
+  slug: string
+  title: string
+  excerpt: string | null
+  cover_image_url: string | null
+  published_at: string | null
+  view_count: number
+  tags: string[]
+  category_slug: string | null
+}
+
 export interface NewsletterSubscriberRow {
   id: string
   email: string

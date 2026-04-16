@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { readerSubscribers } from '../db/schema.js'
 import { config } from '../config/env.js'
+import { listCategories } from './category.service.js'
 import type { digestFrequencySchema } from '../schemas/reader.js'
 import type { z } from 'zod'
 
@@ -134,13 +135,16 @@ export async function getOrCreateReaderSubscriber(
     ? { email: email.trim(), emailNormalized: incomingNorm }
     : syntheticReaderEmail(auth0Sub)
 
+  const allCategories = await listCategories()
+  const defaultTopicIds = allCategories.map((c) => c.id)
+
   const [created] = await db
     .insert(readerSubscribers)
     .values({
       auth0Sub,
       email: store.email,
       emailNormalized: store.emailNormalized,
-      topicCategoryIds: [],
+      topicCategoryIds: defaultTopicIds,
       digestFrequency: freq,
       unsubscribeToken: unsubToken,
       nextDigestAt: nextAt,
