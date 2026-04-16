@@ -507,7 +507,8 @@ export async function createArticle(
       status: (body.status ?? 'draft') as 'draft' | 'review' | 'scheduled' | 'published',
       metaTitle: body.meta_title ?? null,
       metaDescription: body.meta_description ?? null,
-      ogImageUrl: body.og_image_url ?? null,
+      /** OG image follows cover; explicit og without cover still stored on create for edge cases. */
+      ogImageUrl: body.cover_image_url ?? body.og_image_url ?? null,
       scheduledAt: body.scheduled_at ? new Date(body.scheduled_at) : null,
       wordCount,
       readingTimeMin: computeReadingTime(wordCount),
@@ -540,7 +541,15 @@ export async function updateArticle(
   const db = getDb()
 
   const [existing] = await db
-    .select({ authorId: articles.authorId, status: articles.status, title: articles.title, excerpt: articles.excerpt, content: articles.content, version: articles.version })
+    .select({
+      authorId: articles.authorId,
+      status: articles.status,
+      title: articles.title,
+      excerpt: articles.excerpt,
+      content: articles.content,
+      version: articles.version,
+      coverImageUrl: articles.coverImageUrl,
+    })
     .from(articles)
     .where(eq(articles.id, id))
     .limit(1)
@@ -561,7 +570,6 @@ export async function updateArticle(
   if (body.status !== undefined) update.status = body.status as 'draft' | 'review' | 'scheduled' | 'published'
   if (body.meta_title !== undefined) update.metaTitle = body.meta_title
   if (body.meta_description !== undefined) update.metaDescription = body.meta_description
-  if (body.og_image_url !== undefined) update.ogImageUrl = body.og_image_url
   if (body.scheduled_at !== undefined) update.scheduledAt = body.scheduled_at ? new Date(body.scheduled_at) : null
 
   if (typeof body.slug === 'string' && body.slug.trim()) {
@@ -590,6 +598,10 @@ export async function updateArticle(
     const { version: newVersion } = await createRevision(id, revContent, revTitle, revExcerpt, userId)
     update.version = newVersion
   }
+
+  const mergedCover =
+    update.coverImageUrl !== undefined ? update.coverImageUrl : existing.coverImageUrl
+  update.ogImageUrl = mergedCover ?? null
 
   const [row] = await db
     .update(articles)

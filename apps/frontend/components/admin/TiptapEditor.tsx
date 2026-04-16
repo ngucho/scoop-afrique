@@ -23,6 +23,8 @@ import { Gapcursor } from '@tiptap/extension-gapcursor'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PromptDialog } from 'scoop'
 import { isValidYoutubeUrl, toYoutubeEmbedUrl } from '@/lib/youtube'
+import { normalizeAllowedEmbedPath, PRESET_EMBED_PATHS } from '@/lib/embedAllowlist'
+import { ArticleEmbed, buildArticleEmbedAttrs } from '@/extensions/tiptapArticleEmbed'
 import {
   IconBold,
   IconItalic,
@@ -53,6 +55,8 @@ import {
   IconSuperscript,
   IconSubscript,
   IconPalette,
+  IconWorld,
+  IconFrame,
 } from '@tabler/icons-react'
 
 /* ------------------------------------------------------------------ */
@@ -113,6 +117,16 @@ function sanitizeNode(node: Record<string, unknown>): Record<string, unknown> {
     if (a.src === null || a.src === undefined || typeof a.src !== 'string') {
       a.src = ''
     }
+    out.attrs = a
+  }
+  if (out.type === 'articleEmbed') {
+    const a = (out.attrs ?? {}) as Record<string, unknown>
+    const raw = typeof a.src === 'string' ? a.src : ''
+    const path = normalizeAllowedEmbedPath(raw)
+    a.src = path ?? ''
+    if (typeof a.title !== 'string') a.title = 'Contenu intégré'
+    const mh = Number(a.minHeight)
+    a.minHeight = Number.isFinite(mh) ? Math.min(Math.max(mh, 200), 1200) : 420
     out.attrs = a
   }
 
@@ -298,7 +312,7 @@ export function TiptapEditor({
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   )
-  type PromptKind = 'image' | 'youtube' | 'link'
+  type PromptKind = 'image' | 'youtube' | 'link' | 'embed'
   const [promptOpen, setPromptOpen] = useState(false)
   const [promptKind, setPromptKind] = useState<PromptKind | null>(null)
   const [promptDefaultValue, setPromptDefaultValue] = useState('')
@@ -351,6 +365,7 @@ export function TiptapEditor({
         width: 640,
         height: 360,
       }),
+      ArticleEmbed,
       Placeholder.configure({ placeholder: safePlaceholder }),
       CharacterCount,
     ],
@@ -414,6 +429,29 @@ export function TiptapEditor({
     setPromptOpen(true)
   }, [editor])
 
+  const addGlobeEmbed = useCallback(() => {
+    if (!editor) return
+    const attrs = buildArticleEmbedAttrs({
+      src: PRESET_EMBED_PATHS.globePerception,
+      title: 'Globe — perception des projections',
+      minHeight: 480,
+    })
+    if (!attrs) return
+    editor
+      .chain()
+      .focus()
+      .insertContent({ type: 'articleEmbed', attrs })
+      .run()
+  }, [editor])
+
+  const addEmbedPath = useCallback(() => {
+    if (!editor) return
+    setPromptKind('embed')
+    setPromptDefaultValue('/embeds/')
+    setPromptError('')
+    setPromptOpen(true)
+  }, [editor])
+
   const addLink = useCallback(() => {
     if (!editor) return
     const previousUrl = editor.getAttributes('link').href ?? ''
@@ -471,6 +509,22 @@ export function TiptapEditor({
         }
         setPromptOpen(false)
       }
+      if (promptKind === 'embed') {
+        const attrs = buildArticleEmbedAttrs({
+          src: (value ?? '').trim(),
+          title: 'Contenu intégré',
+          minHeight: 420,
+        })
+        if (!attrs) {
+          setPromptError(
+            'Chemin invalide. Utilisez un chemin interne commençant par /embeds/ (ex. /embeds/globe-perception).',
+          )
+          return false
+        }
+        editor.chain().focus().insertContent({ type: 'articleEmbed', attrs }).run()
+        setPromptOpen(false)
+        setPromptError('')
+      }
     },
     [editor, promptKind, onMediaInserted],
   )
@@ -497,7 +551,14 @@ export function TiptapEditor({
               placeholder: 'https://…',
               submitLabel: 'Appliquer',
             }
-          : null
+          : promptKind === 'embed'
+            ? {
+                title: 'Cadre intégré (interne)',
+                label: 'Chemin',
+                placeholder: '/embeds/…',
+                submitLabel: 'Insérer',
+              }
+            : null
 
   const insertTable = useCallback(() => {
     if (!editor) return
@@ -725,6 +786,15 @@ export function TiptapEditor({
           </ToolbarButton>
           <ToolbarButton onClick={addYoutube} title="Vidéo YouTube">
             <IconBrandYoutube className={iconSize} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={addGlobeEmbed}
+            title="Visualisation globe (iframe /embeds/)"
+          >
+            <IconWorld className={iconSize} />
+          </ToolbarButton>
+          <ToolbarButton onClick={addEmbedPath} title="Autre cadre intégré (/embeds/…)">
+            <IconFrame className={iconSize} />
           </ToolbarButton>
 
           <ToolbarDivider />

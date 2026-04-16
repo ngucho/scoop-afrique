@@ -28,6 +28,7 @@ import {
   IconKey,
   IconChartBar,
   IconPencil,
+  IconSend,
 } from '@tabler/icons-react'
 import { type AppRole, getVisibleNav, ROLE_LABELS, ROLE_COLORS } from '@/lib/admin/rbac'
 
@@ -49,6 +50,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Key: IconKey,
   ChartBar: IconChartBar,
   PenLine: IconPencil,
+  Send: IconSend,
 }
 
 export function AdminLayoutClient({

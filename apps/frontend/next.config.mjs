@@ -14,6 +14,10 @@ const imageRemotePatterns = [
 const nextConfig = {
   transpilePackages: ['scoop'],
   typescript: { ignoreBuildErrors: false },
+  /** Crawlers & browsers request /favicon.ico by default; we only ship app/icon.svg → /icon.svg */
+  async rewrites() {
+    return [{ source: '/favicon.ico', destination: '/icon.svg' }]
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],

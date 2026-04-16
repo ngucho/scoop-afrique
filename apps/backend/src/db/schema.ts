@@ -435,6 +435,8 @@ export const newsletterSubscribers = pgTable('newsletter_subscribers', {
   email: text('email').notNull().unique(),
   status: newsletterStatusEnum('status').notNull().default('pending'),
   token: text('token'),
+  /** Stable token for List-Unsubscribe / weekly digest (never cleared after confirm). */
+  listUnsubscribeToken: text('list_unsubscribe_token').notNull().unique(),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   subscribedAt: timestamp('subscribed_at', { withTimezone: true }).notNull().defaultNow(),
   segmentTags: text('segment_tags').array().notNull().default([]),
