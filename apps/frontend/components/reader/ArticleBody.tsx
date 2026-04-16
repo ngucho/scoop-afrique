@@ -1,5 +1,6 @@
 import { Heading, Blockquote, BlockquoteContent } from 'scoop'
 import { getYoutubeEmbedSrc } from '@/lib/youtube'
+import { normalizeAllowedEmbedPath } from '@/lib/embedAllowlist'
 
 /**
  * ArticleBody — renders Tiptap JSON content for the reader.
@@ -10,7 +11,7 @@ import { getYoutubeEmbedSrc } from '@/lib/youtube'
  *
  * Supports all Tiptap block types including:
  * - paragraphs, headings, blockquotes, lists
- * - images, youtube embeds
+ * - images, youtube embeds, article embeds (same-origin /embeds/* iframes)
  * - code blocks, horizontal rules
  * - tables (table, tableRow, tableCell, tableHeader)
  * - text alignment, highlight, superscript, subscript, text color, links
@@ -174,6 +175,31 @@ function TiptapBlock({ node }: { node: TiptapNode }) {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             title="YouTube video"
             loading="lazy"
+          />
+        </div>
+      )
+    }
+
+    case 'articleEmbed': {
+      const raw = typeof node.attrs?.src === 'string' ? node.attrs.src.trim() : ''
+      const path = normalizeAllowedEmbedPath(raw)
+      if (!path) return null
+      const title =
+        typeof node.attrs?.title === 'string' && node.attrs.title.trim()
+          ? node.attrs.title.trim()
+          : 'Contenu intégré'
+      const mh = Number(node.attrs?.minHeight)
+      const minHeight = Number.isFinite(mh) ? Math.min(Math.max(mh, 200), 1200) : 420
+      return (
+        <div className="article-embed my-6 overflow-hidden rounded-lg border border-border bg-muted/20">
+          <iframe
+            src={path}
+            title={title}
+            className="block w-full border-0 bg-background"
+            style={{ minHeight }}
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin allow-popups-to-escape-sandbox"
+            referrerPolicy="no-referrer-when-downgrade"
           />
         </div>
       )

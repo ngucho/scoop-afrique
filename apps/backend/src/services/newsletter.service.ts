@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { newsletterSubscribers } from '../db/schema.js'
 import { config } from '../config/env.js'
@@ -61,6 +61,7 @@ export async function subscribe(
   if (!config.database) return { success: false, message: 'Service unavailable' }
   const db = getDb()
   const token = crypto.randomUUID()
+  const listUnsubscribeToken = crypto.randomUUID()
   try {
     await db
       .insert(newsletterSubscribers)
@@ -68,10 +69,15 @@ export async function subscribe(
         email: email.toLowerCase(),
         status: 'pending',
         token,
+        listUnsubscribeToken,
       })
       .onConflictDoUpdate({
         target: newsletterSubscribers.email,
-        set: { status: 'pending', token },
+        set: {
+          status: 'pending',
+          token,
+          listUnsubscribeToken: sql`COALESCE(${newsletterSubscribers.listUnsubscribeToken}, ${listUnsubscribeToken})`,
+        },
       })
   } catch (err: unknown) {
     const e = err as { code?: string }
@@ -125,6 +131,18 @@ export async function unsubscribeByEmail(email: string): Promise<boolean> {
     .update(newsletterSubscribers)
     .set({ status: 'unsubscribed' })
     .where(eq(newsletterSubscribers.email, email.toLowerCase()))
+    .returning({ id: newsletterSubscribers.id })
+  return !!row
+}
+
+/** One-click unsubscribe from weekly newsletter emails (uses stable list token). */
+export async function unsubscribeByListToken(listToken: string): Promise<boolean> {
+  if (!config.database) return false
+  const db = getDb()
+  const [row] = await db
+    .update(newsletterSubscribers)
+    .set({ status: 'unsubscribed' })
+    .where(eq(newsletterSubscribers.listUnsubscribeToken, listToken))
     .returning({ id: newsletterSubscribers.id })
   return !!row
 }

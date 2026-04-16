@@ -14,6 +14,7 @@ import type {
   MediaRecord,
   ApiResponse,
   ReaderContribution,
+  DigestArticlePickRow,
 } from '@/lib/api/types'
 import { revalidatePath } from 'next/cache'
 
@@ -366,6 +367,38 @@ export async function deleteNewsletterCampaign(id: string): Promise<void> {
   const token = await getToken()
   await apiDeleteAuth(`/admin/reader/newsletter-campaigns/${id}`, token)
   revReader()
+}
+
+export async function previewWeeklyNewsletterDigest(): Promise<DigestArticlePickRow[]> {
+  const token = await getToken()
+  const res = await apiPostAuth<{ data: { articles: DigestArticlePickRow[] } }>(
+    '/admin/reader/newsletter-weekly-digest/preview',
+    token,
+    {},
+  )
+  return res.data.articles ?? []
+}
+
+export async function sendWeeklyNewsletterDigest(dryRun: boolean): Promise<{
+  jobId: string
+  articleIds: string[]
+  recipientsAttempted: number
+  recipientsSent: number
+  recipientsFailed: number
+  error?: string
+}> {
+  const token = await getToken()
+  const res = await apiPostAuth<{
+    data: {
+      jobId: string
+      articleIds: string[]
+      recipientsAttempted: number
+      recipientsSent: number
+      recipientsFailed: number
+      error?: string
+    }
+  }>('/admin/reader/newsletter-weekly-digest/send', token, { dry_run: dryRun })
+  return res.data
 }
 
 /* ---------- Message emplacements pub vides + API Writer ---------- */

@@ -281,7 +281,13 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                     </span>
                   )}
                 </div>
-                <ShareButtons url={shareUrl} title={article.title} />
+                <ShareButtons
+                  url={shareUrl}
+                  title={article.title}
+                  excerpt={article.excerpt}
+                  tags={article.tags}
+                  categoryName={article.category?.name ?? null}
+                />
               </div>
               <p className="sr-only">Publié le {formatDate(article.published_at)}</p>
             </header>
@@ -333,7 +339,13 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
             <footer className="border-t border-border/80 pt-6">
               <div className="flex flex-wrap items-center justify-between gap-4">
-                <ShareButtons url={shareUrl} title={article.title} />
+                <ShareButtons
+                  url={shareUrl}
+                  title={article.title}
+                  excerpt={article.excerpt}
+                  tags={article.tags}
+                  categoryName={article.category?.name ?? null}
+                />
                 <LikeButton
                   articleId={article.id}
                   initialCount={likes.count}
