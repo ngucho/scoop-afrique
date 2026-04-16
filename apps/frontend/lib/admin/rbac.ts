@@ -75,6 +75,11 @@ export function canViewReaderInsights(role: AppRole): boolean {
   return hasMinRole(role, 'editor')
 }
 
+/** Digest hebdomadaire mailing-list (éditeur et plus). */
+export function canSendWeeklyNewsletterDigest(role: AppRole): boolean {
+  return hasMinRole(role, 'editor')
+}
+
 /** Publicité, homepage CMS, abonnés, campagnes newsletter. */
 export function canManageReaderOperations(role: AppRole): boolean {
   return hasMinRole(role, 'manager')
@@ -104,6 +109,12 @@ export const ADMIN_NAV: NavItem[] = [
   { href: '/admin/media', label: 'Médias', icon: 'Image', minRole: 'journalist' },
   { href: '/admin/reader/announcements', label: 'Annonces reader', icon: 'Megaphone', minRole: 'editor' },
   { href: '/admin/reader/audience-metrics', label: 'KPI & audience', icon: 'ChartBar', minRole: 'editor' },
+  {
+    href: '/admin/reader/weekly-digest',
+    label: 'Digest hebdo (mailing)',
+    icon: 'Send',
+    minRole: 'editor',
+  },
   { href: '/admin/reader/chrome', label: 'Message pubs vides', icon: 'Palette', minRole: 'editor' },
   { href: '/admin/reader/ads', label: 'Publicité', icon: 'Ad', minRole: 'manager' },
   { href: '/admin/reader/homepage', label: 'Accueil (sections)', icon: 'LayoutGrid', minRole: 'manager' },

@@ -27,6 +27,10 @@ const SITE_URL = config.siteUrl
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    shortcut: '/favicon.ico',
+  },
   applicationName: 'Scoop.Afrique',
   title: { default: 'Scoop.Afrique — Actualités & articles panafricains', template: '%s | Scoop.Afrique' },
   description:
