@@ -3,9 +3,11 @@
 import { useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { Button, Input, Label } from 'scoop'
-import { Bell, Pencil, X } from 'lucide-react'
+import { Button, Input } from 'scoop'
+import { Bell, Pencil, X, MessageCircle, Copy } from 'lucide-react'
 import type { CrmListViewMode } from '@/lib/crm-list-query'
+import { NewReminderModal } from '@/components/reminders/NewReminderModal'
+import { buildWaLink } from '@/lib/whatsapp'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -43,7 +45,7 @@ interface RemindersClientProps {
   initialReminders: Array<Record<string, unknown>>
   initialTotal: number
   initialCounts: Record<string, number>
-  contacts: Array<{ id: string; first_name?: string; last_name?: string }>
+  contacts: Array<{ id: string; first_name?: string; last_name?: string; whatsapp?: string; phone?: string }>
   view?: CrmListViewMode
 }
 
@@ -74,16 +76,8 @@ export function RemindersClient({
     [initialReminders]
   )
 
-  const [showForm, setShowForm] = useState(false)
+  const [reminderModalOpen, setReminderModalOpen] = useState(false)
   const [sending, setSending] = useState<string | null>(null)
-  const [form, setForm] = useState({
-    contact_id: '',
-    type: 'invoice_overdue',
-    channel: 'both',
-    message: '',
-    scheduled_at: '',
-  })
-  const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
     message: '',
@@ -104,6 +98,17 @@ export function RemindersClient({
     const c = contacts.find((x) => x.id === id)
     if (!c) return id
     return `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || id
+  }
+
+  const contactWaLink = (id: string, message: string) => {
+    const c = contacts.find((x) => x.id === id)
+    const phone = c?.whatsapp ?? c?.phone
+    if (!phone) return null
+    return buildWaLink(phone, message)
+  }
+
+  function copyMessage(message: string) {
+    navigator.clipboard.writeText(message).then(() => toast.success('Message copié !')).catch(() => toast.error('Copie impossible'))
   }
 
   async function handleSend(reminderId: string) {
@@ -178,36 +183,6 @@ export function RemindersClient({
     })
   }
 
-  async function handleCreate() {
-    if (!form.contact_id || !form.message.trim()) {
-      toast.error('Contact et message requis')
-      return
-    }
-    setSubmitting(true)
-    const res = await fetch('/api/crm/reminders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contact_id: form.contact_id,
-        type: form.type,
-        channel: form.channel,
-        message: form.message.trim(),
-        scheduled_at: form.scheduled_at || undefined,
-      }),
-      credentials: 'include',
-    })
-    setSubmitting(false)
-    if (!res.ok) {
-      const json = await res.json()
-      toast.error(json.error ?? 'Erreur')
-      return
-    }
-    toast.success('Relance créée')
-    setForm({ contact_id: '', type: 'invoice_overdue', channel: 'both', message: '', scheduled_at: '' })
-    setShowForm(false)
-    router.refresh()
-  }
-
   const totalAll = useMemo(() => {
     return Object.values(initialCounts).reduce((a, b) => a + b, 0)
   }, [initialCounts])
@@ -262,82 +237,11 @@ export function RemindersClient({
       </div>
 
       <div>
-        {showForm ? (
-          <div className="crm-card p-4 max-w-md space-y-3">
-            <h3 className="font-medium">Nouvelle relance</h3>
-            <div>
-              <Label>Contact</Label>
-              <select
-                value={form.contact_id}
-                onChange={(e) => setForm((f) => ({ ...f, contact_id: e.target.value }))}
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="">— Sélectionner —</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {`${c.first_name ?? ''} ${c.last_name ?? ''}`.trim() || c.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Type</Label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="invoice_overdue">Facture en retard</option>
-                <option value="devis_follow_up">Suivi devis</option>
-                <option value="project_update">Mise à jour projet</option>
-                <option value="custom">Personnalisé</option>
-              </select>
-            </div>
-            <div>
-              <Label>Canal</Label>
-              <select
-                value={form.channel}
-                onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                <option value="email">Email</option>
-                <option value="whatsapp">WhatsApp</option>
-                <option value="both">Email + WhatsApp</option>
-              </select>
-            </div>
-            <div>
-              <Label>Message</Label>
-              <textarea
-                value={form.message}
-                onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                rows={3}
-                placeholder="Message à envoyer..."
-              />
-            </div>
-            <div>
-              <Label>Programmé pour (optionnel)</Label>
-              <Input
-                type="datetime-local"
-                value={form.scheduled_at}
-                onChange={(e) => setForm((f) => ({ ...f, scheduled_at: e.target.value }))}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleCreate} disabled={submitting}>
-                {submitting ? 'Création…' : 'Créer'}
-              </Button>
-              <Button variant="outline" onClick={() => setShowForm(false)}>
-                Annuler
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button onClick={() => setShowForm(true)} className="rounded-full">
-            <Bell className="h-4 w-4 mr-2" />
-            Nouvelle relance
-          </Button>
-        )}
+        <Button type="button" onClick={() => setReminderModalOpen(true)} className="rounded-full">
+          <Bell className="h-4 w-4 mr-2" />
+          Nouvelle relance
+        </Button>
+        <NewReminderModal open={reminderModalOpen} onOpenChange={setReminderModalOpen} contacts={contacts} />
       </div>
 
       <div className="crm-card overflow-hidden">
@@ -466,6 +370,7 @@ export function RemindersClient({
                               className="h-8 rounded border border-input text-xs px-1 max-w-[140px]"
                             >
                               <option value="invoice_overdue">Facture retard</option>
+                              <option value="invoice_follow_up">Facture — solde</option>
                               <option value="devis_follow_up">Suivi devis</option>
                               <option value="project_update">Projet</option>
                               <option value="custom">Perso</option>
@@ -497,6 +402,30 @@ export function RemindersClient({
                           <Button size="sm" variant="outline" onClick={() => openEdit(r)} title="Modifier">
                             <Pencil className="h-3 w-3" />
                           </Button>
+                          {/* WhatsApp wa.me direct */}
+                          {(() => {
+                            const waLink = contactWaLink(r.contact_id, r.message)
+                            return waLink ? (
+                              <a
+                                href={waLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Ouvrir dans WhatsApp"
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-[#25D366]/50 bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors"
+                              >
+                                <MessageCircle className="h-3.5 w-3.5" />
+                              </a>
+                            ) : null
+                          })()}
+                          {/* Copy message */}
+                          <button
+                            type="button"
+                            title="Copier le message"
+                            onClick={() => copyMessage(r.message)}
+                            className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </button>
                           {!r.sent_at && ['draft', 'scheduled'].includes(r.status ?? '') && (
                             <Button
                               size="sm"
@@ -558,7 +487,7 @@ export function RemindersClient({
         )}
       </div>
 
-      {reminders.length === 0 && !showForm && (
+      {reminders.length === 0 && (
         <p className="text-center text-muted-foreground py-12 crm-card">Aucune relance pour ce filtre.</p>
       )}
     </div>

@@ -20,6 +20,9 @@ type FinancialSummary = {
   expensesByCategory: Array<{ category: string; amount: number; count: number }>
   cashFlow: Array<{ month: string; revenue: number; expenses: number; net: number }>
   topClients: Array<{ contact_id: string; name: string; revenue: number; invoiceCount: number }>
+  // Additional pipeline data (may not be present in older API)
+  pipelineAmount?: number
+  pipelineCount?: number
 }
 
 function formatMoney(amount: number): string {
@@ -86,7 +89,15 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
     expensesByCategory,
     cashFlow,
     topClients,
+    pipelineAmount = 0,
+    pipelineCount = 0,
   } = initialData
+
+  const totalRevenue = revenue + treasuryIncome
+  const totalExpenses = expenses + treasuryExpense
+  const netCashPosition = totalRevenue - totalExpenses
+  const unpaidAmount = invoicesUnpaid > 0 ? (revenue / Math.max(invoicesPaid, 1)) * invoicesUnpaid : 0
+  const collectionRate = invoicesIssued > 0 ? Math.round((invoicesPaid / invoicesIssued) * 100) : 0
 
   const periodLabel =
     initialData.period?.start && initialData.period?.end
@@ -95,29 +106,154 @@ export function FinancialReportClient({ initialData }: { initialData: FinancialS
 
   return (
     <div className="space-y-6">
+
+      {/* P&L Summary — investor-ready */}
+      <div className="crm-card overflow-hidden">
+        <div className="border-b border-border px-5 py-3 bg-muted/30">
+          <h3 className="text-sm font-semibold">Compte de résultat simplifié</h3>
+          {periodLabel && <p className="text-xs text-muted-foreground">Période : {periodLabel}</p>}
+        </div>
+        <div className="p-5 space-y-0">
+          {[
+            {
+              label: '+ Encaissements factures',
+              value: revenue,
+              indent: false,
+              bold: false,
+              color: 'oklch(0.42 0.14 145)',
+            },
+            {
+              label: '+ Autres revenus (trésorerie)',
+              value: treasuryIncome,
+              indent: true,
+              bold: false,
+              color: 'oklch(0.42 0.14 145)',
+            },
+            {
+              label: '= Chiffre d\'affaires total',
+              value: totalRevenue,
+              indent: false,
+              bold: true,
+              separator: true,
+              color: 'oklch(0.42 0.14 145)',
+            },
+            {
+              label: '- Charges projets',
+              value: -expenses,
+              indent: false,
+              bold: false,
+              color: 'oklch(0.5 0.18 20)',
+            },
+            {
+              label: '- Autres charges (trésorerie)',
+              value: -treasuryExpense,
+              indent: true,
+              bold: false,
+              color: 'oklch(0.5 0.18 20)',
+            },
+            {
+              label: '= Résultat brut d\'exploitation',
+              value: grossProfit,
+              indent: false,
+              bold: true,
+              separator: true,
+              color: grossProfit >= 0 ? 'oklch(0.42 0.16 260)' : 'oklch(0.5 0.18 20)',
+            },
+          ].map((row) => (
+            <div
+              key={row.label}
+              className={`flex items-center justify-between py-2 text-sm ${row.separator ? 'border-t border-border mt-1 pt-3 font-semibold' : ''} ${row.indent ? 'pl-4 text-muted-foreground text-xs' : ''}`}
+            >
+              <span>{row.label}</span>
+              <span
+                className="tabular-nums font-medium"
+                style={{ color: row.bold ? row.color : undefined }}
+              >
+                {row.value === 0 && row.indent ? '—' : (row.value >= 0 ? '' : '−') + formatMoney(Math.abs(row.value))}
+              </span>
+            </div>
+          ))}
+          {/* Margin */}
+          <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+            <span>Marge brute</span>
+            <span
+              className="font-semibold text-sm"
+              style={{ color: grossMargin >= 0 ? 'oklch(0.42 0.16 260)' : 'oklch(0.5 0.18 20)' }}
+            >
+              {grossMargin}%
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 3 key ratios + pipeline */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="crm-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Trésorerie nette</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: netCashPosition >= 0 ? 'oklch(0.42 0.14 145)' : 'oklch(0.5 0.18 20)' }}>
+            {formatMoney(netCashPosition)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Revenus − Charges</p>
+        </div>
+        <div className="crm-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Taux recouvrement</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: collectionRate >= 80 ? 'oklch(0.42 0.14 145)' : 'oklch(0.5 0.2 40)' }}>
+            {collectionRate}%
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{invoicesPaid}/{invoicesIssued} factures payées</p>
+        </div>
+        <div className="crm-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Créances à encaisser</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: invoicesUnpaid > 0 ? 'oklch(0.5 0.2 40)' : 'var(--muted-foreground)' }}>
+            {invoicesUnpaid > 0 ? formatMoney(unpaidAmount) : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{invoicesOverdue > 0 ? `${invoicesOverdue} en retard` : 'Aucun retard'}</p>
+        </div>
+        <div className="crm-card p-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pipeline commercial</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--primary)' }}>
+            {pipelineAmount > 0 ? formatMoney(pipelineAmount) : '—'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{pipelineCount > 0 ? `${pipelineCount} devis en cours` : 'Aucun devis actif'}</p>
+        </div>
+      </div>
+
       {periodLabel && (
-        <p className="text-xs text-muted-foreground -mt-1">
-          Période analysée : <span className="font-medium text-foreground">{periodLabel}</span> — factures
-          filtrées par <span className="font-medium">date d&apos;échéance</span> (ou date de création si pas
-          d&apos;échéance), encaissements par <span className="font-medium">date de paiement</span> (jour
-          calendaire), dépenses projet et{' '}
-          <Link href="/treasury" className="text-primary hover:underline">
-            mouvements de trésorerie
-          </Link>
-          . La section « Performance commerciale » utilise les <span className="font-medium">devis / projets /
-          factures créés</span> dans la même plage.
-        </p>
+        <div className="-mt-1 space-y-2 text-xs text-muted-foreground">
+          <p>
+            Période analysée : <span className="font-medium text-foreground">{periodLabel}</span> — factures
+            filtrées par <span className="font-medium">date d&apos;échéance</span> (ou date de création si pas
+            d&apos;échéance), encaissements par <span className="font-medium">date de paiement</span> (jour
+            calendaire), dépenses projet et{' '}
+            <Link href="/treasury" className="text-primary hover:underline">
+              mouvements de trésorerie
+            </Link>
+            . La section « Performance commerciale » utilise les <span className="font-medium">devis / projets /
+            factures créés</span> dans la même plage.
+          </p>
+          <p className="rounded-lg border border-border bg-muted/30 p-3 text-foreground/90">
+            <span className="font-medium">Pourquoi un écart avec la page Factures ?</span> Ici, « encaissements
+            factures » = somme des <span className="font-medium">paiements</span> dont la date tombe dans la
+            période (flux). La page Factures affiche le total encaissé sur les factures <span className="font-medium">au
+            statut « Payée »</span> (cumul toutes périodes, toutes factures). Les entrées hors facture
+            (investissement, monétisation, etc.) sont dans « autres revenus (trésorerie) » et sur l&apos;écran{' '}
+            <Link href="/treasury" className="text-primary hover:underline">
+              Trésorerie
+            </Link>
+            .
+          </p>
+        </div>
       )}
 
-      {/* KPIs */}
+      {/* KPIs — encaissements détaillés */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <FinancialKpi
-          label="Revenus (factures)"
+          label="Encaissements factures (période)"
           value={formatMoney(revenue)}
           sub={
             treasuryIncome > 0
               ? `+ ${formatMoney(treasuryIncome)} autres revenus (trésorerie)`
-              : 'Encaissé sur la période'
+              : 'Somme des paiements (dates de paiement dans la plage)'
           }
           color="oklch(0.42 0.14 145)"
           trend="up"

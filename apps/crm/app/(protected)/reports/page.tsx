@@ -1,17 +1,12 @@
 import { crmGetServer } from '@/lib/api-server'
+import { resolveCrmDateRangeFromSearchParams } from '@/lib/crm-date-range'
 import { ReportsClient } from '@/components/reports/ReportsClient'
 import { FinancialReportClient } from '@/components/reports/FinancialReportClient'
 import { CrmDateRangeBar } from '@/components/analytics/CrmDateRangeBar'
+import { ExportBilanDialog } from '@/components/reports/ExportBilanDialog'
 import { TrendingUp, DollarSign } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
-
-function rawDate(sp: Record<string, string | string[] | undefined>, k: string): string | undefined {
-  const v = sp[k]
-  const s = Array.isArray(v) ? v[0] : v
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined
-  return s
-}
 
 type ReportSummary = {
   revenueByMonth: Array<{
@@ -54,18 +49,7 @@ export default async function ReportsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const sp = await searchParams
-  let from = rawDate(sp, 'from')
-  let to = rawDate(sp, 'to')
-  const end = new Date()
-  const start = new Date()
-  start.setMonth(start.getMonth() - 12)
-  if (!from) from = start.toISOString().slice(0, 10)
-  if (!to) to = end.toISOString().slice(0, 10)
-  if (from > to) {
-    const x = from
-    from = to
-    to = x
-  }
+  const { from, to } = resolveCrmDateRangeFromSearchParams(sp)
 
   const qReports = new URLSearchParams()
   qReports.set('from', from)
@@ -73,8 +57,8 @@ export default async function ReportsPage({
   qReports.set('months', '24')
 
   const qFin = new URLSearchParams()
-  qFin.set('start', from)
-  qFin.set('end', to)
+  qFin.set('from', from)
+  qFin.set('to', to)
   qFin.set('months', '24')
 
   const [reportRes, financialRes] = await Promise.all([
@@ -99,11 +83,14 @@ export default async function ReportsPage({
 
       {/* Financial overview */}
       <div>
-        <div className="flex items-center gap-2 mb-4">
-          <DollarSign className="h-4 w-4 text-muted-foreground" strokeWidth={1.8} />
-          <h2 className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">
-            Bilan financier
-          </h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" strokeWidth={1.8} />
+            <h2 className="text-sm font-semibold tracking-wider uppercase text-muted-foreground">
+              Bilan financier
+            </h2>
+          </div>
+          <ExportBilanDialog defaultFrom={from} defaultTo={to} />
         </div>
         <FinancialReportClient initialData={financialData} />
       </div>

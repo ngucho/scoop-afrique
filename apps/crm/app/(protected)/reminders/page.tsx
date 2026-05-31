@@ -22,7 +22,7 @@ export default async function RemindersPage({
 
   const [remindersRes, contactsRes] = await Promise.all([
     crmGetServer<Array<Record<string, unknown>>>(`reminders?${q.toString()}`),
-    crmGetServer<Array<Record<string, unknown>>>('contacts?limit=100'),
+    crmGetServer<Array<Record<string, unknown>>>('contacts?limit=500'),
   ])
 
   const reminders = remindersRes?.data ?? []
