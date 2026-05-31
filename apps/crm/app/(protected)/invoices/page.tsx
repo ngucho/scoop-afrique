@@ -35,24 +35,40 @@ export default async function InvoicesPage({
   qActive.set('limit', '100')
   if (search) qActive.set('search', search)
 
+  const qSummary = new URLSearchParams()
+  if (search) qSummary.set('search', search)
+
   const qArchived = new URLSearchParams(qActive)
   qArchived.set('archived', 'true')
 
-  const activeRes = await crmGetServer<Array<Record<string, unknown>>>(`invoices?${qActive}`)
+  const [activeRes, totalsRes, archivedRes] = await Promise.all([
+    crmGetServer<Array<Record<string, unknown>>>(`invoices?${qActive}`),
+    crmGetServer<{
+      encaisse_factures_payees: number
+      encaisse_tous_etats: number
+      reste_a_encaisser: number
+      count_overdue: number
+      count_non_cancelled: number
+    }>(`invoices/summary?${qSummary}`),
+    isAdmin ? crmGetServer<Array<Record<string, unknown>>>(`invoices?${qArchived}`) : Promise.resolve(null),
+  ])
+
   const invoices = activeRes?.data ?? []
-
-  const archivedRes = isAdmin
-    ? await crmGetServer<Array<Record<string, unknown>>>(`invoices?${qArchived}`)
-    : null
   const archivedInvoices = archivedRes?.data ?? []
+  const t = totalsRes?.data
 
-  const totalUnpaid = invoices
-    .filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
-    .reduce((sum, i) => sum + (Number(i.total) - Number(i.amount_paid || 0)), 0)
-  const totalPaid = invoices
-    .filter((i) => i.status === 'paid')
-    .reduce((sum, i) => sum + Number(i.amount_paid || 0), 0)
-  const overdueCount = invoices.filter((i) => i.status === 'overdue').length
+  const totalUnpaid =
+    t?.reste_a_encaisser ??
+    invoices
+      .filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
+      .reduce((sum, i) => sum + (Number(i.total) - Number(i.amount_paid || 0)), 0)
+  const totalPaid =
+    t?.encaisse_factures_payees ??
+    invoices
+      .filter((i) => i.status === 'paid')
+      .reduce((sum, i) => sum + Number(i.amount_paid || 0), 0)
+  const overdueCount =
+    t?.count_overdue ?? invoices.filter((i) => i.status === 'overdue').length
 
   return (
     <div className="space-y-6 max-w-[1200px] crm-fade-in">
@@ -77,19 +93,33 @@ export default async function InvoicesPage({
         <CrmSearchViewToolbar basePath="/invoices" initialSearch={search ?? ''} defaultView="list" />
       </Suspense>
 
-      {/* Summary cards */}
-      {invoices.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Encaissé', value: formatMoney(totalPaid), color: 'oklch(0.42 0.14 145)' },
-            { label: 'À encaisser', value: formatMoney(totalUnpaid), color: 'oklch(0.5 0.2 40)' },
-            { label: 'En retard', value: `${overdueCount} facture${overdueCount !== 1 ? 's' : ''}`, color: overdueCount > 0 ? 'oklch(0.5 0.18 20)' : 'var(--muted-foreground)' },
-          ].map((s) => (
-            <div key={s.label} className="crm-card p-4 crm-fade-in">
-              <p className="text-xl font-bold tracking-tight truncate" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
-            </div>
-          ))}
+      {/* Summary cards — totaux API sur toutes les factures (filtre recherche), pas seulement les 100 affichées */}
+      {((t && t.count_non_cancelled > 0) || invoices.length > 0) && (
+        <div className="space-y-2">
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'Encaissé (factures payées)', value: formatMoney(totalPaid), color: 'oklch(0.42 0.14 145)' },
+              { label: 'À encaisser', value: formatMoney(totalUnpaid), color: 'oklch(0.5 0.2 40)' },
+              {
+                label: 'En retard',
+                value: `${overdueCount} facture${overdueCount !== 1 ? 's' : ''}`,
+                color: overdueCount > 0 ? 'oklch(0.5 0.18 20)' : 'var(--muted-foreground)',
+              },
+            ].map((s) => (
+              <div key={s.label} className="crm-card p-4 crm-fade-in">
+                <p className="text-xl font-bold tracking-tight truncate" style={{ color: s.color }}>{s.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+          {t && t.encaisse_tous_etats > t.encaisse_factures_payees ? (
+            <p className="text-xs text-muted-foreground px-1">
+              Dont paiements enregistrés (y compris partiels) :{' '}
+              <span className="font-medium text-foreground">{formatMoney(t.encaisse_tous_etats)}</span> — le
+              rapport financier utilise les paiements par <span className="font-medium">date</span>, pas ce cumul
+              carte.
+            </p>
+          ) : null}
         </div>
       )}
 

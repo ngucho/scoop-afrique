@@ -62,12 +62,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const ogImage = imageUrl ?? `${config.siteUrl}/opengraph-image`
 
   const section = article.category?.name
+  const newsKeywords = [
+    ...(article.tags ?? []),
+    section,
+    'actualités africaines',
+    'Afrique',
+  ].filter(Boolean).join(', ')
+
+  const readingTime = (article as unknown as Record<string, unknown>).reading_time_min as number | undefined
 
   return {
     title,
     description,
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    ...(section ? { other: { 'article:section': section } } : {}),
+    other: {
+      // News-specific meta tags for Google News and aggregators
+      ...(section ? { 'article:section': section } : {}),
+      // News keywords — critical for Google News topic matching
+      'news_keywords': newsKeywords,
+      // Syndication source for news aggregators
+      'syndication-source': url,
+      'original-source': url,
+      // Reading time
+      ...(readingTime ? { 'reading-time': `${readingTime} minutes` } : {}),
+      // Robots directives for news
+      'robots': 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+    },
     openGraph: {
       title,
       description,
@@ -113,34 +133,85 @@ function ArticleJsonLd({
     og_image_url?: string | null
     author_display_name?: string | null
     author?: { email: string | null } | null
+    author_public?: { bio: string | null; avatar_url: string | null } | null
     category?: { name: string; slug: string } | null
+    tags?: string[]
+    reading_time_min?: number
+    word_count?: number
   }
   shareUrl: string
 }) {
   const image = absoluteImage(article.og_image_url ?? article.cover_image_url)
+  const authorName = article.author_display_name ?? article.author?.email ?? 'Scoop Afrique'
+  const siteOrigin = config.siteUrl.replace(/\/$/, '')
+
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'NewsArticle',
+    // Required for Google News
     headline: article.title,
+    // Alternate headline for Google News (truncated if needed)
+    alternativeHeadline: article.title.length > 110 ? article.title.slice(0, 107) + '…' : undefined,
     description: article.excerpt ?? undefined,
     url: shareUrl,
     mainEntityOfPage: { '@type': 'WebPage', '@id': shareUrl },
-    image: image ? [image] : undefined,
+    // Image with dimensions for rich results
+    image: image
+      ? [{
+          '@type': 'ImageObject',
+          url: image,
+          width: 1200,
+          height: 630,
+          representativeOfPage: true,
+        }]
+      : undefined,
     datePublished: article.published_at ?? undefined,
     dateModified: article.updated_at,
+    // Article metadata
     ...(article.category?.name ? { articleSection: article.category.name } : {}),
+    // Keywords from tags + category
+    keywords: [
+      ...(article.tags ?? []),
+      article.category?.name,
+      'actualités africaines',
+      'Scoop Afrique',
+    ].filter(Boolean).join(', ') || undefined,
+    // Reading time
+    ...(article.reading_time_min ? { timeRequired: `PT${article.reading_time_min}M` } : {}),
+    // Word count
+    ...(article.word_count ? { wordCount: article.word_count } : {}),
+    // Author — include URL for journalist profile if available
     author: {
       '@type': 'Person',
-      name: article.author_display_name ?? article.author?.email ?? 'Scoop Afrique',
+      name: authorName,
+      ...(article.author_public?.avatar_url ? { image: article.author_public.avatar_url } : {}),
+      ...(article.author_public?.bio ? { description: article.author_public.bio } : {}),
     },
     publisher: {
-      '@type': 'Organization',
+      '@type': 'NewsMediaOrganization',
       name: 'Scoop.Afrique',
-      url: config.siteUrl,
-      logo: { '@type': 'ImageObject', url: `${config.siteUrl}/brand-logo.svg` },
+      url: siteOrigin,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteOrigin}/brand-logo.svg`,
+        width: 600,
+        height: 60,
+      },
+      sameAs: [
+        'https://www.tiktok.com/@Scoop.Afrique',
+        'https://www.instagram.com/Scoop.Afrique',
+        'https://www.facebook.com/scoopafrique',
+      ],
     },
     isAccessibleForFree: true,
     copyrightHolder: { '@type': 'Organization', name: 'Scoop.Afrique' },
+    inLanguage: 'fr-FR',
+    // News-specific
+    isPartOf: {
+      '@type': 'Periodical',
+      name: 'Scoop.Afrique',
+      issn: undefined,
+    },
   }
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
 }
@@ -217,7 +288,14 @@ export default async function ArticleDetailPage({ params }: PageProps) {
 
   return (
     <ReaderLayout>
-      <ArticleJsonLd article={article} shareUrl={shareUrl} />
+      <ArticleJsonLd
+        article={{
+          ...article,
+          reading_time_min: (article as unknown as Record<string, unknown>).reading_time_min as number | undefined,
+          word_count: (article as unknown as Record<string, unknown>).word_count as number | undefined,
+        }}
+        shareUrl={shareUrl}
+      />
       <ArticleBreadcrumbJsonLd
         title={article.title}
         categoryName={article.category?.name ?? null}
@@ -293,16 +371,29 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             </header>
 
             {hasCoverImage && coverImageUrl && (
-              <div className="relative -mx-4 mb-12 overflow-hidden rounded-xl shadow-[var(--shadow-lg)] sm:mx-0 md:-mx-6">
-                <ReaderCoverImage
-                  src={coverImageUrl}
-                  alt={`Illustration — ${article.title}`}
-                  aspectClassName="aspect-video"
-                  className="rounded-xl"
-                  sizes="(max-width: 1024px) 100vw, 66vw"
-                  priority
-                />
-              </div>
+              <figure className="relative -mx-4 mb-12 sm:mx-0 md:-mx-6">
+                <div className="overflow-hidden rounded-xl shadow-[var(--shadow-lg)]">
+                  <ReaderCoverImage
+                    src={coverImageUrl}
+                    alt={`Illustration — ${article.title}`}
+                    aspectClassName="aspect-video"
+                    className="rounded-xl"
+                    sizes="(max-width: 1024px) 100vw, 66vw"
+                    priority
+                  />
+                </div>
+                {/* Crédits image de couverture */}
+                {((article as unknown as Record<string, unknown>).cover_image_credit ||
+                  (article as unknown as Record<string, unknown>).cover_image_source) ? (
+                  <figcaption className="mt-2 px-4 text-right sm:px-0">
+                    <span className="font-sans text-[11px] text-muted-foreground/60">
+                      {(article as unknown as Record<string, unknown>).cover_image_credit as string}
+                      {(article as unknown as Record<string, unknown>).cover_image_credit && (article as unknown as Record<string, unknown>).cover_image_source ? ' — ' : ''}
+                      {(article as unknown as Record<string, unknown>).cover_image_source as string}
+                    </span>
+                  </figcaption>
+                ) : null}
+              </figure>
             )}
             {hasCoverVideo && videoEmbedUrl && (
               <div className="mb-8 aspect-video overflow-hidden rounded-xl">

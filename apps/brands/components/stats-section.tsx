@@ -55,25 +55,45 @@ export function StatsSection() {
         /* keep fallback */
       }
     })()
-    return () => {
-      cancelled = true
-    }
+    return () => { cancelled = true }
   }, [])
 
   return (
-    <section className="border-b border-[var(--surface-border)] bg-[var(--surface)] py-12 md:py-16">
+    <section className="relative overflow-hidden border-y border-border bg-card py-16 md:py-20">
+      {/* Accent ligne gauche */}
+      <div className="absolute left-0 top-0 h-full w-1 bg-primary" aria-hidden />
+
       <div className="mx-auto max-w-7xl px-6 md:px-12 lg:px-20">
-        <p className="mb-6 text-center font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        {/* Source label */}
+        <p className="mb-10 font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
           Audience —{' '}
           {source === 'live'
             ? 'chiffres synchronisés depuis le back-office Scoop'
-            : 'mars 2026 · analytics internes (fallback si API indisponible)'}
+            : 'mars 2026 · analytics internes'}
         </p>
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
-          {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <span className="block font-sans text-xl font-bold text-primary sm:text-2xl">{s.value}</span>
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{s.label}</span>
+
+        {/* Stats en grande typographie éditoriale */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-4">
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              className="relative"
+            >
+              {i > 0 ? (
+                <span
+                  className="absolute -left-4 top-0 hidden h-full w-px bg-border md:block"
+                  aria-hidden
+                />
+              ) : null}
+              <p
+                className="font-sans text-[clamp(2rem,4vw,3rem)] font-black leading-none text-primary"
+                style={{ fontFamily: 'var(--font-headline)' }}
+              >
+                {s.value}
+              </p>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                {s.label}
+              </p>
             </div>
           ))}
         </div>

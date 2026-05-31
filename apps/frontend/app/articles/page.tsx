@@ -133,22 +133,29 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
     <ReaderLayout>
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 page-enter">
         <header className="mb-8">
-          <SectionHeader label="Articles" className="mb-4" />
-          <Heading as="h1" level="h1" className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <SectionHeader label="Articles" variant="editorial" className="mb-4" />
+          <Heading
+            as="h1"
+            level="h1"
+            className="text-3xl font-bold tracking-tight sm:text-4xl"
+            style={{ fontFamily: 'var(--font-headline)' }}
+          >
             {qTrim ? (
               <>
-                Résultats pour « <span className="text-primary">{qTrim}</span> »
+                Résultats pour «&nbsp;<span className="text-primary">{qTrim}</span>&nbsp;»
               </>
+            ) : activeCategoryLabel ? (
+              <span className="text-primary">{activeCategoryLabel}</span>
             ) : (
               <>Toute l&apos;actualité</>
             )}
           </Heading>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {qTrim
-              ? 'Affinez votre recherche depuis la page Recherche ou explorez les catégories ci-dessous.'
+              ? 'Affinez votre recherche ou explorez les catégories ci-dessous.'
               : activeCategoryLabel
-                ? `Rubrique ${activeCategoryLabel} — parcourez aussi les autres thématiques.`
-                : 'Parcourez les articles par catégorie ou utilisez la recherche.'}
+                ? `Décryptages et reportages Scoop Afrique sur la rubrique ${activeCategoryLabel}.`
+                : "Décryptages, analyses et reportages — l'Afrique vue par la jeunesse afro-francophone."}
           </p>
         </header>
 

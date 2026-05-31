@@ -83,6 +83,60 @@ export async function listInvoices(params?: {
   }
 }
 
+/** Totaux sur toutes les factures correspondant aux filtres (pas de limite de pagination). */
+export async function getInvoiceTotalsSummary(params?: {
+  archived?: boolean
+  search?: string
+}): Promise<{
+  encaisse_factures_payees: number
+  encaisse_tous_etats: number
+  reste_a_encaisser: number
+  count_payees: number
+  count_non_cancelled: number
+  count_overdue: number
+}> {
+  const db = getDb()
+  const archived = params?.archived
+  const baseWhere =
+    archived === true ? eq(crmInvoices.isArchived, true) : eq(crmInvoices.isArchived, false)
+  const q = params?.search?.trim()
+  const searchWhere = q
+    ? or(
+        ilike(crmInvoices.reference, `%${q}%`),
+        ilike(crmContacts.firstName, `%${q}%`),
+        ilike(crmContacts.lastName, `%${q}%`),
+        ilike(crmContacts.company, `%${q}%`)
+      )
+    : undefined
+  const fullWhere = baseWhere && searchWhere ? and(baseWhere, searchWhere) : (searchWhere ?? baseWhere)
+
+  const sel = {
+    encaisse_factures_payees: sql<number>`coalesce(sum(case when ${crmInvoices.status} = 'paid' then ${crmInvoices.amountPaid} else 0 end), 0)::int`,
+    encaisse_tous_etats: sql<number>`coalesce(sum(case when ${crmInvoices.status} <> 'cancelled' then ${crmInvoices.amountPaid} else 0 end), 0)::int`,
+    reste_a_encaisser: sql<number>`coalesce(sum(case when ${crmInvoices.status} not in ('paid', 'cancelled') then (${crmInvoices.total} - ${crmInvoices.amountPaid}) else 0 end), 0)::int`,
+    count_payees: sql<number>`coalesce(sum(case when ${crmInvoices.status} = 'paid' then 1 else 0 end), 0)::int`,
+    count_non_cancelled: sql<number>`coalesce(sum(case when ${crmInvoices.status} <> 'cancelled' then 1 else 0 end), 0)::int`,
+    count_overdue: sql<number>`coalesce(sum(case when ${crmInvoices.status} = 'overdue' then 1 else 0 end), 0)::int`,
+  }
+
+  const [row] = q
+    ? await db
+        .select(sel)
+        .from(crmInvoices)
+        .leftJoin(crmContacts, eq(crmInvoices.contactId, crmContacts.id))
+        .where(fullWhere)
+    : await db.select(sel).from(crmInvoices).where(fullWhere!)
+
+  return {
+    encaisse_factures_payees: Number(row?.encaisse_factures_payees ?? 0),
+    encaisse_tous_etats: Number(row?.encaisse_tous_etats ?? 0),
+    reste_a_encaisser: Number(row?.reste_a_encaisser ?? 0),
+    count_payees: Number(row?.count_payees ?? 0),
+    count_non_cancelled: Number(row?.count_non_cancelled ?? 0),
+    count_overdue: Number(row?.count_overdue ?? 0),
+  }
+}
+
 export async function getInvoiceById(id: string): Promise<Record<string, unknown> | null> {
   const db = getDb()
   const rows = await db.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1)

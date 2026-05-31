@@ -9,6 +9,22 @@ import type { AppEnv } from '../../types.js'
 const app = new Hono<AppEnv>()
 app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
+app.get('/summary', async (c) => {
+  const user = c.get('user')
+  const archivedQuery = c.req.query('archived')
+  const archived =
+    archivedQuery === 'true'
+      ? user.role === 'admin'
+        ? true
+        : undefined
+      : archivedQuery === 'false'
+        ? false
+        : undefined
+  const search = (c.req.query('search') || c.req.query('q') || '').trim() || undefined
+  const data = await invoiceService.getInvoiceTotalsSummary({ archived, search })
+  return c.json({ data })
+})
+
 app.get('/', async (c) => {
   const user = c.get('user')
   const contactId = c.req.query('contact_id')

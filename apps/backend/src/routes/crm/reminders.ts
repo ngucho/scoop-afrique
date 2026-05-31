@@ -7,6 +7,12 @@ import type { AppEnv } from '../../types.js'
 const app = new Hono<AppEnv>()
 app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
+/** Suggestions : devis envoyés non convertis, factures impayées */
+app.get('/follow-up-suggestions', async (c) => {
+  const data = await reminderService.listFollowUpSuggestions()
+  return c.json({ data })
+})
+
 app.get('/', async (c) => {
   const contactId = c.req.query('contact_id')
   const invoiceId = c.req.query('invoice_id')
