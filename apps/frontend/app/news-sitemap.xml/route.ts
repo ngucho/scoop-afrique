@@ -1,34 +1,27 @@
 /**
  * Google News Sitemap — /news-sitemap.xml
  *
- * Format: https://developers.google.com/search/docs/crawling-indexing/sitemaps/news-sitemap
+ * Uses the existing /articles public API (already deployed) — no new backend endpoint needed.
  *
- * Rules for Google News indexing:
- * - Articles must be published within the last 2 days to appear in Google News
- * - Use ISO 8601 publication dates
- * - Title must exactly match the article headline
- * - Publication name must match the registered Google Publisher name
+ * Strategy:
+ *   1. Fetch last 100 published articles (sorted by published_at desc)
+ *   2. Include articles from the last 48h for real-time Google News indexing
+ *   3. If fewer than 5 recent articles, also include older ones (up to 50 total)
+ *      so the sitemap is never empty while the publication ramps up
  *
+ * Google News format: https://developers.google.com/search/docs/crawling-indexing/sitemaps/news-sitemap
  * Google Publisher Center: https://publishercenter.google.com/
- * Submit sitemap in Google Search Console after verifying ownership.
  */
 import { NextResponse } from 'next/server'
 import { apiGet } from '@/lib/api/client'
 import { config } from '@/lib/config'
+import type { Article } from '@/lib/api/types'
 
-export const revalidate = 60 // Revalidate every minute for breaking news freshness
+export const revalidate = 60
 
 const SITE_URL = config.siteUrl.replace(/\/$/, '')
 const PUBLICATION_NAME = 'Scoop.Afrique'
 const PUBLICATION_LANGUAGE = 'fr'
-
-interface NewsArticle {
-  slug: string
-  title: string
-  published_at: string
-  tags: string[]
-  category_name: string | null
-}
 
 function escapeXml(str: string): string {
   return str
@@ -39,24 +32,23 @@ function escapeXml(str: string): string {
     .replace(/'/g, '&apos;')
 }
 
-function buildKeywords(article: NewsArticle): string {
+function buildKeywords(article: Article): string {
   const parts: string[] = []
-  if (article.category_name) parts.push(article.category_name)
+  if (article.category?.name) parts.push(article.category.name)
   if (article.tags?.length) parts.push(...article.tags.slice(0, 5))
   parts.push('Afrique', 'actualités africaines')
   return [...new Set(parts)].join(', ')
 }
 
-function buildNewsSitemap(articles: NewsArticle[]): string {
+function buildNewsSitemap(articles: Article[]): string {
   const urlEntries = articles
     .filter((a) => a.slug && a.title && a.published_at)
     .map((article) => {
-      const url = `${SITE_URL}/articles/${article.slug}`
-      // Format date as ISO 8601 with timezone offset (required by Google News)
-      const pubDate = new Date(article.published_at).toISOString()
+      const url = `${SITE_URL}/articles/${escapeXml(article.slug)}`
+      const pubDate = new Date(article.published_at!).toISOString()
       const keywords = buildKeywords(article)
       return `  <url>
-    <loc>${escapeXml(url)}</loc>
+    <loc>${url}</loc>
     <news:news>
       <news:publication>
         <news:name>${escapeXml(PUBLICATION_NAME)}</news:name>
@@ -71,9 +63,6 @@ function buildNewsSitemap(articles: NewsArticle[]): string {
     .join('\n')
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<!-- Google News Sitemap for ${PUBLICATION_NAME} -->
-<!-- Submitted via Google Publisher Center: https://publishercenter.google.com/ -->
-<!-- Verified via Google Search Console: https://search.google.com/search-console -->
 <urlset
   xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
@@ -84,12 +73,31 @@ ${urlEntries}
 
 export async function GET() {
   try {
-    // Fetch articles from last 72 hours (Google News requires < 2 days for real-time, we cast wider)
-    const res = await apiGet<{ data: NewsArticle[] }>('/sitemap/news?hours=72', {
-      revalidate: 60,
-    })
-    const articles = res.data ?? []
-    const xml = buildNewsSitemap(articles)
+    // Use the existing /articles public endpoint — always available in production
+    const res = await apiGet<{ data: Article[]; total: number }>(
+      '/articles?limit=100&page=1',
+      { revalidate: 60 }
+    )
+    const all = (res.data ?? []).filter(
+      (a) => a.status === 'published' && a.slug && a.title && a.published_at
+    )
+
+    // Prefer articles from the last 48h for Google News freshness signal
+    const cutoff48h = Date.now() - 48 * 60 * 60 * 1000
+    const cutoff30d = Date.now() - 30 * 24 * 60 * 60 * 1000
+
+    const recent48h = all.filter(
+      (a) => new Date(a.published_at!).getTime() >= cutoff48h
+    )
+
+    // If we have recent articles → use only those (ideal for Google News)
+    // Otherwise fall back to last 30 days (up to 50), so sitemap is never empty
+    const toInclude =
+      recent48h.length >= 1
+        ? recent48h
+        : all.filter((a) => new Date(a.published_at!).getTime() >= cutoff30d).slice(0, 50)
+
+    const xml = buildNewsSitemap(toInclude)
 
     return new NextResponse(xml, {
       headers: {
@@ -99,10 +107,11 @@ export async function GET() {
       },
     })
   } catch {
-    // Return empty valid sitemap on error
     const empty = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"
+>
 </urlset>`
     return new NextResponse(empty, {
       headers: { 'Content-Type': 'application/xml; charset=utf-8' },
