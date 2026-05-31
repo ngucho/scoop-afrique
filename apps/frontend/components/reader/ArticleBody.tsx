@@ -144,6 +144,9 @@ function TiptapBlock({ node }: { node: TiptapNode }) {
       if (!src) return null
       const alt = (node.attrs?.alt as string) ?? ''
       const title = (node.attrs?.title as string) ?? ''
+      const credit = (node.attrs?.credit as string | null | undefined) ?? ''
+      const source = (node.attrs?.source as string | null | undefined) ?? ''
+      const hasCaption = !!(title || credit || source)
       return (
         <figure className="my-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -154,9 +157,18 @@ function TiptapBlock({ node }: { node: TiptapNode }) {
             className="mx-auto max-h-[500px] w-full rounded-lg object-contain"
             loading="lazy"
           />
-          {title && (
-            <figcaption className="mt-2 text-center text-sm text-muted-foreground">
-              {title}
+          {hasCaption && (
+            <figcaption className="mt-2 space-y-0.5 text-center">
+              {title ? (
+                <span className="block text-sm text-muted-foreground">{title}</span>
+              ) : null}
+              {credit || source ? (
+                <span className="block font-sans text-[11px] text-muted-foreground/60">
+                  {credit}
+                  {credit && source ? ' — ' : ''}
+                  {source}
+                </span>
+              ) : null}
             </figcaption>
           )}
         </figure>

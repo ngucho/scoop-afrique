@@ -1,7 +1,7 @@
 /**
  * CRM reports — analytics and aggregates for dashboards
  */
-import { eq, gte, lte, and, sql } from 'drizzle-orm'
+import { eq, and, sql, inArray, gte, lte, lt } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import {
   crmInvoices,
@@ -46,23 +46,30 @@ function lastDayOfMonthYm(ym: string): string {
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * Bornes calendaires YYYY-MM-DD sans conversion timezone (évite le décalage toISOString()).
+ * Défaut identique à `getDashboardKpis` : du 1er jour du mois civil au jour courant (YYYY-MM-DD UTC).
+ */
+export function defaultReportRange(): { from: string; to: string } {
+  const now = new Date()
+  const to = now.toISOString().slice(0, 10)
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+  return { from, to }
+}
+
+/**
+ * Bornes calendaires YYYY-MM-DD ; si absent/invalide → même défaut que le tableau de bord.
  */
 export function normalizeFinancialRange(
   startDate?: string,
   endDate?: string,
-  months = 12
+  _months = 12
 ): { startStr: string; endStr: string } {
-  const s = startDate?.slice(0, 10)
-  const e = endDate?.slice(0, 10)
+  const s = startDate?.trim().slice(0, 10)
+  const e = endDate?.trim().slice(0, 10)
   if (s && e && YMD_RE.test(s) && YMD_RE.test(e)) {
     return s <= e ? { startStr: s, endStr: e } : { startStr: e, endStr: s }
   }
-  const end = new Date()
-  const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
-  const start = new Date(end.getFullYear(), end.getMonth() - months, end.getDate())
-  const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
-  return { startStr, endStr }
+  const { from, to } = defaultReportRange()
+  return { startStr: from, endStr: to }
 }
 
 function devisCreatedInRange(range: { from: string; to: string }) {
@@ -152,9 +159,9 @@ export async function getRevenueByMonth(
     .where(
       and(
         eq(crmInvoices.isArchived, false),
-        sql`(${crmPayments.paidAt}::date) >= ${queryFrom}::date`,
-        sql`(${crmPayments.paidAt}::date) <= ${queryTo}::date`
-      )
+        gte(crmPayments.paidAt, new Date(`${queryFrom}T00:00:00.000Z`)),
+        lte(crmPayments.paidAt, new Date(`${queryTo}T23:59:59.999Z`)),
+      ),
     )
 
   const byMonthInv = new Map<string, { revenue: number; count: number }>()
@@ -333,7 +340,7 @@ export async function getFinancialSummary(
   /** Factures « dans la période » : date d'échéance, ou date de création si pas d'échéance */
   const invoiceInPeriod = sql`COALESCE(${crmInvoices.dueDate}, (${crmInvoices.createdAt}::date))`
 
-  const [invoices, paymentRows, expenses, treasuryRows, contacts] = await Promise.all([
+  const [invoices, paymentRows, expenses, treasuryRows] = await Promise.all([
     db
       .select({
         id: crmInvoices.id,
@@ -366,9 +373,9 @@ export async function getFinancialSummary(
       .where(
         and(
           eq(crmInvoices.isArchived, false),
-          sql`(${crmPayments.paidAt}::date) >= ${startStr}::date`,
-          sql`(${crmPayments.paidAt}::date) <= ${endStr}::date`
-        )
+          gte(crmPayments.paidAt, new Date(`${startStr}T00:00:00.000Z`)),
+          lte(crmPayments.paidAt, new Date(`${endStr}T23:59:59.999Z`)),
+        ),
       ),
     db
       .select({
@@ -377,12 +384,7 @@ export async function getFinancialSummary(
         incurredAt: crmExpenses.incurredAt,
       })
       .from(crmExpenses)
-      .where(
-        and(
-          gte(crmExpenses.incurredAt, startStr),
-          lte(crmExpenses.incurredAt, endStr)
-        )
-      ),
+      .where(and(gte(crmExpenses.incurredAt, startStr), lte(crmExpenses.incurredAt, endStr))),
     db
       .select({
         direction: crmTreasuryMovements.direction,
@@ -394,16 +396,31 @@ export async function getFinancialSummary(
       .where(
         and(
           sql`${crmTreasuryMovements.occurredAt} >= ${startStr}::date`,
-          sql`${crmTreasuryMovements.occurredAt} <= ${endStr}::date`
-        )
+          sql`${crmTreasuryMovements.occurredAt} <= ${endStr}::date`,
+        ),
       ),
-    db.select({
-      id: crmContacts.id,
-      firstName: crmContacts.firstName,
-      lastName: crmContacts.lastName,
-      company: crmContacts.company,
-    }).from(crmContacts),
   ])
+
+  const contactIdSet = new Set<string>()
+  for (const p of paymentRows) {
+    if (p.contactId) contactIdSet.add(String(p.contactId))
+  }
+  for (const inv of invoices) {
+    if (inv.contactId) contactIdSet.add(String(inv.contactId))
+  }
+  const contactIds = [...contactIdSet]
+  const contacts =
+    contactIds.length > 0
+      ? await db
+          .select({
+            id: crmContacts.id,
+            firstName: crmContacts.firstName,
+            lastName: crmContacts.lastName,
+            company: crmContacts.company,
+          })
+          .from(crmContacts)
+          .where(inArray(crmContacts.id, contactIds))
+      : []
 
   // Entrées factures = somme des paiements dont la date de paiement est dans la période
   const revenue = paymentRows.reduce((sum, p) => sum + (Number(p.amount) ?? 0), 0)
@@ -560,5 +577,171 @@ export async function getFinancialSummary(
     expensesByCategory,
     cashFlow,
     topClients,
+  }
+}
+
+export type FinancialBilanLedger = {
+  period: { start: string; end: string }
+  summary: FinancialSummary
+  treasuryLedger: {
+    openingBalance: number
+    periodIncome: number
+    periodExpense: number
+    closingBalance: number
+    note: string
+  }
+  cashLike: {
+    encaissementsFacturesPeriode: number
+    autresEntreesTresorerie: number
+    chargesProjetsPeriode: number
+    sortiesTresoreriePeriode: number
+    totalEntreesPeriode: number
+    totalSortiesPeriode: number
+    soldeNetPeriode: number
+  }
+  /** Données pour présentation « audit / banques » (non certifiées — voir disclaimers). */
+  audit: {
+    generatedAt: string
+    documentReference: string
+    periodDurationDays: number
+    /** Créances clients résiduelles (factures non soldées, hors annulées) — point en date. */
+    outstandingReceivablesFcfa: number
+    indicators: {
+      totalProduitsEncaissement: number
+      totalChargesExploitation: number
+      resultatNetTresoreriePeriode: number
+      margeSurProduitsPct: number
+      intensiteChargesSurProduitsPct: number
+      /** Part du 1er client dans les encaissements factures de la période (%) */
+      concentrationPremierClientPct: number | null
+    }
+  }
+}
+
+/** Encours clients (total − acomptes) sur factures actives non soldées. */
+async function getOutstandingReceivablesFcfa(): Promise<number> {
+  const db = getDb()
+  const [row] = await db
+    .select({
+      v: sql<number>`coalesce(sum(${crmInvoices.total} - ${crmInvoices.amountPaid}), 0)::bigint`,
+    })
+    .from(crmInvoices)
+    .where(
+      and(
+        eq(crmInvoices.isArchived, false),
+        sql`${crmInvoices.status} NOT IN ('paid', 'cancelled')`
+      )
+    )
+  return Number(row?.v ?? 0)
+}
+
+function daysInclusive(startStr: string, endStr: string): number {
+  const a = new Date(startStr + 'T12:00:00')
+  const b = new Date(endStr + 'T12:00:00')
+  const diff = Math.round((b.getTime() - a.getTime()) / 86400000)
+  return diff >= 0 ? diff + 1 : 1
+}
+
+/**
+ * Bilan exportable : résumé financier + soldes trésorerie + indicateurs pour dossier bancaire / actionnaires (non certifié).
+ */
+export async function getFinancialBilanLedger(
+  startDate?: string,
+  endDate?: string,
+  months = 12
+): Promise<FinancialBilanLedger> {
+  const summary = await getFinancialSummary(startDate, endDate, months)
+  const startStr = summary.period.start
+  const endStr = summary.period.end
+  const db = getDb()
+
+  /** Solde en début de période = somme des entrées avant la date de début − somme des sorties avant cette date (même périmètre que la synthèse : paiements, charges projets, mouvements trésorerie). */
+  const [payOpen, expOpen, treasOpen, outstandingReceivablesFcfa] = await Promise.all([
+    db
+      .select({
+        v: sql<number>`coalesce(sum(${crmPayments.amount}), 0)::bigint`,
+      })
+      .from(crmPayments)
+      .innerJoin(crmInvoices, eq(crmPayments.invoiceId, crmInvoices.id))
+      .where(
+        and(
+          eq(crmInvoices.isArchived, false),
+          lt(crmPayments.paidAt, new Date(`${startStr}T00:00:00.000Z`)),
+        ),
+      ),
+    db
+      .select({
+        v: sql<number>`coalesce(sum(${crmExpenses.amount}), 0)::bigint`,
+      })
+      .from(crmExpenses)
+      .where(lt(crmExpenses.incurredAt, startStr)),
+    db
+      .select({
+        income: sql<number>`coalesce(sum(case when ${crmTreasuryMovements.direction} = 'income' then ${crmTreasuryMovements.amount}::bigint else 0 end), 0)::bigint`,
+        expense: sql<number>`coalesce(sum(case when ${crmTreasuryMovements.direction} = 'expense' then ${crmTreasuryMovements.amount}::bigint else 0 end), 0)::bigint`,
+      })
+      .from(crmTreasuryMovements)
+      .where(sql`${crmTreasuryMovements.occurredAt}::date < ${startStr}::date`),
+    getOutstandingReceivablesFcfa(),
+  ])
+
+  const encaissementsAvant = Number(payOpen[0]?.v ?? 0)
+  const chargesProjetsAvant = Number(expOpen[0]?.v ?? 0)
+  const tresoEntreesAvant = Number(treasOpen[0]?.income ?? 0)
+  const tresoSortiesAvant = Number(treasOpen[0]?.expense ?? 0)
+  const openingBalance =
+    encaissementsAvant + tresoEntreesAvant - chargesProjetsAvant - tresoSortiesAvant
+
+  const closingBalance = openingBalance + summary.grossProfit
+
+  const totalProduits = summary.revenue + summary.treasuryIncome
+  const totalCharges = summary.expenses + summary.treasuryExpense
+  const resultat = summary.grossProfit
+  const margeSurProduits =
+    totalProduits > 0 ? Math.round((resultat / totalProduits) * 100) : 0
+  const intensiteCharges =
+    totalProduits > 0 ? Math.round((totalCharges / totalProduits) * 100) : 0
+
+  const top = summary.topClients[0]?.revenue ?? 0
+  const concentrationPremierClientPct =
+    summary.revenue > 0 ? Math.round((top / summary.revenue) * 100) : null
+
+  const now = new Date()
+  const documentReference = `CRM-AUDIT-${now.toISOString().slice(0, 10)}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`
+
+  return {
+    period: summary.period,
+    summary,
+    treasuryLedger: {
+      openingBalance,
+      periodIncome: summary.treasuryIncome,
+      periodExpense: summary.treasuryExpense,
+      closingBalance,
+      note:
+        'Soldes début / fin : position de trésorerie cumulée (encaissements factures + entrées trésorerie − charges projets − sorties trésorerie), tous flux strictement avant le 1er jour puis sur la période. Les lignes « entrées / sorties trésorerie » ci‑dessous ne concernent que le module Trésorerie sur la période.',
+    },
+    cashLike: {
+      encaissementsFacturesPeriode: summary.revenue,
+      autresEntreesTresorerie: summary.treasuryIncome,
+      chargesProjetsPeriode: summary.expenses,
+      sortiesTresoreriePeriode: summary.treasuryExpense,
+      totalEntreesPeriode: summary.revenue + summary.treasuryIncome,
+      totalSortiesPeriode: summary.expenses + summary.treasuryExpense,
+      soldeNetPeriode: summary.grossProfit,
+    },
+    audit: {
+      generatedAt: now.toISOString(),
+      documentReference,
+      periodDurationDays: daysInclusive(startStr, endStr),
+      outstandingReceivablesFcfa,
+      indicators: {
+        totalProduitsEncaissement: totalProduits,
+        totalChargesExploitation: totalCharges,
+        resultatNetTresoreriePeriode: resultat,
+        margeSurProduitsPct: margeSurProduits,
+        intensiteChargesSurProduitsPct: intensiteCharges,
+        concentrationPremierClientPct,
+      },
+    },
   }
 }

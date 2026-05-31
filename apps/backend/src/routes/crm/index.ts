@@ -15,6 +15,7 @@ import activityRoutes from './activity.js'
 import reportsRoutes from './reports.js'
 import servicesRoutes from './services.js'
 import treasuryRoutes from './treasury.js'
+import settingsRoutes from './settings.js'
 
 const app = new Hono()
 
@@ -34,5 +35,6 @@ app.route('/contracts', contractsRoutes)
 app.route('/reminders', remindersRoutes)
 app.route('/activity', activityRoutes)
 app.route('/treasury', treasuryRoutes)
+app.route('/settings', settingsRoutes)
 
 export default app

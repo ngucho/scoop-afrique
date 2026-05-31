@@ -3,7 +3,7 @@
  */
 import { eq, and, desc, asc, sql, isNull, isNotNull, inArray, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
-import { crmReminders } from '../../db/schema.js'
+import { crmReminders, crmDevis, crmInvoices, crmContacts } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
 import type { CreateReminderInput, UpdateReminderInput } from '../../schemas/crm/reminder.schema.js'
 
@@ -15,6 +15,133 @@ type ReminderStatus =
   | 'successful'
   | 'closed'
   | 'cancelled'
+
+export type FollowUpSuggestion = {
+  key: string
+  source: 'devis' | 'invoice'
+  entity_id: string
+  contact_id: string
+  first_name: string
+  last_name: string
+  company: string | null
+  reference: string
+  label: string
+  /** Type de relance conseillé (aligné UI) */
+  suggested_type: 'devis_follow_up' | 'invoice_overdue' | 'invoice_follow_up'
+  invoice_id?: string
+  devis_id?: string
+  total_fcfa: number
+}
+
+/**
+ * Devis envoyés (statut « sent ») sans conversion, et factures non soldées (sent / partial / overdue).
+ */
+export async function listFollowUpSuggestions(): Promise<{ suggestions: FollowUpSuggestion[] }> {
+  const db = getDb()
+
+  const [devisRows, invoiceRows] = await Promise.all([
+    db
+      .select({
+        id: crmDevis.id,
+        reference: crmDevis.reference,
+        total: crmDevis.total,
+        contactId: crmDevis.contactId,
+        firstName: crmContacts.firstName,
+        lastName: crmContacts.lastName,
+        company: crmContacts.company,
+        updatedAt: crmDevis.updatedAt,
+      })
+      .from(crmDevis)
+      .innerJoin(crmContacts, eq(crmDevis.contactId, crmContacts.id))
+      .where(
+        and(
+          eq(crmDevis.isArchived, false),
+          eq(crmDevis.status, 'sent'),
+          isNotNull(crmDevis.contactId),
+          eq(crmContacts.isArchived, false),
+        ),
+      )
+      .orderBy(desc(crmDevis.updatedAt))
+      .limit(50),
+    db
+      .select({
+        id: crmInvoices.id,
+        reference: crmInvoices.reference,
+        total: crmInvoices.total,
+        status: crmInvoices.status,
+        contactId: crmInvoices.contactId,
+        firstName: crmContacts.firstName,
+        lastName: crmContacts.lastName,
+        company: crmContacts.company,
+        updatedAt: crmInvoices.updatedAt,
+      })
+      .from(crmInvoices)
+      .innerJoin(crmContacts, eq(crmInvoices.contactId, crmContacts.id))
+      .where(
+        and(
+          eq(crmInvoices.isArchived, false),
+          inArray(crmInvoices.status, ['sent', 'partial', 'overdue']),
+          isNotNull(crmInvoices.contactId),
+          eq(crmContacts.isArchived, false),
+        ),
+      )
+      .orderBy(desc(crmInvoices.updatedAt))
+      .limit(50),
+  ])
+
+  type Sortable = FollowUpSuggestion & { _sort: Date | null }
+  const merged: Sortable[] = []
+
+  for (const r of devisRows) {
+    if (!r.contactId) continue
+    merged.push({
+      key: `devis:${r.id}`,
+      source: 'devis',
+      entity_id: r.id,
+      contact_id: r.contactId,
+      first_name: r.firstName,
+      last_name: r.lastName,
+      company: r.company,
+      reference: r.reference,
+      label: `Devis ${r.reference} envoyé — en attente de retour`,
+      suggested_type: 'devis_follow_up',
+      devis_id: r.id,
+      total_fcfa: Number(r.total) ?? 0,
+      _sort: r.updatedAt,
+    })
+  }
+
+  for (const r of invoiceRows) {
+    if (!r.contactId) continue
+    const overdue = r.status === 'overdue'
+    merged.push({
+      key: `invoice:${r.id}`,
+      source: 'invoice',
+      entity_id: r.id,
+      contact_id: r.contactId,
+      first_name: r.firstName,
+      last_name: r.lastName,
+      company: r.company,
+      reference: r.reference,
+      label: overdue
+        ? `Facture ${r.reference} — en retard`
+        : `Facture ${r.reference} — solde à régler`,
+      suggested_type: overdue ? 'invoice_overdue' : 'invoice_follow_up',
+      invoice_id: r.id,
+      total_fcfa: Number(r.total) ?? 0,
+      _sort: r.updatedAt,
+    })
+  }
+
+  merged.sort((a, b) => {
+    const ta = a._sort ? new Date(a._sort).getTime() : 0
+    const tb = b._sort ? new Date(b._sort).getTime() : 0
+    return tb - ta
+  })
+
+  const suggestions: FollowUpSuggestion[] = merged.map(({ _sort: _, ...rest }) => rest)
+  return { suggestions }
+}
 
 export async function countRemindersByStatus(whereClause?: ReturnType<typeof and>): Promise<Record<string, number>> {
   const db = getDb()

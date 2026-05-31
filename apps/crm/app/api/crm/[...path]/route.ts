@@ -10,6 +10,28 @@ import {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
+/**
+ * Headers for the server-to-backend fetch only. Do not forward the browser Cookie / full
+ * request.headers: Auth0 session cookies + Bearer token can exceed Node's default header
+ * limit and produce HTTP 431 (Request Header Fields Too Large).
+ */
+function buildBackendRequestHeaders(
+  request: NextRequest,
+  accessToken: string,
+  requestId: string,
+): Headers {
+  const h = new Headers()
+  h.set('Authorization', `Bearer ${accessToken}`)
+  h.set('x-request-id', requestId)
+  const accept = request.headers.get('accept')
+  if (accept) h.set('Accept', accept)
+  const contentType = request.headers.get('content-type')
+  if (contentType && request.method !== 'GET' && request.method !== 'HEAD') {
+    h.set('Content-Type', contentType)
+  }
+  return h
+}
+
 /** Response headers from backend, with encoding stripped so client gets plain body (avoids ERR_CONTENT_DECODING_FAILED) */
 function proxyResponseHeaders(backendRes: Response): Headers {
   const headers = new Headers(backendRes.headers)
@@ -55,10 +77,7 @@ async function proxyRequest(
   const url = new URL(`/api/v1/crm/${pathSegments.join('/')}`, API_URL)
   url.search = request.nextUrl.search
 
-  const headers = new Headers(request.headers)
-  headers.set('Authorization', `Bearer ${tokenResult.accessToken}`)
-  headers.set('x-request-id', requestId)
-  headers.delete('host')
+  const headers = buildBackendRequestHeaders(request, tokenResult.accessToken, requestId)
 
   const init: RequestInit = {
     method: request.method,

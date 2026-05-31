@@ -16,7 +16,7 @@ app.get('/', async (c) => {
   const sort = c.req.query('sort') as 'created_at' | 'last_name' | 'email' | 'company' | undefined
   const order = c.req.query('order') as 'asc' | 'desc' | undefined
   const archived = c.req.query('archived')
-  const limit = Math.min(Number(c.req.query('limit')) || 50, 100)
+  const limit = Math.min(Number(c.req.query('limit')) || 50, 500)
   const offset = Number(c.req.query('offset')) || 0
 
   const { data, total } = await contactService.listContacts({

@@ -5,29 +5,31 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '../utils/cn'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-1.5 rounded-full font-sans font-bold uppercase tracking-wider transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [data-hover]',
+  'inline-flex items-center justify-center gap-1.5 rounded-full font-sans font-bold uppercase tracking-wider transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] cursor-pointer select-none [data-hover]',
   {
     variants: {
       variant: {
         default:
-          'border-2 border-primary bg-[length:100%_100%] bg-[var(--gradient-primary)] text-foreground hover:opacity-90 active:opacity-95',
+          'border-2 border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/95',
         secondary:
           'border-2 border-border bg-secondary text-secondary-foreground hover:bg-muted hover:border-muted-foreground/30',
         outline:
-          'border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-foreground',
-        text: 'border-0 bg-transparent text-foreground hover:bg-muted hover:text-primary',
-        ghost: 'border border-border bg-transparent text-foreground hover:border-primary hover:text-primary',
+          'border-2 border-primary bg-transparent text-primary hover:bg-primary hover:text-primary-foreground',
+        text:
+          'border-0 bg-transparent text-foreground hover:bg-muted hover:text-primary',
+        ghost:
+          'border border-border bg-transparent text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary',
         fillHover:
-          'group relative overflow-hidden border-2 border-primary bg-transparent text-primary hover:text-foreground',
+          'group relative overflow-hidden border-2 border-primary bg-transparent text-primary hover:text-primary-foreground',
         danger:
-          'border-2 border-destructive bg-destructive text-destructive-foreground hover:opacity-90 active:opacity-95',
+          'border-2 border-destructive bg-destructive text-destructive-foreground shadow-sm hover:opacity-90',
         breaking:
-          'border-2 border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)] hover:opacity-90 active:opacity-95',
+          'border-2 border-[var(--signal)] bg-[var(--signal)] text-[var(--signal-foreground)] shadow-sm hover:opacity-90',
       },
       size: {
-        sm: 'min-h-0 px-4 py-2 text-xs',
+        sm: 'min-h-0 px-4 py-1.5 text-xs',
         default: 'px-5 py-2.5 text-sm sm:px-6 sm:py-3',
-        lg: 'px-6 py-3 text-base sm:px-8 sm:py-3.5',
+        lg: 'px-7 py-3 text-sm sm:px-8 sm:py-3.5 sm:text-base',
         icon: 'h-10 w-10 min-h-0',
         'icon-sm': 'h-8 w-8 min-h-0',
         'icon-lg': 'h-11 w-11 min-h-0',
@@ -54,10 +56,16 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const content =
       variant === 'fillHover' ? (
         <>
-          <span className="absolute inset-0 -translate-x-full bg-primary transition-transform duration-300 group-hover:translate-x-0" aria-hidden />
+          <span
+            className="absolute inset-0 -translate-x-full bg-primary transition-transform duration-300 group-hover:translate-x-0"
+            aria-hidden
+          />
           <span className="relative z-10 flex items-center justify-center gap-2">
             {loading ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+              <span
+                className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden
+              />
             ) : null}
             {children}
           </span>
@@ -65,11 +73,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       ) : (
         <>
           {loading ? (
-            <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden />
+            <span
+              className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+              aria-hidden
+            />
           ) : null}
           {children}
         </>
       )
+
     if (asChild && React.isValidElement(children) && !loading) {
       const childProps = (children as React.ReactElement<{ className?: string }>).props
       return React.cloneElement(children as React.ReactElement, {
@@ -79,7 +91,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       } as React.Attributes & { className?: string; ref?: React.Ref<unknown>; 'data-hover'?: boolean })
     }
     return (
-      <button ref={ref} className={computedClassName} data-hover disabled={isDisabled} aria-busy={loading} {...props}>
+      <button
+        ref={ref}
+        className={computedClassName}
+        data-hover
+        disabled={isDisabled}
+        aria-busy={loading}
+        {...props}
+      >
         {content}
       </button>
     )

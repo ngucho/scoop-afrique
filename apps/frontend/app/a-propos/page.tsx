@@ -2,128 +2,193 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowLeft, Users, Eye, Globe, Heart } from 'lucide-react'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
-import { ReaderFooter } from '@/components/reader/ReaderFooter'
-import { Heading, Card } from 'scoop'
+import { Heading, SectionHeader } from 'scoop'
 
 export const metadata: Metadata = {
-  title: 'À propos de Scoop Afrique',
+  title: 'À propos — Scoop Afrique',
   description:
-    "Découvrez Scoop Afrique, le média digital africain. Notre mission, notre vision et notre équipe pour l'Afrique.",
+    "Scoop Afrique, le média panafricain de la jeunesse francophone. Notre mission : décrypter l'Afrique autrement, depuis Abidjan.",
 }
 
-const backLinkClass =
-  'inline-flex items-center gap-2 text-sm text-foreground transition-colors hover:text-primary'
-
 const stats = [
-  { icon: Users, value: '1.25M+', label: 'Abonnés' },
-  { icon: Eye, value: '490M+', label: 'Vues' },
+  { icon: Users, value: '+1,4 M', label: 'Abonnés cumulés' },
+  { icon: Eye, value: '490 M+', label: 'Vues totales' },
   { icon: Globe, value: '12+', label: 'Pays touchés' },
-  { icon: Heart, value: '50M+', label: 'Interactions' },
+  { icon: Heart, value: '50 M+', label: 'Interactions' },
+]
+
+const uniqueness = [
+  { title: '100 % Digital, 100 % Africain', body: 'Né en Côte d\'Ivoire, pensé pour l\'Afrique et le monde. Chaque format, chaque sujet, chaque angle est conçu pour résonner avec la réalité du continent.' },
+  { title: 'Un ton éditorial distinctif', body: 'Zen, ferme, confiant, ambitieux. On ne crie pas — on décrypte. On ne suit pas la tendance — on la devance.' },
+  { title: 'Formats taillés pour le mobile', body: 'Couvertures live, micro-trottoirs, jeux avec des personnalités, interviews, reportages : des formats qui performent sur TikTok, Instagram, YouTube et Facebook.' },
+  { title: 'Une communauté active', body: 'Plus d\'un million d\'abonnés qui s\'engagent, commentent et partagent. La Tribune Scoop donne la parole à notre communauté directement sur le site.' },
+]
+
+const rubriques = [
+  { name: 'Actualité', desc: "Les faits qui façonnent l'Afrique et le monde." },
+  { name: 'Politique', desc: 'Décryptage des enjeux de gouvernance et de pouvoir.' },
+  { name: 'Culture', desc: 'Musique, cinéma, mode, art — la créativité africaine à l\'honneur.' },
+  { name: 'Sport', desc: 'Football, basketball et les athlètes qui font briller le continent.' },
+  { name: 'Économie', desc: 'Business, tech et entrepreneuriat africain en plein essor.' },
+  { name: 'Société', desc: 'Buzz, tendances et lifestyle — le pouls de la jeunesse.' },
 ]
 
 export default function AboutPage() {
   return (
     <ReaderLayout>
-      <main className="min-h-screen bg-background text-foreground">
-        <header className="border-b border-border">
-          <div className="mx-auto max-w-4xl px-6 py-6">
-            <Link href="/" className={backLinkClass}>
-              <ArrowLeft className="h-4 w-4" />
-              Retour à l&apos;accueil
-            </Link>
-          </div>
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+        <Link
+          href="/"
+          className="mb-8 inline-flex items-center gap-2 font-sans text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Retour à l&apos;accueil
+        </Link>
+
+        {/* Hero section */}
+        <header className="mb-16 border-b border-border pb-12">
+          <SectionHeader label="À propos" variant="editorial" className="mb-5" />
+          <Heading
+            as="h1"
+            level="h1"
+            className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl"
+            style={{ fontFamily: 'var(--font-headline)' }}
+          >
+            Décrypter l&apos;Afrique{' '}
+            <span className="text-primary">autrement</span>
+          </Heading>
+          <p className="max-w-2xl text-lg leading-relaxed text-muted-foreground">
+            <strong className="font-semibold text-foreground">Scoop Afrique</strong> est un média panafricain basé en
+            Côte d&apos;Ivoire. Depuis 2025, nous racontons l&apos;Afrique avec le regard affûté, l&apos;énergie et
+            l&apos;ambition de sa jeunesse — sur tous les écrans, dans toutes les langues du numérique.
+          </p>
         </header>
-        <article className="mx-auto max-w-4xl px-6 py-16">
-          <Heading as="h1" level="h1" className="mb-8">
-            À propos de <span className="text-primary">Scoop Afrique</span>
-          </Heading>
-          <p className="text-xl text-muted-foreground">
-            <strong>Scoop Afrique</strong> est un média panafricain basé en Côte d&apos;Ivoire qui allie rapidité,
-            fiabilité et créativité dans le traitement de l&apos;information. Avec plus de 300 millions de vues sur nos
-            réseaux sociaux, nous faisons partie des nouvelles voix médiatiques les plus influentes du continent.
-          </p>
-          <Heading as="h2" level="h2" className="mt-12">
-            Notre vision
-          </Heading>
-          <p className="mt-2 text-foreground">
-            Devenir un acteur majeur de l&apos;information en Afrique, en mettant en lumière les initiatives locales
-            et en connectant les jeunes générations à une actualité moderne et inspirante.
-          </p>
-          <Heading as="h2" level="h2" className="mt-12">
-            Notre mission
-          </Heading>
-          <p className="mt-2 text-foreground">
-            Nous croyons que l&apos;Afrique mérite un média à son image : moderne, audacieux, authentique. Raconter
-            les histoires qui comptent, célébrer notre culture, et informer sans compromettre notre identité.
-          </p>
-          <Heading as="h2" level="h2" className="mt-12">
-            Siège
-          </Heading>
-          <p className="mt-2 text-muted-foreground">
-            Abidjan, Cocody Riviera Faya — 01 BP 130 Abidjan 01, Côte d&apos;Ivoire.
-          </p>
-          <Heading as="h2" level="h2" className="mt-12">
-            Ce qui nous rend uniques
-          </Heading>
-          <ul className="mt-2 list-none space-y-1 text-foreground">
-            <li>
-              <strong>100% Digital, 100% Africain</strong> — Créé en Côte d&apos;Ivoire, pour l&apos;Afrique et le monde
-            </li>
-            <li>
-              <strong>Ton éditorial distinctif</strong> — Zen, ferme, confiant, ambitieux
-            </li>
-            <li>
-              <strong>Contenus viraux</strong> — Des formats adaptés aux réseaux sociaux modernes
-            </li>
-            <li>
-              <strong>Engagement réel</strong> — Une communauté active et passionnée
-            </li>
-          </ul>
-          <Heading as="h2" level="h2" className="mt-12">
-            Nos rubriques
-          </Heading>
-          <ul className="mt-2 list-none space-y-1 text-foreground">
-            <li>
-              <strong>Actualité internationale</strong> — Les news qui impactent l&apos;Afrique
-            </li>
-            <li>
-              <strong>Pop culture</strong> — Musique, cinéma, mode, art
-            </li>
-            <li>
-              <strong>Sport</strong> — Football, basketball, et les athlètes africains
-            </li>
-            <li>
-              <strong>Politique</strong> — Décryptage des enjeux du continent
-            </li>
-            <li>
-              <strong>Économie</strong> — Business, tech, entrepreneuriat africain
-            </li>
-            <li>
-              <strong>Divertissement</strong> — Buzz, tendances, lifestyle africain
-            </li>
-          </ul>
-          <div className="mt-16 grid grid-cols-2 gap-6 md:grid-cols-4">
+
+        {/* Stats */}
+        <section className="mb-16" aria-labelledby="stats-heading">
+          <SectionHeader label="En chiffres" variant="editorial" className="mb-8" />
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             {stats.map((stat) => (
-              <Card key={stat.label} className="p-6 text-center">
-                <stat.icon className="mx-auto mb-3 h-8 w-8 text-primary" />
-                <div className="text-3xl font-bold text-primary">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </Card>
+              <div
+                key={stat.label}
+                className="flex flex-col items-start gap-2 rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-sm)]"
+              >
+                <stat.icon className="h-5 w-5 text-primary" aria-hidden />
+                <p
+                  className="text-3xl font-black leading-none text-primary sm:text-4xl"
+                  style={{ fontFamily: 'var(--font-headline)' }}
+                >
+                  {stat.value}
+                </p>
+                <p className="font-sans text-xs uppercase tracking-wide text-muted-foreground">
+                  {stat.label}
+                </p>
+              </div>
             ))}
           </div>
-          <Card className="mt-16 p-8 text-center">
-            <Heading as="h2" level="h2" className="mb-4">
-              Rejoignez la communauté
-            </Heading>
-            <p className="mb-6 text-muted-foreground">
-              Suivez-nous sur les réseaux sociaux pour ne rien manquer de l&apos;actualité.
+        </section>
+
+        {/* Vision & Mission */}
+        <section className="mb-16 grid gap-8 md:grid-cols-2" aria-labelledby="vision-heading">
+          <div className="rounded-xl border-l-[3px] border-l-primary bg-card/50 p-6">
+            <h2
+              className="mb-3 text-xl font-bold text-foreground"
+              id="vision-heading"
+              style={{ fontFamily: 'var(--font-headline)' }}
+            >
+              Notre vision
+            </h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Devenir la référence médiatique de la jeunesse africaine — un espace où l&apos;information est précise,
+              le ton est authentique, et l&apos;ambition panafricaine n&apos;est pas une posture mais une conviction
+              quotidienne.
             </p>
-            <Link href="/" className="inline-flex items-center justify-center rounded-md border-2 border-primary bg-primary px-6 py-3 font-bold text-primary-foreground transition-colors hover:opacity-90">
-              Découvrir nos réseaux
+          </div>
+          <div className="rounded-xl border-l-[3px] border-l-primary bg-card/50 p-6">
+            <h2
+              className="mb-3 text-xl font-bold text-foreground"
+              style={{ fontFamily: 'var(--font-headline)' }}
+            >
+              Notre mission
+            </h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Raconter les histoires qui comptent, célébrer la culture africaine, décrypter les enjeux du continent —
+              avec un regard moderne, sans compromis sur notre identité. L&apos;Afrique mérite un média à son image.
+            </p>
+          </div>
+        </section>
+
+        {/* What makes us unique */}
+        <section className="mb-16" aria-labelledby="unique-heading">
+          <SectionHeader label="Ce qui nous distingue" variant="editorial" className="mb-8" id="unique-heading" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {uniqueness.map((item) => (
+              <div
+                key={item.title}
+                className="rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-sm)]"
+              >
+                <h3 className="mb-2 font-sans text-sm font-bold text-foreground">{item.title}</h3>
+                <p className="font-sans text-xs leading-relaxed text-muted-foreground">{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Rubriques */}
+        <section className="mb-16" aria-labelledby="rubriques-heading">
+          <SectionHeader label="Nos rubriques" variant="editorial" className="mb-6" id="rubriques-heading" />
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+            {rubriques.map((r) => (
+              <div key={r.name} className="flex items-start gap-3 rounded-xl border border-border bg-card/60 p-4">
+                <span
+                  className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                  aria-hidden
+                />
+                <div>
+                  <p className="font-sans text-sm font-semibold text-foreground">{r.name}</p>
+                  <p className="mt-0.5 font-sans text-xs text-muted-foreground">{r.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Siège */}
+        <section className="mb-16">
+          <SectionHeader label="Siège social" variant="editorial" className="mb-4" />
+          <p className="font-sans text-sm text-muted-foreground">
+            Abidjan, Cocody Riviera Faya — 01 BP 130 Abidjan 01, Côte d&apos;Ivoire.
+          </p>
+        </section>
+
+        {/* CTA */}
+        <section className="overflow-hidden rounded-2xl border-l-[6px] border-l-primary bg-muted/50 p-8 md:p-10">
+          <h2
+            className="mb-3 text-2xl font-bold text-foreground sm:text-3xl"
+            style={{ fontFamily: 'var(--font-headline)' }}
+          >
+            Rejoignez la communauté
+          </h2>
+          <p className="mb-6 max-w-md font-sans text-sm leading-relaxed text-muted-foreground">
+            Suivez-nous sur les réseaux, lisez nos articles, participez à la Tribune — faites partie du média africain
+            qui décrypte le monde sans complexes.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/articles"
+              className="inline-flex items-center rounded-full bg-primary px-6 py-3 font-sans text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 active:scale-[0.97]"
+            >
+              Lire les articles
             </Link>
-          </Card>
-        </article>
-      </main>
+            <Link
+              href="/newsletter"
+              className="inline-flex items-center rounded-full border-2 border-primary bg-transparent px-6 py-3 font-sans text-sm font-bold text-primary transition-all hover:bg-primary hover:text-primary-foreground active:scale-[0.97]"
+            >
+              S&apos;abonner à la newsletter
+            </Link>
+          </div>
+        </section>
+      </div>
     </ReaderLayout>
   )
 }

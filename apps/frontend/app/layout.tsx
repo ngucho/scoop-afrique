@@ -83,8 +83,15 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
     types: {
-      'application/rss+xml': `${SITE_URL}/rss.xml`,
+      'application/rss+xml': [
+        { url: `${SITE_URL}/rss.xml`, title: 'Scoop.Afrique — Flux RSS' },
+        { url: `${SITE_URL}/news-sitemap.xml`, title: 'Scoop.Afrique — Google News' },
+      ],
     },
+  },
+  // news_keywords at site level for aggregators
+  other: {
+    'news_keywords': 'actualités africaines, Africa news, Côte d\'Ivoire, Abidjan, panafricain, politique Afrique, culture africaine',
   },
 }
 
