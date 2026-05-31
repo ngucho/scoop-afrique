@@ -12,18 +12,17 @@ import {
   AlertTriangle,
   TrendingUp,
   Inbox,
+  Bell,
+  MessageCircle,
+  Wallet,
+  Settings,
 } from 'lucide-react'
+
+import { resolveCrmDateRangeFromSearchParams } from '@/lib/crm-date-range'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
 export const dynamic = 'force-dynamic'
-
-function rawDate(sp: Record<string, string | string[] | undefined>, k: string): string | undefined {
-  const v = sp[k]
-  const s = Array.isArray(v) ? v[0] : v
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined
-  return s
-}
 
 async function getDashboardData(from?: string, to?: string) {
   try {
@@ -108,8 +107,10 @@ const ACTION_ICON: Record<string, typeof CheckCircle> = {
 const QUICK_ACTIONS = [
   { href: '/contacts/new', label: 'Nouveau contact', icon: Users, color: 'oklch(0.42 0.16 260)' },
   { href: '/devis/new', label: 'Nouveau devis', icon: FileText, color: 'oklch(0.42 0.14 145)' },
-  { href: '/projects/new', label: 'Nouveau projet', icon: ClipboardList, color: 'oklch(0.42 0.16 280)' },
   { href: '/invoices/new', label: 'Nouvelle facture', icon: Receipt, color: 'oklch(0.5 0.2 40)' },
+  { href: '/reminders', label: 'Relances', icon: Bell, color: 'oklch(0.42 0.16 280)' },
+  { href: '/projects/new', label: 'Nouveau projet', icon: ClipboardList, color: 'oklch(0.42 0.16 300)' },
+  { href: '/treasury', label: 'Trésorerie', icon: Wallet, color: 'oklch(0.42 0.14 145)' },
 ]
 
 function formatMonthLabel(month: string): string {
@@ -124,18 +125,7 @@ export default async function DashboardPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const sp = await searchParams
-  let from = rawDate(sp, 'from')
-  let to = rawDate(sp, 'to')
-  const end = new Date()
-  const defaultTo = end.toISOString().slice(0, 10)
-  const defaultFrom = new Date(end.getFullYear(), end.getMonth(), 1).toISOString().slice(0, 10)
-  if (!from) from = defaultFrom
-  if (!to) to = defaultTo
-  if (from > to) {
-    const x = from
-    from = to
-    to = x
-  }
+  const { from, to } = resolveCrmDateRangeFromSearchParams(sp)
 
   const data = await getDashboardData(from, to)
   const kpis = data?.dashboard?.kpis ?? {}
@@ -400,20 +390,30 @@ export default async function DashboardPage({
                 </Link>
               )}
               {kpis.unpaidInvoicesCount > 0 && (
-                <Link href="/invoices?status=unpaid" className="flex items-center gap-3 p-2.5 rounded-xl group"
-                  style={{ background: 'oklch(0.9 0.12 20 / 0.12)' }}>
-                  <div className="h-8 w-8 flex items-center justify-center rounded-lg shrink-0"
-                    style={{ background: 'oklch(0.9 0.12 20 / 0.2)' }}>
-                    <Receipt className="h-4 w-4" style={{ color: 'oklch(0.5 0.18 20)' }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold" style={{ color: 'oklch(0.5 0.18 20)' }}>
-                      {kpis.unpaidInvoicesCount} facture{kpis.unpaidInvoicesCount > 1 ? 's' : ''} impayée{kpis.unpaidInvoicesCount > 1 ? 's' : ''}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">{formatMoney(kpis.unpaidInvoicesAmount ?? 0)}</p>
-                  </div>
-                  <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'oklch(0.5 0.18 20)' }} />
-                </Link>
+                <div className="space-y-1.5">
+                  <Link href="/invoices?status=unpaid" className="flex items-center gap-3 p-2.5 rounded-xl group"
+                    style={{ background: 'oklch(0.9 0.12 20 / 0.12)' }}>
+                    <div className="h-8 w-8 flex items-center justify-center rounded-lg shrink-0"
+                      style={{ background: 'oklch(0.9 0.12 20 / 0.2)' }}>
+                      <Receipt className="h-4 w-4" style={{ color: 'oklch(0.5 0.18 20)' }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold" style={{ color: 'oklch(0.5 0.18 20)' }}>
+                        {kpis.unpaidInvoicesCount} facture{kpis.unpaidInvoicesCount > 1 ? 's' : ''} impayée{kpis.unpaidInvoicesCount > 1 ? 's' : ''}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">{formatMoney(kpis.unpaidInvoicesAmount ?? 0)}</p>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'oklch(0.5 0.18 20)' }} />
+                  </Link>
+                  {/* Relancer via WhatsApp */}
+                  <Link
+                    href="/reminders"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-medium text-[#25D366] border border-[#25D366]/30 bg-[#25D366]/5 hover:bg-[#25D366]/10 transition-colors"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5 shrink-0" />
+                    Relancer les clients impayés via WhatsApp
+                  </Link>
+                </div>
               )}
             </div>
           ) : (
@@ -422,6 +422,13 @@ export default async function DashboardPage({
               <p className="text-xs text-muted-foreground">Aucune alerte — tout est à jour</p>
             </div>
           )}
+          {/* Settings shortcut */}
+          <div className="mt-4 pt-3 border-t border-border">
+            <Link href="/settings" className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Settings className="h-3 w-3" />
+              Configurer les moyens de paiement
+            </Link>
+          </div>
         </div>
       </div>
 

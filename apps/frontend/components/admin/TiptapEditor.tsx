@@ -22,9 +22,14 @@ import { Dropcursor } from '@tiptap/extension-dropcursor'
 import { Gapcursor } from '@tiptap/extension-gapcursor'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { PromptDialog } from 'scoop'
+import { getAccessToken } from '@auth0/nextjs-auth0/client'
 import { isValidYoutubeUrl, toYoutubeEmbedUrl } from '@/lib/youtube'
 import { normalizeAllowedEmbedPath, PRESET_EMBED_PATHS } from '@/lib/embedAllowlist'
 import { ArticleEmbed, buildArticleEmbedAttrs } from '@/extensions/tiptapArticleEmbed'
+import { compressImageFileToJpegBase64 } from '@/lib/imageCompress'
+import { apiPostAuth } from '@/lib/api/adminClient'
+import type { ApiResponse, MediaRecord } from '@/lib/api/types'
+import { IconUpload, IconLoader2 } from '@tabler/icons-react'
 import {
   IconBold,
   IconItalic,
@@ -58,6 +63,263 @@ import {
   IconWorld,
   IconFrame,
 } from '@tabler/icons-react'
+
+/* ------------------------------------------------------------------ */
+/*  Custom Image extension with credit + source attrs                  */
+/* ------------------------------------------------------------------ */
+
+const CustomImage = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      credit: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-credit'),
+        renderHTML: (attributes) =>
+          attributes.credit ? { 'data-credit': attributes.credit } : {},
+      },
+      source: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-source'),
+        renderHTML: (attributes) =>
+          attributes.source ? { 'data-source': attributes.source } : {},
+      },
+    }
+  },
+})
+
+/* ------------------------------------------------------------------ */
+/*  Image Insert Dialog                                                */
+/* ------------------------------------------------------------------ */
+
+interface ImageInsertDialogProps {
+  open: boolean
+  onClose: () => void
+  onInsert: (attrs: { src: string; alt?: string; credit?: string; source?: string }) => void
+}
+
+function tokenFromAuth0Client(result: unknown): string | null {
+  if (typeof result === 'string' && result.length > 0) return result
+  if (result && typeof result === 'object' && 'accessToken' in result) {
+    const t = (result as { accessToken?: unknown }).accessToken
+    if (typeof t === 'string' && t.length > 0) return t
+  }
+  return null
+}
+
+function ImageInsertDialog({ open, onClose, onInsert }: ImageInsertDialogProps) {
+  const [mode, setMode] = useState<'url' | 'upload'>('url')
+  const [url, setUrl] = useState('')
+  const [alt, setAlt] = useState('')
+  const [credit, setCredit] = useState('')
+  const [source, setSource] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function reset() {
+    setUrl('')
+    setAlt('')
+    setCredit('')
+    setSource('')
+    setUploadError('')
+    setUploading(false)
+    setIsDragging(false)
+    setMode('url')
+  }
+
+  function handleClose() {
+    reset()
+    onClose()
+  }
+
+  function handleInsertUrl() {
+    const src = url.trim()
+    if (!src) return
+    onInsert({ src, alt: alt.trim() || undefined, credit: credit.trim() || undefined, source: source.trim() || undefined })
+    reset()
+    onClose()
+  }
+
+  async function handleFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Fichier non supporté. Utilisez JPEG, PNG, WebP, GIF ou AVIF.')
+      return
+    }
+    setUploading(true)
+    setUploadError('')
+    try {
+      const tokenResult = await getAccessToken()
+      const accessToken = tokenFromAuth0Client(tokenResult)
+      if (!accessToken) throw new Error('Session expirée — reconnectez-vous.')
+      const base64 = await compressImageFileToJpegBase64(file, 3 * 1024 * 1024)
+      const res = await apiPostAuth<ApiResponse<MediaRecord>>(
+        '/admin/media/imgbb',
+        accessToken,
+        { image: base64, alt: alt.trim() || undefined, name: file.name.replace(/\.[^.]+$/, '').slice(0, 80) || undefined },
+      )
+      const src = res.data.url
+      onInsert({ src, alt: alt.trim() || undefined, credit: credit.trim() || undefined, source: source.trim() || undefined })
+      reset()
+      onClose()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur upload'
+      setUploadError(msg.includes('not configured') || msg.includes('IMGBB') ? 'ImgBB non configuré (clé API manquante côté serveur).' : msg)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleFile(file)
+  }
+
+  if (!open) return null
+
+  const creditSourceFields = (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Crédit <span className="font-normal">(optionnel)</span>
+        </label>
+        <input
+          type="text"
+          value={credit}
+          onChange={(e) => setCredit(e.target.value)}
+          placeholder="© AFP / Nom Photographe"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          Source <span className="font-normal">(optionnel)</span>
+        </label>
+        <input
+          type="text"
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+          placeholder="AFP, Reuters, NomMedia…"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" role="dialog" aria-modal>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} aria-hidden />
+      <div className="relative z-10 w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+        <h2 className="mb-4 text-base font-semibold text-foreground">Insérer une image</h2>
+
+        {/* Tab selector */}
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setMode('url')}
+            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${mode === 'url' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+          >
+            URL externe
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('upload')}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${mode === 'upload' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+          >
+            <IconUpload className="h-3.5 w-3.5" />
+            Upload (ImgBB)
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {mode === 'url' ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">URL de l&apos;image</label>
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleInsertUrl()}
+                placeholder="https://…"
+                autoFocus
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          ) : (
+            <div
+              onDragEnter={() => setIsDragging(true)}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${isDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/50'} ${uploading ? 'cursor-not-allowed opacity-60' : ''}`}
+            >
+              {uploading ? (
+                <IconLoader2 className="h-8 w-8 animate-spin text-primary" />
+              ) : (
+                <IconUpload className="h-8 w-8 text-muted-foreground" />
+              )}
+              <p className="text-sm text-muted-foreground">
+                {uploading ? 'Upload en cours…' : 'Cliquez, déposez ou Ctrl+V pour uploader'}
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleFile(f) }}
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Texte alternatif <span className="font-normal">(optionnel)</span>
+            </label>
+            <input
+              type="text"
+              value={alt}
+              onChange={(e) => setAlt(e.target.value)}
+              placeholder="Description de l'image pour l'accessibilité"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+
+          {creditSourceFields}
+
+          {uploadError ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950/30 dark:text-red-400">
+              {uploadError}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted"
+          >
+            Annuler
+          </button>
+          {mode === 'url' && (
+            <button
+              type="button"
+              onClick={handleInsertUrl}
+              disabled={!url.trim()}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              Insérer
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -312,11 +574,12 @@ export function TiptapEditor({
   const autoSaveRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   )
-  type PromptKind = 'image' | 'youtube' | 'link' | 'embed'
+  type PromptKind = 'youtube' | 'link' | 'embed'
   const [promptOpen, setPromptOpen] = useState(false)
   const [promptKind, setPromptKind] = useState<PromptKind | null>(null)
   const [promptDefaultValue, setPromptDefaultValue] = useState('')
   const [promptError, setPromptError] = useState('')
+  const [imageDialogOpen, setImageDialogOpen] = useState(false)
 
   const safePlaceholder =
     placeholder ?? 'Commencez à écrire votre article...'
@@ -355,7 +618,7 @@ export function TiptapEditor({
       TableHeader,
       Dropcursor.configure({ color: 'hsl(var(--primary))' }),
       Gapcursor,
-      Image.configure({
+      CustomImage.configure({
         HTMLAttributes: { class: 'rounded-lg max-w-full mx-auto' },
       }),
       Youtube.configure({
@@ -387,6 +650,28 @@ export function TiptapEditor({
         class:
           'prose prose-sm sm:prose dark:prose-invert max-w-none min-h-[400px] focus:outline-none px-4 py-3',
       },
+      handlePaste: (_view, event) => {
+        if (readOnly) return false
+        const files = event.clipboardData?.files
+        if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+          // Image file pasted — will be handled by the editor wrapper's onPaste
+          // Return false to let our wrapper handle it so we can show the dialog
+          return false
+        }
+        return false
+      },
+      handleDrop: (_view, event, _slice, moved) => {
+        if (moved || readOnly) return false
+        const files = event.dataTransfer?.files
+        if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+          // Trigger image dialog with the file pre-loaded
+          // We can't access React state from here directly, so dispatch a custom event
+          const customEvent = new CustomEvent('tiptap-image-drop', { detail: { file: files[0] } })
+          document.dispatchEvent(customEvent)
+          return true
+        }
+        return false
+      },
     },
   })
 
@@ -415,11 +700,21 @@ export function TiptapEditor({
 
   const addImage = useCallback(() => {
     if (!editor) return
-    setPromptKind('image')
-    setPromptDefaultValue('')
-    setPromptError('')
-    setPromptOpen(true)
+    setImageDialogOpen(true)
   }, [editor])
+
+  const handleImageInsert = useCallback(
+    (attrs: { src: string; alt?: string; credit?: string; source?: string }) => {
+      if (!editor || !attrs.src) return
+      const nodeAttrs: Record<string, unknown> = { src: attrs.src }
+      if (attrs.alt) nodeAttrs.alt = attrs.alt
+      if (attrs.credit) nodeAttrs.credit = attrs.credit
+      if (attrs.source) nodeAttrs.source = attrs.source
+      editor.chain().focus().insertContent({ type: 'image', attrs: nodeAttrs }).run()
+      onMediaInserted?.('image', nodeAttrs)
+    },
+    [editor, onMediaInserted],
+  )
 
   const addYoutube = useCallback(() => {
     if (!editor) return
@@ -464,16 +759,7 @@ export function TiptapEditor({
   const handlePromptSubmit = useCallback(
     (value: string): boolean | void => {
       if (!editor || !promptKind) return
-      // Use insertContent for both so attrs (src) are stored in the doc and persist in getJSON().
-      if (promptKind === 'image') {
-        const src = (value ?? '').trim()
-        if (src) {
-          editor.chain().focus().insertContent({ type: 'image', attrs: { src } }).run()
-        }
-        setPromptOpen(false)
-        setPromptError('')
-        return
-      }
+      // Use insertContent so attrs (src) are stored in the doc and persist in getJSON().
       if (promptKind === 'youtube') {
         const url = (value ?? '').trim()
         if (!url) return
@@ -530,14 +816,7 @@ export function TiptapEditor({
   )
 
   const promptConfig =
-    promptKind === 'image'
-      ? {
-          title: "URL de l'image",
-          label: "URL de l'image",
-          placeholder: 'https://…',
-          submitLabel: 'Insérer',
-        }
-      : promptKind === 'youtube'
+    promptKind === 'youtube'
         ? {
             title: 'Vidéo YouTube',
             label: 'Collez un lien YouTube (watch, youtu.be ou embed)',
@@ -577,7 +856,18 @@ export function TiptapEditor({
   const readingTime = Math.max(1, Math.ceil(words / 200))
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div
+      className="overflow-hidden rounded-lg border border-border bg-card"
+      onPaste={(e) => {
+        if (readOnly) return
+        const files = e.clipboardData?.files
+        if (files && files.length > 0 && files[0].type.startsWith('image/')) {
+          e.preventDefault()
+          setImageDialogOpen(true)
+          // Auto-fill upload mode — handled by the dialog itself
+        }
+      }}
+    >
       {/* Toolbar */}
       {!readOnly && (
         <div className="flex flex-wrap items-center gap-0.5 border-b border-border bg-muted/30 px-2 py-1.5">
@@ -855,7 +1145,14 @@ export function TiptapEditor({
         <span>~{readingTime} min de lecture</span>
       </div>
 
-      {/* URL prompt (image, YouTube, link) — replaces window.prompt */}
+      {/* Image insert dialog — URL/upload + credit/source */}
+      <ImageInsertDialog
+        open={imageDialogOpen}
+        onClose={() => setImageDialogOpen(false)}
+        onInsert={handleImageInsert}
+      />
+
+      {/* URL prompt (YouTube, link, embed) — replaces window.prompt */}
       {promptConfig && promptKind && (
         <PromptDialog
           open={promptOpen}

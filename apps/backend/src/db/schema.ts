@@ -228,7 +228,10 @@ export const articles = pgTable('articles', {
   title: text('title').notNull(),
   excerpt: text('excerpt'),
   coverImageUrl: text('cover_image_url'),
+  coverImageCredit: text('cover_image_credit'),
+  coverImageSource: text('cover_image_source'),
   videoUrl: text('video_url'),
+  coverVideoCredit: text('cover_video_credit'),
   content: jsonb('content').notNull().default([]),
   categoryId: uuid('category_id'),
   authorId: uuid('author_id').notNull(),
@@ -984,6 +987,34 @@ export const crmServices = pgTable('crm_services', {
   category: text('category'),
   isActive: boolean('is_active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/**
+ * CRM Settings — key/value store for configurable params:
+ *   - payment_methods (Wave, Orange Money, etc.)
+ *   - company_info
+ *   - reminder_preferences
+ */
+export const crmSettings = pgTable('crm_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedBy: uuid('updated_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/** Configurable automatic reminder rules */
+export const crmReminderRules = pgTable('crm_reminder_rules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  triggerEvent: text('trigger_event').notNull(), // 'devis_sent' | 'invoice_sent' | 'invoice_overdue' | 'invoice_due_soon'
+  delayDays: integer('delay_days').notNull().default(3),
+  channel: crmReminderChannelEnum('channel').notNull().default('whatsapp'),
+  messageTemplate: text('message_template').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })

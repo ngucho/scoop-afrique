@@ -1,18 +1,12 @@
 import { redirect } from 'next/navigation'
 import { crmGetServer } from '@/lib/api-server'
 import { getCrmRole } from '@/lib/crm-admin'
+import { resolveCrmDateRangeFromSearchParams } from '@/lib/crm-date-range'
 import { TreasuryClient } from '@/components/treasury/TreasuryClient'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
 
 /** La plage de dates vient des searchParams : pas de cache RSC qui figerait la liste. */
 export const dynamic = 'force-dynamic'
-
-function rawDate(sp: Record<string, string | string[] | undefined>, k: string): string | undefined {
-  const v = sp[k]
-  const s = Array.isArray(v) ? v[0] : v
-  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined
-  return s
-}
 
 export default async function TreasuryPage({
   searchParams,
@@ -27,22 +21,11 @@ export default async function TreasuryPage({
   const sp = await searchParams
   const search = listSearchFromParams(sp)
   const view = parseListView(sp.view, 'list')
-  const end = new Date()
-  const start = new Date()
-  start.setMonth(start.getMonth() - 12)
-  const defaultFrom = start.toISOString().slice(0, 10)
-  const defaultTo = end.toISOString().slice(0, 10)
-  let from = rawDate(sp, 'from') ?? defaultFrom
-  let to = rawDate(sp, 'to') ?? defaultTo
-  if (from > to) {
-    const tmp = from
-    from = to
-    to = tmp
-  }
+  const { from, to } = resolveCrmDateRangeFromSearchParams(sp)
 
   const qFin = new URLSearchParams()
-  qFin.set('start', from)
-  qFin.set('end', to)
+  qFin.set('from', from)
+  qFin.set('to', to)
   qFin.set('months', '24')
 
   const movQ = new URLSearchParams()

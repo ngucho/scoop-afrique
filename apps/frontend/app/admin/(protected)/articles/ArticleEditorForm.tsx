@@ -32,7 +32,13 @@ import {
   IconChevronRight,
   IconTrash,
   IconPlus,
+  IconUpload,
+  IconX,
 } from '@tabler/icons-react'
+import { getAccessToken } from '@auth0/nextjs-auth0/client'
+import { compressImageFileToJpegBase64 } from '@/lib/imageCompress'
+import { apiPostAuth } from '@/lib/api/adminClient'
+import type { ApiResponse, MediaRecord } from '@/lib/api/types'
 import { TiptapEditor, type TiptapEditorRef, type OnMediaInserted } from '@/components/admin/TiptapEditor'
 import { ensureMediaAttrsInPayload } from '@/lib/ensureMediaAttrs'
 import {
@@ -100,7 +106,13 @@ export function ArticleEditorForm({
   )
   const [categoryId, setCategoryId] = useState(article?.category_id ?? '')
   const [coverImageUrl, setCoverImageUrl] = useState(article?.cover_image_url ?? '')
+  const [coverImageCredit, setCoverImageCredit] = useState((article as unknown as Record<string, unknown>)?.cover_image_credit as string ?? '')
+  const [coverImageSource, setCoverImageSource] = useState((article as unknown as Record<string, unknown>)?.cover_image_source as string ?? '')
   const [videoUrl, setVideoUrl] = useState(article?.video_url ?? '')
+  const [coverVideoCredit, setCoverVideoCredit] = useState((article as unknown as Record<string, unknown>)?.cover_video_credit as string ?? '')
+  const [coverUploading, setCoverUploading] = useState(false)
+  const [coverUploadError, setCoverUploadError] = useState('')
+  const [coverDragging, setCoverDragging] = useState(false)
   const [tags, setTags] = useState((article?.tags ?? []).join(', '))
   const [metaTitle, setMetaTitle] = useState(article?.meta_title ?? '')
   const [metaDescription, setMetaDescription] = useState(article?.meta_description ?? '')
@@ -280,7 +292,10 @@ export function ArticleEditorForm({
       content: payloadContent,
       category_id: categoryId || null,
       cover_image_url: coverImageUrl || null,
+      cover_image_credit: coverImageCredit || null,
+      cover_image_source: coverImageSource || null,
       video_url: videoUrl || null,
+      cover_video_credit: coverVideoCredit || null,
       tags: tags
         .split(',')
         .map((t) => t.trim())
@@ -504,6 +519,38 @@ export function ArticleEditorForm({
       await loadRevisions()
     } catch {
       setAlertDialog({ message: 'Erreur lors de la restauration.' })
+    }
+  }
+
+  // --- Cover image upload ---
+  async function handleCoverImageFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      setCoverUploadError('Type non supporté. Utilisez JPEG, PNG, WebP, GIF ou AVIF.')
+      return
+    }
+    setCoverUploading(true)
+    setCoverUploadError('')
+    try {
+      const tokenResult = await getAccessToken()
+      let accessToken: string | null = null
+      if (typeof tokenResult === 'string' && tokenResult.length > 0) accessToken = tokenResult
+      else if (tokenResult && typeof tokenResult === 'object' && 'accessToken' in tokenResult) {
+        const t = (tokenResult as { accessToken?: unknown }).accessToken
+        if (typeof t === 'string' && t.length > 0) accessToken = t
+      }
+      if (!accessToken) throw new Error('Session expirée — reconnectez-vous.')
+      const base64 = await compressImageFileToJpegBase64(file, 3 * 1024 * 1024)
+      const res = await apiPostAuth<ApiResponse<MediaRecord>>(
+        '/admin/media/imgbb',
+        accessToken,
+        { image: base64, name: file.name.replace(/\.[^.]+$/, '').slice(0, 80) || undefined },
+      )
+      setCoverImageUrl(res.data.url)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur upload'
+      setCoverUploadError(msg.includes('not configured') || msg.includes('IMGBB') ? 'ImgBB non configuré côté serveur.' : msg)
+    } finally {
+      setCoverUploading(false)
     }
   }
 
@@ -833,29 +880,114 @@ export function ArticleEditorForm({
           {/* Media card */}
           <Card>
             <CardContent className="space-y-4 p-4">
-              <h3 className="text-sm font-semibold">Médias</h3>
+              <h3 className="text-sm font-semibold">Médias de couverture</h3>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  Image de couverture (URL)
+              {/* Cover image */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground">
+                  Image de couverture
                 </label>
+
+                {/* Preview + remove */}
+                {coverImageUrl ? (
+                  <div className="relative">
+                    <img
+                      src={coverImageUrl}
+                      alt="Couverture"
+                      className="h-28 w-full rounded-lg object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { setCoverImageUrl(''); setCoverImageCredit(''); setCoverImageSource('') }}
+                      disabled={isLocked}
+                      className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                      title="Supprimer l'image"
+                    >
+                      <IconX className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* URL input */}
                 <Input
                   value={coverImageUrl}
                   onChange={(e) => setCoverImageUrl(e.target.value)}
-                  placeholder="https://..."
+                  placeholder="https://… ou glissez une image ci-dessous"
                   disabled={isLocked}
                 />
-                {coverImageUrl && (
-                  <img
-                    src={coverImageUrl}
-                    alt="Couverture"
-                    className="mt-2 h-32 w-full rounded-lg object-cover"
-                  />
+
+                {/* Drag-drop / upload zone */}
+                {!isLocked && (
+                  <label
+                    className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border-2 border-dashed p-3 text-center transition-colors ${coverDragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40 hover:bg-muted/40'} ${coverUploading ? 'cursor-not-allowed opacity-60' : ''}`}
+                    onDragEnter={() => setCoverDragging(true)}
+                    onDragOver={(e) => { e.preventDefault(); setCoverDragging(true) }}
+                    onDragLeave={() => setCoverDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setCoverDragging(false)
+                      const file = e.dataTransfer.files?.[0]
+                      if (file) handleCoverImageFile(file)
+                    }}
+                  >
+                    {coverUploading ? (
+                      <IconLoader2 className="h-5 w-5 animate-spin text-primary" />
+                    ) : (
+                      <IconUpload className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {coverUploading ? 'Upload via ImgBB…' : 'Glisser/déposer ou cliquer pour uploader'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={coverUploading}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        e.target.value = ''
+                        if (file) handleCoverImageFile(file)
+                      }}
+                    />
+                  </label>
                 )}
+                {coverUploadError ? (
+                  <p className="text-xs text-red-600 dark:text-red-400">{coverUploadError}</p>
+                ) : null}
+
+                {/* Credits */}
+                <div className="grid gap-2 pt-1">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Crédit photo <span className="font-normal text-muted-foreground/70">(optionnel)</span>
+                    </label>
+                    <Input
+                      value={coverImageCredit}
+                      onChange={(e) => setCoverImageCredit(e.target.value)}
+                      placeholder="© AFP / Nom Photographe"
+                      disabled={isLocked}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Source <span className="font-normal text-muted-foreground/70">(optionnel)</span>
+                    </label>
+                    <Input
+                      value={coverImageSource}
+                      onChange={(e) => setCoverImageSource(e.target.value)}
+                      placeholder="AFP, Reuters, NomMédia…"
+                      disabled={isLocked}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              {/* Divider */}
+              <div className="border-t border-border" />
+
+              {/* Cover video */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-muted-foreground">
                   Vidéo YouTube (URL)
                 </label>
                 <Input
@@ -864,6 +996,17 @@ export function ArticleEditorForm({
                   placeholder="https://youtube.com/watch?v=..."
                   disabled={isLocked}
                 />
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Crédit vidéo <span className="font-normal text-muted-foreground/70">(optionnel)</span>
+                  </label>
+                  <Input
+                    value={coverVideoCredit}
+                    onChange={(e) => setCoverVideoCredit(e.target.value)}
+                    placeholder="© Chaîne YouTube / Source"
+                    disabled={isLocked}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>

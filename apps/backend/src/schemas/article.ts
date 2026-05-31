@@ -29,6 +29,8 @@ export const createArticleBodySchema = z.object({
   cover_image_url: emptyStringToNull(
     z.string().url().optional().nullable()
   ).optional(),
+  cover_image_credit: emptyStringToNull(z.string().max(500).optional().nullable()).optional(),
+  cover_image_source: emptyStringToNull(z.string().max(500).optional().nullable()).optional(),
   video_url: emptyStringToNull(
     z
       .string()
@@ -41,6 +43,7 @@ export const createArticleBodySchema = z.object({
       .optional()
       .nullable()
   ).optional(),
+  cover_video_credit: emptyStringToNull(z.string().max(500).optional().nullable()).optional(),
   tags: z
     .array(z.string().min(1).max(100))
     .max(20)

@@ -27,7 +27,10 @@ export interface Article {
   title: string
   excerpt: string | null
   cover_image_url: string | null
+  cover_image_credit: string | null
+  cover_image_source: string | null
   video_url: string | null
+  cover_video_credit: string | null
   content: unknown
   category_id: string | null
   author_id: string
@@ -180,7 +183,10 @@ function toArticle(row: Record<string, unknown>): Article {
     title: r.title,
     excerpt: r.excerpt,
     cover_image_url: r.coverImageUrl,
+    cover_image_credit: r.coverImageCredit ?? null,
+    cover_image_source: r.coverImageSource ?? null,
     video_url: r.videoUrl,
+    cover_video_credit: r.coverVideoCredit ?? null,
     content: r.content,
     category_id: r.categoryId,
     author_id: r.authorId,
@@ -292,7 +298,10 @@ export async function listArticles(
       title: articles.title,
       excerpt: articles.excerpt,
       coverImageUrl: articles.coverImageUrl,
+      coverImageCredit: articles.coverImageCredit,
+      coverImageSource: articles.coverImageSource,
       videoUrl: articles.videoUrl,
+      coverVideoCredit: articles.coverVideoCredit,
       content: articles.content,
       categoryId: articles.categoryId,
       authorId: articles.authorId,
@@ -358,7 +367,10 @@ export async function getArticleByIdOrSlug(
       title: articles.title,
       excerpt: articles.excerpt,
       coverImageUrl: articles.coverImageUrl,
+      coverImageCredit: articles.coverImageCredit,
+      coverImageSource: articles.coverImageSource,
       videoUrl: articles.videoUrl,
+      coverVideoCredit: articles.coverVideoCredit,
       content: articles.content,
       categoryId: articles.categoryId,
       authorId: articles.authorId,
@@ -500,7 +512,10 @@ export async function createArticle(
       categoryId: body.category_id ?? null,
       content: contentData as typeof articles.$inferInsert.content,
       coverImageUrl: body.cover_image_url ?? null,
+      coverImageCredit: body.cover_image_credit ?? null,
+      coverImageSource: body.cover_image_source ?? null,
       videoUrl: body.video_url ?? null,
+      coverVideoCredit: body.cover_video_credit ?? null,
       tags: body.tags ?? [],
       authorId,
       authorDisplayName: body.author_display_name ?? null,
@@ -565,7 +580,10 @@ export async function updateArticle(
   if (body.category_id !== undefined) update.categoryId = body.category_id || null
   if (body.content !== undefined) update.content = body.content as never
   if (body.cover_image_url !== undefined) update.coverImageUrl = body.cover_image_url
+  if (body.cover_image_credit !== undefined) update.coverImageCredit = body.cover_image_credit
+  if (body.cover_image_source !== undefined) update.coverImageSource = body.cover_image_source
   if (body.video_url !== undefined) update.videoUrl = body.video_url
+  if (body.cover_video_credit !== undefined) update.coverVideoCredit = body.cover_video_credit
   if (body.tags !== undefined) update.tags = body.tags
   if (body.status !== undefined) update.status = body.status as 'draft' | 'review' | 'scheduled' | 'published'
   if (body.meta_title !== undefined) update.metaTitle = body.meta_title
@@ -647,6 +665,41 @@ export async function listPublishedArticleSitemapEntries(options: {
     updated_at: r.updatedAt.toISOString(),
   }))
   return { data, total }
+}
+
+/** Google News sitemap: articles published within last `hours` hours, with title. */
+export async function listNewsArticlesForSitemap(hours = 72): Promise<
+  Array<{ slug: string; title: string; published_at: string; tags: string[]; category_name: string | null }>
+> {
+  if (!config.database) return []
+  const db = getDb()
+  const since = new Date(Date.now() - hours * 3600 * 1000)
+  const rows = await db
+    .select({
+      slug: articles.slug,
+      title: articles.title,
+      publishedAt: articles.publishedAt,
+      tags: articles.tags,
+      categoryName: categories.name,
+    })
+    .from(articles)
+    .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .where(
+      and(
+        eq(articles.status, 'published'),
+        isNotNull(articles.publishedAt),
+        sql`${articles.publishedAt} >= ${since}`
+      )
+    )
+    .orderBy(desc(articles.publishedAt))
+    .limit(1000)
+  return rows.map((r) => ({
+    slug: r.slug,
+    title: r.title,
+    published_at: r.publishedAt!.toISOString(),
+    tags: r.tags ?? [],
+    category_name: r.categoryName ?? null,
+  }))
 }
 
 /* ---------- Delete ---------- */

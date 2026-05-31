@@ -6,7 +6,10 @@ export interface Article {
   title: string
   excerpt: string | null
   cover_image_url: string | null
+  cover_image_credit: string | null
+  cover_image_source: string | null
   video_url: string | null
+  cover_video_credit: string | null
   content: unknown
   category_id: string | null
   author_id: string

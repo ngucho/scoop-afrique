@@ -135,24 +135,19 @@ function HomeArticlesSection({
   const grid = layout === 'featured_grid'
 
   const header = (
-    <div className="mb-6 flex min-w-0 max-w-full flex-wrap items-end justify-between gap-3 gap-y-4 md:mb-8">
+    <div className="mb-6 flex min-w-0 max-w-full flex-wrap items-center justify-between gap-3 gap-y-3 md:mb-7">
       {sectionKey === 'latest' ? (
-        <h2
-          className="min-w-0 max-w-full break-words border-l-4 border-primary pl-3 text-2xl font-bold text-foreground sm:pl-4 sm:text-3xl"
-          style={{ fontFamily: 'var(--font-headline)' }}
-        >
-          {title}
-        </h2>
+        <SectionHeader label={title} variant="editorial" className="flex-1 min-w-0" />
       ) : (
         <div className="min-w-0 max-w-full flex-1 basis-[min(100%,280px)]">
-          <SectionHeader label={title} />
+          <SectionHeader label={title} variant="editorial" />
         </div>
       )}
       <Link
         href="/articles"
-        className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary transition-opacity hover:opacity-80"
+        className="shrink-0 flex items-center gap-1 rounded-full border border-border px-3 py-1.5 font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground transition-all duration-150 hover:border-primary/40 hover:text-primary"
       >
-        Tout voir <span aria-hidden>→</span>
+        Tout voir <span aria-hidden className="ml-0.5">→</span>
       </Link>
     </div>
   )
@@ -179,21 +174,33 @@ function HomeArticlesSection({
     return (
       <MotionEnter as="section" className="mb-14 min-w-0 max-w-full md:mb-16">
         {header}
-        <ol className="grid min-w-0 gap-3 sm:grid-cols-2">
+        <ol className="grid min-w-0 gap-2 sm:grid-cols-2">
           {articles.map((article, i) => (
-            <li
-              key={article.id}
-              className="flex min-w-0 gap-3 rounded-xl border border-border bg-card/50 p-3 sm:gap-4 sm:p-4 scoop-motion-hover-depth"
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
-                {i + 1}
-              </span>
-              <div className="min-w-0">
-                <Link href={`/articles/${article.slug}`} className="font-semibold leading-snug hover:text-primary">
-                  {article.title}
-                </Link>
-                <p className="mt-1 text-xs text-muted-foreground">{article.view_count?.toLocaleString('fr-FR')} vues</p>
-              </div>
+            <li key={article.id} className="group min-w-0">
+              <Link
+                href={`/articles/${article.slug}`}
+                className="flex min-w-0 items-start gap-3 rounded-xl p-3 transition-colors duration-150 hover:bg-muted/60 sm:gap-4 sm:p-3.5"
+              >
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/8 font-sans text-sm font-black tabular-nums text-primary"
+                  aria-label={`Rang ${i + 1}`}
+                >
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors group-hover:text-primary"
+                    style={{ fontFamily: 'var(--font-headline)' }}
+                  >
+                    {article.title}
+                  </p>
+                  {article.view_count != null ? (
+                    <p className="mt-1 font-sans text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {article.view_count.toLocaleString('fr-FR')} vues
+                    </p>
+                  ) : null}
+                </div>
+              </Link>
             </li>
           ))}
         </ol>
@@ -307,18 +314,17 @@ export default async function HomePage() {
         <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)] lg:gap-12 lg:items-start">
           <div className="min-w-0 max-w-full lg:col-start-2 lg:row-start-1">
         <header className="mb-10 min-w-0 max-w-full">
-          <SectionHeader label="Accueil" className="mb-4" />
+          <SectionHeader label="À la une" variant="editorial" className="mb-4" />
           <Heading
             as="h1"
             level="h1"
             className="break-words text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl"
             style={{ fontFamily: 'var(--font-headline)' }}
           >
-            L&apos;Afrique, en continu
+            L&apos;Afrique, décryptée
           </Heading>
           <p className="mt-3 max-w-2xl break-words text-muted-foreground">
-            Décryptages, reportages et analyses — la page d&apos;accueil suit l&apos;ordre défini dans le CMS (sections,
-            encarts pub, mise en page par bloc).
+            Actualités, analyses et reportages — racontés avec le regard de la jeunesse afro-francophone, depuis Abidjan.
           </p>
         </header>
 
@@ -341,18 +347,13 @@ export default async function HomePage() {
             {block.type === 'rubriques' ? (
               <div className="mb-14 min-w-0 max-w-full space-y-14 md:mb-16">
                 <MotionEnter as="div">
-                  <h2
-                    className="mb-8 break-words border-l-4 border-primary pl-3 text-xl font-bold text-foreground sm:pl-4 sm:text-2xl md:text-3xl"
-                    style={{ fontFamily: 'var(--font-headline)' }}
-                  >
-                    {block.title}
-                  </h2>
+                  <SectionHeader label={block.title} variant="editorial" className="mb-8" />
                 </MotionEnter>
                 {block.strips.map((strip) => (
                   <MotionEnter as="section" key={strip.slug} className="min-w-0 max-w-full">
                     <div className="mb-6 flex min-w-0 max-w-full flex-wrap items-end justify-between gap-3 gap-y-4">
                       <div className="min-w-0 max-w-full flex-1 basis-[min(100%,240px)]">
-                        <SectionHeader label={strip.label} />
+                        <SectionHeader label={strip.label} variant="editorial" />
                       </div>
                       <Button variant="ghost" size="sm" className="shrink-0" asChild>
                         <Link href={strip.slug === 'actualites' ? '/articles' : `/category/${strip.slug}`}>
