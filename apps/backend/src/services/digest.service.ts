@@ -49,15 +49,32 @@ function escapeHtml(s: string): string {
 
 /** Aligné sur la charte lecteur Scoop : fond clair, texte foncé, accent rouge, boutons « bulletproof ». */
 const EMAIL_THEME = {
-  pageBg: '#f4f4f5',
+  pageBg: '#f5f5f4',
   cardBg: '#ffffff',
-  text: '#0d0d0d',
-  muted: '#52525b',
-  primary: '#e11d48',
+  text: '#1c1917',
+  muted: '#57534e',
+  primary: '#b70100',
   primaryText: '#ffffff',
-  border: '#e4e4e7',
-  dot: '#ff3131',
+  border: '#e7e5e4',
+  dot: '#b70100',
+  accent: '#fef2f2',
+  categoryBg: '#1c1917',
 } as const
+
+/** Map category slug to a display color used in category pills */
+function categoryColor(slug: string | null): string {
+  if (!slug) return '#57534e'
+  const h = slug.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+  const palette = ['#b70100', '#0369a1', '#047857', '#7c3aed', '#b45309', '#0f766e']
+  return palette[h % palette.length] ?? '#57534e'
+}
+
+function readingTimeEstimate(excerpt: string | null): string {
+  const words = (excerpt ?? '').split(/\s+/).filter(Boolean).length
+  const articleWords = words * 8
+  const mins = Math.max(2, Math.round(articleWords / 200))
+  return `${mins} min`
+}
 
 function digestReaderSubject(): string {
   const label = new Intl.DateTimeFormat('fr-FR', {
@@ -71,30 +88,62 @@ function digestReaderSubject(): string {
 function buildDigestArticleRowsHtml(articlesList: DigestArticlePick[]): string {
   const base = siteBase()
   return articlesList
-    .map((a) => {
+    .map((a, idx) => {
       const href = `${base}/articles/${encodeURIComponent(a.slug)}`
-      const excerpt = a.excerpt
-        ? escapeHtml(a.excerpt.slice(0, 220)) + (a.excerpt.length > 220 ? '…' : '')
+      const rawExcerpt = a.excerpt ?? ''
+      const excerpt = rawExcerpt.length > 0
+        ? escapeHtml(rawExcerpt.slice(0, 200)) + (rawExcerpt.length > 200 ? '...' : '')
         : ''
-      const img = a.cover_image_url
-        ? `<img src="${escapeHtml(a.cover_image_url)}" alt="" width="296" style="display:block;width:100%;max-width:296px;height:auto;border-radius:12px;border:0;" />`
-        : `<div style="min-height:120px;background:${EMAIL_THEME.border};border-radius:12px;"></div>`
-      const rubric = a.category_slug ? escapeHtml(a.category_slug) : 'Article'
-      return `
+      const rubric = a.category_slug ? escapeHtml(a.category_slug.toUpperCase()) : 'ARTICLE'
+      const catColor = categoryColor(a.category_slug)
+      const readTime = readingTimeEstimate(a.excerpt)
+      const isLead = idx === 0
+
+      if (isLead && a.cover_image_url) {
+        // Lead article: full-width image + large title
+        return `
 <tr>
-<td style="padding:20px 0;border-bottom:1px solid ${EMAIL_THEME.border};">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-<tr>
-<td valign="top" class="m-col" style="width:38%;max-width:200px;padding-right:16px;">${img}</td>
-<td valign="top" style="width:62%;">
-<p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:${EMAIL_THEME.muted};">${rubric}</p>
-<h2 style="margin:0 0 10px;font-size:18px;line-height:1.25;font-weight:700;color:${EMAIL_THEME.text};font-family:Georgia,'Times New Roman',serif;"><a href="${href}" style="color:${EMAIL_THEME.text};text-decoration:none;">${escapeHtml(a.title)}</a></h2>
-${excerpt ? `<p style="margin:0 0 14px;font-size:14px;line-height:1.55;color:${EMAIL_THEME.muted};">${excerpt}</p>` : ''}
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:4px;"><tr>
+<td style="padding:8px 0 24px;border-bottom:1px solid ${EMAIL_THEME.border};">
+<a href="${href}" style="text-decoration:none;display:block;">
+<img src="${escapeHtml(a.cover_image_url)}" alt="${escapeHtml(a.title)}" width="552" style="display:block;width:100%;height:auto;border-radius:12px;border:0;margin-bottom:16px;" />
+</a>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:10px;"><tr>
+<td style="border-radius:6px;background:${catColor};padding:4px 10px;">
+<span style="font-size:10px;font-weight:700;letter-spacing:0.12em;color:#ffffff;">${rubric}</span>
+</td>
+<td style="padding-left:10px;font-size:11px;color:${EMAIL_THEME.muted};">● ${readTime} de lecture</td>
+</tr></table>
+<h2 style="margin:0 0 10px;font-size:22px;line-height:1.2;font-weight:800;color:${EMAIL_THEME.text};font-family:Georgia,'Times New Roman',serif;"><a href="${href}" style="color:${EMAIL_THEME.text};text-decoration:none;">${escapeHtml(a.title)}</a></h2>
+${excerpt ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:${EMAIL_THEME.muted};">${excerpt}</p>` : ''}
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
 <td style="border-radius:10px;background:${EMAIL_THEME.primary};">
-<a href="${href}" style="display:inline-block;padding:14px 22px;font-size:14px;font-weight:600;color:${EMAIL_THEME.primaryText};text-decoration:none;min-height:44px;line-height:1.2;box-sizing:border-box;">Lire l’article →</a>
+<a href="${href}" style="display:inline-block;padding:13px 24px;font-size:14px;font-weight:700;color:${EMAIL_THEME.primaryText};text-decoration:none;min-height:44px;line-height:1.2;box-sizing:border-box;">Lire l'article →</a>
 </td>
 </tr></table>
+</td>
+</tr>`
+      }
+
+      // Standard article: thumbnail left + text right
+      const img = a.cover_image_url
+        ? `<img src="${escapeHtml(a.cover_image_url)}" alt="" width="120" style="display:block;width:120px;height:80px;object-fit:cover;border-radius:8px;border:0;" />`
+        : `<div style="width:120px;height:80px;background:${EMAIL_THEME.border};border-radius:8px;"></div>`
+      return `
+<tr>
+<td style="padding:18px 0;border-bottom:1px solid ${EMAIL_THEME.border};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td valign="top" style="width:136px;padding-right:16px;">${img}</td>
+<td valign="top">
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin-bottom:7px;"><tr>
+<td style="border-radius:5px;background:${catColor};padding:3px 8px;">
+<span style="font-size:9px;font-weight:700;letter-spacing:0.1em;color:#ffffff;">${rubric}</span>
+</td>
+<td style="padding-left:8px;font-size:10px;color:${EMAIL_THEME.muted};">● ${readTime}</td>
+</tr></table>
+<h3 style="margin:0 0 7px;font-size:15px;line-height:1.3;font-weight:700;color:${EMAIL_THEME.text};font-family:Georgia,'Times New Roman',serif;"><a href="${href}" style="color:${EMAIL_THEME.text};text-decoration:none;">${escapeHtml(a.title)}</a></h3>
+${excerpt ? `<p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:${EMAIL_THEME.muted};">${excerpt}</p>` : ''}
+<a href="${href}" style="font-size:13px;font-weight:600;color:${EMAIL_THEME.primary};text-decoration:none;">Lire →</a>
 </td>
 </tr>
 </table>
@@ -183,32 +232,41 @@ function unsubLabelLine(unsubUrl: string): string {
   return `Préférences / désabonnement : ${unsubUrl}`
 }
 
-/** Score for ranking: recency + popularity + editorial tag overlap. */
+/** Score for ranking: recency + popularity + editorial tag overlap + image quality bonus. */
 function scoreArticle(
   a: {
     publishedAt: Date | null
     viewCount: number
     tags: string[] | null
+    hasCover?: boolean
+    hasExcerpt?: boolean
   },
   now: number,
 ): number {
   const pub = a.publishedAt?.getTime() ?? 0
-  const ageHours = Math.max(1, (now - pub) / 3600000)
-  const recency = 1000 / Math.sqrt(ageHours)
-  const pop = Math.log10(10 + (a.viewCount ?? 0))
-  const tagBonus =
-    (a.tags ?? []).some((t) =>
-      EDITORIAL_TAGS.some((e) => t.toLowerCase().includes(e)),
-    )
-      ? 15
-      : 0
-  return recency + pop * 3 + tagBonus
+  const ageDays = Math.max(0.1, (now - pub) / 86400000)
+  // Smoother recency decay: strong for first 7 days, tapering over 30
+  const recency = ageDays <= 7 ? 80 / ageDays : 80 / 7 * (7 / ageDays) * 0.5
+  const pop = Math.log10(10 + (a.viewCount ?? 0)) * 4
+  const editorialBonus = (a.tags ?? []).some((t) =>
+    EDITORIAL_TAGS.some((e) => t.toLowerCase().includes(e)),
+  ) ? 20 : 0
+  const coverBonus = a.hasCover ? 8 : 0
+  const excerptBonus = a.hasExcerpt ? 5 : 0
+  return recency + pop + editorialBonus + coverBonus + excerptBonus
 }
 
-export async function selectDigestArticles(limit = 8): Promise<DigestArticlePick[]> {
+export async function selectDigestArticles(
+  limit = 8,
+  excludeIds: string[] = [],
+): Promise<DigestArticlePick[]> {
   if (!config.database) return []
   const db = getDb()
   const now = Date.now()
+
+  // Wider pool: last 6 months, 250 articles
+  const sixMonthsAgo = new Date(now - 183 * 86400000)
+
   const rows = await db
     .select({
       id: articles.id,
@@ -223,26 +281,65 @@ export async function selectDigestArticles(limit = 8): Promise<DigestArticlePick
     })
     .from(articles)
     .leftJoin(categories, eq(articles.categoryId, categories.id))
-    .where(eq(articles.status, 'published'))
+    .where(and(
+      eq(articles.status, 'published'),
+    ))
     .orderBy(desc(articles.publishedAt))
-    .limit(80)
+    .limit(250)
 
-  const ranked = rows
+  // Get article IDs sent in last 3 digest runs to avoid repeats
+  let recentlySentIds = new Set<string>(excludeIds)
+  try {
+    const recentRuns = await db
+      .select({ articleIds: digestJobRuns.articleIds })
+      .from(digestJobRuns)
+      .orderBy(desc(digestJobRuns.startedAt))
+      .limit(3)
+    for (const run of recentRuns) {
+      for (const id of (run.articleIds ?? [])) recentlySentIds.add(id)
+    }
+  } catch { /* best-effort */ }
+
+  // Score all eligible articles
+  const scored = rows
+    .filter((r) => !recentlySentIds.has(r.id))
     .map((r) => ({
       ...r,
-      _score: scoreArticle(
-        {
-          publishedAt: r.publishedAt,
-          viewCount: r.viewCount,
-          tags: r.tags ?? [],
-        },
-        now,
-      ),
+      _score: scoreArticle({
+        publishedAt: r.publishedAt,
+        viewCount: r.viewCount,
+        tags: r.tags ?? [],
+        hasCover: Boolean(r.coverImageUrl),
+        hasExcerpt: Boolean(r.excerpt && r.excerpt.length > 80),
+      }, now),
     }))
     .sort((a, b) => b._score - a._score)
-    .slice(0, limit)
 
-  return ranked.map((r) => ({
+  // Category diversity: max 2 per category for better balance
+  const categoryCounts = new Map<string | null, number>()
+  const diverse: typeof scored = []
+  for (const art of scored) {
+    const cat = art.categorySlug
+    const count = categoryCounts.get(cat) ?? 0
+    if (count < 2) {
+      diverse.push(art)
+      categoryCounts.set(cat, count + 1)
+    }
+    if (diverse.length >= limit) break
+  }
+
+  // Fallback: fill remaining slots from scored without diversity constraint
+  if (diverse.length < limit) {
+    const existing = new Set(diverse.map((a) => a.id))
+    for (const art of scored) {
+      if (!existing.has(art.id)) {
+        diverse.push(art)
+        if (diverse.length >= limit) break
+      }
+    }
+  }
+
+  return diverse.slice(0, limit).map((r) => ({
     id: r.id,
     slug: r.slug,
     title: r.title,
@@ -424,15 +521,13 @@ function renderDigestHtml(articlesList: DigestArticlePick[], unsubscribeToken: s
       : 'Votre sélection Scoop.Afrique'
   return wrapScoopNewsletterHtml({
     preheader: pre,
-    title: 'Votre sélection',
-    subtitle: 'Décryptages et reportages : l’essentiel de l’actualité africaine.',
-    accentNote:
-      'Un e-mail pensé pour être lu en quelques secondes : accroche claire, boutons larges, zéro surprise au clic. Ajustez vos centres d’intérêt ou le rythme d’envoi depuis votre compte lecteur.',
+    title: 'Votre selection',
+    subtitle: "Decryptages et reportages : l'essentiel de l'actualite africaine.",
+    accentNote: "Un e-mail concis et sans friction. Ajustez vos preferences depuis votre compte lecteur.",
     articlesHtml,
-    footerHint:
-      'Vous recevez ce message car vous suivez Scoop.Afrique avec un compte lecteur. La rédaction respecte votre attention : un seul CTA principal par article, pas de piège à clics.',
+    footerHint: "Vous recevez ce message car vous suivez Scoop.Afrique. Respect de votre attention : un CTA par article, zero spam.",
     unsubUrl,
-    unsubLabel: 'Se désabonner en un clic',
+    unsubLabel: 'Se desabonner en un clic',
   })
 }
 
@@ -505,8 +600,11 @@ async function sendDigestEmail(
 }
 
 /** Articles ranked for the weekly mailing (same logic as reader digest picks). */
-export async function previewNewsletterWeeklyDigestArticles(limit = 8): Promise<DigestArticlePick[]> {
-  return selectDigestArticles(limit)
+export async function previewNewsletterWeeklyDigestArticles(
+  limit = 8,
+  excludeIds: string[] = [],
+): Promise<DigestArticlePick[]> {
+  return selectDigestArticles(limit, excludeIds)
 }
 
 function renderNewsletterWeeklyHtml(articlesList: DigestArticlePick[], listUnsubscribeToken: string): string {
@@ -519,15 +617,13 @@ function renderNewsletterWeeklyHtml(articlesList: DigestArticlePick[], listUnsub
       : 'Newsletter hebdomadaire Scoop.Afrique'
   return wrapScoopNewsletterHtml({
     preheader: pre,
-    title: 'Sélection hebdomadaire',
-    subtitle: 'Les temps forts de l’actualité panafricaine, choisis pour vous.',
-    accentNote:
-      'Merci de votre confiance : un rythme hebdo pour respecter votre boîte mail, des titres clairs, un bouton « Lire l’article » visible sans scroller sur mobile.',
+    title: 'Selection hebdomadaire',
+    subtitle: "Les temps forts de l'actualite panafricaine, choisis pour vous.",
+    accentNote: "Un rythme hebdo pour respecter votre boite mail, des titres clairs et un bouton visible sans scroller.",
     articlesHtml,
-    footerHint:
-      'Newsletter Scoop.Afrique — vous pouvez vous désabonner en un clic, sans friction. Les liens mènent toujours au même site sécurisé.',
+    footerHint: "Newsletter Scoop.Afrique — desabonnement en un clic, sans friction.",
     unsubUrl,
-    unsubLabel: 'Se désabonner de cette newsletter',
+    unsubLabel: 'Se desabonner de cette newsletter',
   })
 }
 
@@ -614,6 +710,7 @@ async function sendNewsletterWeeklyListEmail(
  */
 export async function runNewsletterWeeklyDigest(params: {
   dryRun?: boolean
+  excludeIds?: string[]
 }): Promise<{
   jobId: string
   articleIds: string[]
@@ -635,7 +732,7 @@ export async function runNewsletterWeeklyDigest(params: {
   }
 
   const db = getDb()
-  const picks = await selectDigestArticles(8)
+  const picks = await selectDigestArticles(8, params.excludeIds ?? [])
 
   const [job] = await db
     .insert(digestJobRuns)

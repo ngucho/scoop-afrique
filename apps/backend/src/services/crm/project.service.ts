@@ -216,11 +216,24 @@ export async function createProject(
 
   if (!project) throw new Error('Failed to create project')
 
+  // Add the primary contact to crmProjectContacts (many-to-many) automatically
+  if (input.contact_id) {
+    await db
+      .insert(crmProjectContacts)
+      .values({
+        projectId: project.id,
+        contactId: input.contact_id,
+        role: 'client',
+        isPrimary: true,
+      })
+      .onConflictDoNothing()
+  }
+
   if (input.devis_id) {
     const devis = await devisService.getDevisById(input.devis_id)
     if (devis?.devis_request_id) {
-      const db = getDb()
-      await db
+      const db2 = getDb()
+      await db2
         .update(devisRequests)
         .set({ convertedToProjectId: project.id })
         .where(eq(devisRequests.id, devis.devis_request_id as string))
