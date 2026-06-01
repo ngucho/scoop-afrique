@@ -1,6 +1,7 @@
 /**
  * CRM devis (quote) service
  */
+import { randomBytes } from 'crypto'
 import { eq, and, desc, sql, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmDevis, crmContacts, crmProjects } from '../../db/schema.js'
@@ -378,4 +379,81 @@ export async function markDevisAccepted(id: string, updatedBy?: string): Promise
 export async function setDevisPdfUrl(id: string, pdfUrl: string): Promise<void> {
   const db = getDb()
   await db.update(crmDevis).set({ pdfUrl }).where(eq(crmDevis.id, id))
+}
+
+export async function generateSignToken(id: string): Promise<string> {
+  const db = getDb()
+  const existing = await getDevisById(id)
+  if (!existing) throw new Error('Devis non trouvé')
+  if (existing.sign_token) return existing.sign_token as string
+  const token = randomBytes(32).toString('hex')
+  await db.update(crmDevis).set({ signToken: token }).where(eq(crmDevis.id, id))
+  return token
+}
+
+export async function getDevisBySignToken(token: string): Promise<Record<string, unknown> | null> {
+  const db = getDb()
+  const rows = await db
+    .select({
+      devis: crmDevis,
+      contact: {
+        id: crmContacts.id,
+        firstName: crmContacts.firstName,
+        lastName: crmContacts.lastName,
+        email: crmContacts.email,
+        phone: crmContacts.phone,
+        company: crmContacts.company,
+      },
+      project: {
+        id: crmProjects.id,
+        reference: crmProjects.reference,
+        title: crmProjects.title,
+      },
+    })
+    .from(crmDevis)
+    .leftJoin(crmContacts, eq(crmDevis.contactId, crmContacts.id))
+    .leftJoin(crmProjects, eq(crmDevis.projectId, crmProjects.id))
+    .where(eq(crmDevis.signToken, token))
+    .limit(1)
+
+  const row = rows[0]
+  if (!row) return null
+  const out = toSnakeRecord(row.devis as Record<string, unknown>) as Record<string, unknown>
+  if (row.contact?.id) out.crm_contacts = toSnakeRecord(row.contact as Record<string, unknown>)
+  if (row.project?.id) out.crm_projects = toSnakeRecord(row.project as Record<string, unknown>)
+  return out
+}
+
+export async function signDevis(
+  token: string,
+  signerName: string
+): Promise<Record<string, unknown>> {
+  const db = getDb()
+  const devis = await getDevisBySignToken(token)
+  if (!devis) throw new Error('Lien de signature invalide ou expiré')
+  if (devis.signed_at) throw new Error('Ce devis a déjà été signé')
+
+  const now = new Date()
+  const signatureData = `Signé électroniquement par : ${signerName} — le ${now.toLocaleDateString('fr-FR')} à ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+
+  const [updated] = await db
+    .update(crmDevis)
+    .set({
+      status: 'accepted',
+      acceptedAt: now,
+      signedAt: now,
+      signatureData,
+    })
+    .where(eq(crmDevis.signToken, token))
+    .returning()
+  if (!updated) throw new Error('Erreur lors de la signature')
+
+  await logActivity({
+    entityType: 'devis',
+    entityId: updated.id,
+    action: 'accepted',
+    description: `Devis signé électroniquement par ${signerName}`,
+  })
+
+  return toSnakeRecord(updated as Record<string, unknown>)
 }

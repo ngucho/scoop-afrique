@@ -49,6 +49,7 @@ import adminReaderPlatformRoutes from './routes/admin/reader-platform.js'
 import publicAudienceRoutes from './routes/public-audience.js'
 import tribuneRoutes from './routes/tribune.js'
 import crmRoutes from './routes/crm/index.js'
+import publicDevisSignRoutes from './routes/public/devis-sign.js'
 import chromePublicRoutes from './routes/chrome-public.js'
 import writerArticlesRoutes from './routes/writer-articles.js'
 import adminWriterApiKeysRoutes from './routes/admin/writer-api-keys.js'
@@ -83,6 +84,7 @@ app.route(`${prefix}/devis`, devisRoutes)
 app.route(`${prefix}`, commentsRoutes) // /api/v1/articles/:id/comments + /api/v1/comments/:id
 app.route(`${prefix}/contributions`, contributionsRoutes)
 app.route(`${prefix}/public/audience`, publicAudienceRoutes)
+app.route(`${prefix}/public/devis-sign`, publicDevisSignRoutes)
 app.route(`${prefix}/tribune`, tribuneRoutes)
 app.route(`${prefix}/writer`, writerArticlesRoutes)
 app.route(`${prefix}/sitemap`, sitemapPublicRoutes)
