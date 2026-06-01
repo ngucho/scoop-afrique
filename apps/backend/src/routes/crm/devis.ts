@@ -155,6 +155,19 @@ app.get('/:id/pdf', async (c) => {
   }
 })
 
+app.post('/:id/sign-token', async (c) => {
+  const id = c.req.param('id')
+  const devis = await devisService.getDevisById(id)
+  if (!devis) return c.json({ error: 'Not found' }, 404)
+  try {
+    const token = await devisService.generateSignToken(id)
+    return c.json({ data: { token } })
+  } catch (err) {
+    console.error('[crm] sign-token error:', err)
+    return c.json({ error: 'Erreur lors de la génération du lien' }, 500)
+  }
+})
+
 app.post('/:id/convert', requireRole('manager', 'admin'), async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')

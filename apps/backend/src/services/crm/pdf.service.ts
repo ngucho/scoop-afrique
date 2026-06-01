@@ -9,6 +9,7 @@ import { DevisTemplate } from '../../pdf-templates/DevisTemplate.js'
 import { InvoiceTemplate } from '../../pdf-templates/InvoiceTemplate.js'
 import { ReceiptTemplate } from '../../pdf-templates/ReceiptTemplate.js'
 import { ContractTemplate } from '../../pdf-templates/ContractTemplate.js'
+import { getPaymentMethods, getCompanyInfo } from './settings.service.js'
 
 const PDF_STORAGE_BUCKET = process.env.PDF_STORAGE_BUCKET ?? 'crm-documents'
 
@@ -18,89 +19,117 @@ export async function renderPdfToBuffer(doc: React.ReactElement): Promise<Buffer
 }
 
 export async function renderDevisPdf(devis: Record<string, unknown>): Promise<Buffer> {
+  const [paymentMethods, companyInfo] = await Promise.all([
+    getPaymentMethods(),
+    getCompanyInfo(),
+  ])
+
   const contact = devis.crm_contacts as Record<string, unknown> | null
   const project = devis.crm_projects as Record<string, unknown> | null
   const doc = React.createElement(DevisTemplate, {
+    paymentMethods,
+    issuer: {
+      name: companyInfo.name,
+      address: companyInfo.address,
+      email: companyInfo.email,
+      phone: companyInfo.phone,
+      website: companyInfo.website,
+      rccm: companyInfo.rccm,
+    },
     devis: {
-        reference: devis.reference as string,
-        title: devis.title as string,
-        contact: contact
-          ? {
-              first_name: contact.first_name as string,
-              last_name: contact.last_name as string,
-              email: contact.email as string,
-              phone: contact.phone as string,
-              company: contact.company as string,
-            }
-          : undefined,
-        project: project
-          ? {
-              reference: project.reference as string,
-              title: project.title as string,
-              description: project.description as string,
-              start_date: project.start_date as string,
-              end_date: project.end_date as string,
-            }
-          : undefined,
-        line_items: ((devis.line_items as Array<Record<string, unknown>>) ?? []).map((i) => ({
-          description: (i.description as string) ?? '',
-          quantity: (i.quantity as number) ?? 0,
-          unit_price: (i.unit_price as number) ?? 0,
-          unit: (i.unit as string) ?? 'unité',
-          total: (i.total as number) ?? 0,
-        })),
-        subtotal: (devis.subtotal as number) ?? 0,
-        tax_rate: (devis.tax_rate as number) ?? 0,
-        tax_amount: (devis.tax_amount as number) ?? 0,
-        total: (devis.total as number) ?? 0,
-        currency: (devis.currency as string) ?? 'FCFA',
-        valid_until: devis.valid_until as string,
-        notes: devis.notes as string,
-      },
+      reference: devis.reference as string,
+      title: devis.title as string,
+      contact: contact
+        ? {
+            first_name: contact.first_name as string,
+            last_name: contact.last_name as string,
+            email: contact.email as string,
+            phone: contact.phone as string,
+            company: contact.company as string,
+          }
+        : undefined,
+      project: project
+        ? {
+            reference: project.reference as string,
+            title: project.title as string,
+            description: project.description as string,
+            start_date: project.start_date as string,
+            end_date: project.end_date as string,
+          }
+        : undefined,
+      line_items: ((devis.line_items as Array<Record<string, unknown>>) ?? []).map((i) => ({
+        description: (i.description as string) ?? '',
+        quantity: (i.quantity as number) ?? 0,
+        unit_price: (i.unit_price as number) ?? 0,
+        unit: (i.unit as string) ?? 'unité',
+        total: (i.total as number) ?? 0,
+      })),
+      subtotal: (devis.subtotal as number) ?? 0,
+      tax_rate: (devis.tax_rate as number) ?? 0,
+      tax_amount: (devis.tax_amount as number) ?? 0,
+      total: (devis.total as number) ?? 0,
+      currency: (devis.currency as string) ?? 'FCFA',
+      valid_until: devis.valid_until as string,
+      notes: devis.notes as string,
+    },
   })
   return renderPdfToBuffer(doc)
 }
 
 export async function renderInvoicePdf(invoice: Record<string, unknown>): Promise<Buffer> {
+  const [paymentMethods, companyInfo] = await Promise.all([
+    getPaymentMethods(),
+    getCompanyInfo(),
+  ])
+
   const contact = invoice.crm_contacts as Record<string, unknown> | null
   const project = invoice.crm_projects as Record<string, unknown> | null
   const doc = React.createElement(InvoiceTemplate, {
+    paymentMethods,
+    issuer: {
+      name: companyInfo.name,
+      address: companyInfo.address,
+      email: companyInfo.email,
+      phone: companyInfo.phone,
+      website: companyInfo.website,
+      rccm: companyInfo.rccm,
+    },
     invoice: {
-        reference: invoice.reference as string,
-        contact: contact
-          ? {
-              first_name: contact.first_name as string,
-              last_name: contact.last_name as string,
-              email: contact.email as string,
-              phone: contact.phone as string,
-              company: contact.company as string,
-            }
-          : undefined,
-        project: project
-          ? {
-              reference: project.reference as string,
-              title: project.title as string,
-              description: project.description as string,
-              start_date: project.start_date as string,
-              end_date: project.end_date as string,
-            }
-          : undefined,
-        line_items: ((invoice.line_items as Array<Record<string, unknown>>) ?? []).map((i) => ({
-          description: (i.description as string) ?? '',
-          quantity: (i.quantity as number) ?? 0,
-          unit_price: (i.unit_price as number) ?? 0,
-          total: (i.total as number) ?? 0,
-        })) as Array<{ description: string; quantity: number; unit_price: number; total: number }>,
-        subtotal: (invoice.subtotal as number) ?? 0,
-        discount_amount: (invoice.discount_amount as number) ?? 0,
-        tax_rate: (invoice.tax_rate as number) ?? 0,
-        tax_amount: (invoice.tax_amount as number) ?? 0,
-        total: (invoice.total as number) ?? 0,
-        amount_paid: (invoice.amount_paid as number) ?? 0,
-        currency: (invoice.currency as string) ?? 'FCFA',
-        due_date: invoice.due_date as string,
-        notes: invoice.notes as string,
-      },
+      reference: invoice.reference as string,
+      contact: contact
+        ? {
+            first_name: contact.first_name as string,
+            last_name: contact.last_name as string,
+            email: contact.email as string,
+            phone: contact.phone as string,
+            company: contact.company as string,
+          }
+        : undefined,
+      project: project
+        ? {
+            reference: project.reference as string,
+            title: project.title as string,
+            description: project.description as string,
+            start_date: project.start_date as string,
+            end_date: project.end_date as string,
+          }
+        : undefined,
+      line_items: ((invoice.line_items as Array<Record<string, unknown>>) ?? []).map((i) => ({
+        description: (i.description as string) ?? '',
+        quantity: (i.quantity as number) ?? 0,
+        unit_price: (i.unit_price as number) ?? 0,
+        total: (i.total as number) ?? 0,
+      })) as Array<{ description: string; quantity: number; unit_price: number; total: number }>,
+      subtotal: (invoice.subtotal as number) ?? 0,
+      discount_amount: (invoice.discount_amount as number) ?? 0,
+      tax_rate: (invoice.tax_rate as number) ?? 0,
+      tax_amount: (invoice.tax_amount as number) ?? 0,
+      total: (invoice.total as number) ?? 0,
+      amount_paid: (invoice.amount_paid as number) ?? 0,
+      currency: (invoice.currency as string) ?? 'FCFA',
+      due_date: invoice.due_date as string,
+      notes: invoice.notes as string,
+    },
   })
   return renderPdfToBuffer(doc)
 }
@@ -148,20 +177,20 @@ export async function renderContractPdf(contract: Record<string, unknown>): Prom
   const contact = contract.crm_contacts as Record<string, unknown> | null
   const doc = React.createElement(ContractTemplate, {
     contract: {
-        reference: contract.reference as string,
-        title: contract.title as string,
-        type: (contract.type as string) ?? 'service',
-        content: (contract.content as Record<string, unknown>) ?? {},
-        contact: contact
-          ? {
-              first_name: contact.first_name as string,
-              last_name: contact.last_name as string,
-              company: contact.company as string,
-            }
-          : undefined,
-        expires_at: contract.expires_at as string,
-        signed_at: contract.signed_at as string,
-      },
+      reference: contract.reference as string,
+      title: contract.title as string,
+      type: (contract.type as string) ?? 'service',
+      content: (contract.content as Record<string, unknown>) ?? {},
+      contact: contact
+        ? {
+            first_name: contact.first_name as string,
+            last_name: contact.last_name as string,
+            company: contact.company as string,
+          }
+        : undefined,
+      expires_at: contract.expires_at as string,
+      signed_at: contract.signed_at as string,
+    },
   })
   return renderPdfToBuffer(doc)
 }
