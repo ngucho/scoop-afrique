@@ -65,9 +65,16 @@ export default async function DevisRequestDetailPage({
             <Link href={`/devis/new?devis_request_id=${id}`}>
               <Button variant="outline">Créer un devis</Button>
             </Link>
-            <DevisRequestActions id={id} variant="detail" isAdmin={isAdmin} />
           </>
         )}
+        <DevisRequestActions
+          id={id}
+          variant="detail"
+          isAdmin={isAdmin}
+          archived={Boolean(req.archived)}
+          convertedToDevisId={(req.converted_to_devis_id as string) ?? null}
+          convertedToContactId={(req.converted_to_contact_id as string) ?? null}
+        />
       </div>
     </div>
   )
