@@ -369,17 +369,17 @@ export async function deleteNewsletterCampaign(id: string): Promise<void> {
   revReader()
 }
 
-export async function previewWeeklyNewsletterDigest(): Promise<DigestArticlePickRow[]> {
+export async function previewWeeklyNewsletterDigest(excludeIds: string[] = []): Promise<DigestArticlePickRow[]> {
   const token = await getToken()
   const res = await apiPostAuth<{ data: { articles: DigestArticlePickRow[] } }>(
     '/admin/reader/newsletter-weekly-digest/preview',
     token,
-    {},
+    { exclude_ids: excludeIds },
   )
   return res.data.articles ?? []
 }
 
-export async function sendWeeklyNewsletterDigest(dryRun: boolean): Promise<{
+export async function sendWeeklyNewsletterDigest(dryRun: boolean, excludeIds: string[] = []): Promise<{
   jobId: string
   articleIds: string[]
   recipientsAttempted: number
@@ -397,7 +397,7 @@ export async function sendWeeklyNewsletterDigest(dryRun: boolean): Promise<{
       recipientsFailed: number
       error?: string
     }
-  }>('/admin/reader/newsletter-weekly-digest/send', token, { dry_run: dryRun })
+  }>('/admin/reader/newsletter-weekly-digest/send', token, { dry_run: dryRun, exclude_ids: excludeIds })
   return res.data
 }
 

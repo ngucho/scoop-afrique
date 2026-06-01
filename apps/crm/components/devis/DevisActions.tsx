@@ -44,8 +44,14 @@ export function DevisActions({
     })
     setConverting(false)
     if (res.ok) {
-      toast.success('Devis converti en projet')
-      router.refresh()
+      const json = await res.json()
+      const projectId = json.project?.id as string | undefined
+      toast.success(projectId ? 'Devis accepté — projet créé' : 'Devis converti en projet')
+      if (projectId) {
+        router.push(`/projects/${projectId}`)
+      } else {
+        router.refresh()
+      }
     } else {
       const json = await res.json()
       toast.error(json.error ?? 'Erreur')
