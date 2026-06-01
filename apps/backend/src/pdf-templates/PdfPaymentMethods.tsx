@@ -2,85 +2,110 @@ import React from 'react'
 import { View, Text, StyleSheet } from '@react-pdf/renderer'
 
 const BRAND = '#B91C1C'
-const MUTED = '#555'
+const MUTED = '#6B7280'
+const BORDER = '#E5E7EB'
+
+export interface PdfPaymentMethod {
+  id: string
+  label: string
+  number?: string
+  iban?: string
+  instructions?: string
+  active: boolean
+  sort: number
+}
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 18,
-    marginBottom: 12,
+    marginTop: 16,
+    padding: 10,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 0.5,
+    borderColor: BORDER,
   },
-  sectionTitle: {
-    fontSize: 11,
+  title: {
+    fontSize: 8,
     fontWeight: 'bold',
-    marginBottom: 8,
     color: BRAND,
+    marginBottom: 5,
   },
   modalities: {
-    fontSize: 9,
-    color: '#333',
-    marginBottom: 8,
+    fontSize: 7.5,
+    color: MUTED,
+    marginBottom: 7,
   },
-  table: {
-    marginTop: 6,
-  },
-  tableHeader: {
+  headerRow: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
+    borderBottomWidth: 0.5,
     borderBottomColor: BRAND,
-    paddingBottom: 4,
-    marginBottom: 4,
-    fontSize: 9,
+    paddingBottom: 3,
+    marginBottom: 2,
+  },
+  headerText: {
+    fontSize: 7.5,
     fontWeight: 'bold',
     color: BRAND,
   },
-  tableRow: {
+  row: {
     flexDirection: 'row',
     paddingVertical: 3,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#d1d5db',
-    fontSize: 9,
+    borderBottomColor: BORDER,
   },
-  colMethod: { flex: 1 },
-  colDetails: { flex: 2 },
+  colMethod: { width: 95 },
+  colDetails: { flex: 1 },
+  methodText: { fontSize: 8.5, fontWeight: 'bold', color: '#1F2937' },
+  detailsText: { fontSize: 8, color: MUTED },
   footer: {
-    fontSize: 8,
+    fontSize: 7.5,
     color: MUTED,
-    marginTop: 8,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
 })
 
-const PAYMENT_METHODS = [
-  { method: 'Djamo', details: 'https://pay.djamo.com/2a7pq' },
-  { method: 'Wave', details: '(+225) 07 02 90 79 49' },
-  { method: 'Moov Money', details: '(+225) 0140 92 81 43' },
-  { method: 'Orange Money', details: '(+225) 07 77 74 84 32' },
-]
+export function PdfPaymentMethods({
+  methods,
+  isDevis = true,
+}: {
+  methods: PdfPaymentMethod[]
+  isDevis?: boolean
+}) {
+  const activeMethods = methods.filter((m) => m.active)
+  if (activeMethods.length === 0) return null
 
-export function PdfPaymentMethods({ isDevis = true }: { isDevis?: boolean }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>CONDITIONS DE PAIEMENT</Text>
+      <Text style={styles.title}>CONDITIONS DE PAIEMENT</Text>
       <Text style={styles.modalities}>
-        Modalités :{'\n'}
-        • Paiement à réception {isDevis ? 'du devis signé' : 'de la facture'}{'\n'}
-        • Virement bancaire ou Mobile Money
+        Paiement à réception {isDevis ? 'du devis signé' : 'de la facture'} — Mobile Money ou Virement bancaire
       </Text>
-      <View style={styles.table}>
-        <View style={styles.tableHeader}>
-          <Text style={styles.colMethod}>Moyen de paiement</Text>
-          <Text style={styles.colDetails}>N° compte ou lien</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.colMethod}>
+          <Text style={styles.headerText}>Moyen de paiement</Text>
         </View>
-        {PAYMENT_METHODS.map((p, i) => (
-          <View key={i} style={styles.tableRow}>
-            <Text style={styles.colMethod}>{p.method}</Text>
-            <Text style={styles.colDetails}>{p.details}</Text>
-          </View>
-        ))}
+        <View style={styles.colDetails}>
+          <Text style={styles.headerText}>Coordonnées / Instructions</Text>
+        </View>
       </View>
+      {activeMethods.map((m, i) => {
+        const coords = [m.iban, m.number].filter(Boolean).join(' / ')
+        const detail = [coords, m.instructions].filter(Boolean).join(' — ')
+        return (
+          <View key={i} style={styles.row}>
+            <View style={styles.colMethod}>
+              <Text style={styles.methodText}>{m.label}</Text>
+            </View>
+            <View style={styles.colDetails}>
+              <Text style={styles.detailsText}>{detail || '—'}</Text>
+            </View>
+          </View>
+        )
+      })}
       {isDevis && (
         <Text style={styles.footer}>
-          Délai de paiement : 5 jours à compter de la date d'émission du devis{'\n'}
-          Début de la prestation : Sous réserve de réception du paiement intégral
+          Délai de paiement : 5 jours à compter de la date d'émission{'\n'}
+          Début de prestation : à réception du paiement intégral
         </Text>
       )}
     </View>
