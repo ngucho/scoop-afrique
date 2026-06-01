@@ -173,7 +173,34 @@ app.post('/:id/convert', requireRole('manager', 'admin'), async (c) => {
   const id = c.req.param('id')
   const devis = await devisService.getDevisWithContact(id)
   if (!devis) return c.json({ error: 'Not found' }, 404)
+
   await devisService.markDevisAccepted(id, user.id)
+
+  // Auto-create project from devis
+  let project: Record<string, unknown> | null = null
+  try {
+    const { createProject } = await import('../../services/crm/project.service.js')
+    project = await createProject(
+      {
+        title: devis.title as string,
+        contact_id: (devis.contact_id as string) || undefined,
+        devis_id: devis.id as string,
+        service_slug: (devis.service_slug as string) || undefined,
+        budget_agreed: (devis.total as number) || undefined,
+        currency: (devis.currency as string) || 'FCFA',
+        notes: (devis.notes as string) || undefined,
+      },
+      user.id
+    )
+    // Set project status to confirmed right after creation
+    if (project?.id) {
+      const { updateProject } = await import('../../services/crm/project.service.js')
+      project = await updateProject(project.id as string, { status: 'confirmed' })
+    }
+  } catch (e) {
+    console.error('[crm] Auto-create project after convert:', e)
+  }
+
   const contact = devis.crm_contacts as Record<string, unknown> | null
   void import('../../services/crm/notification.crm.service.js').then(({ notifyDevisAccepted }) =>
     notifyDevisAccepted({
@@ -183,8 +210,9 @@ app.post('/:id/convert', requireRole('manager', 'admin'), async (c) => {
         : undefined,
     })
   ).catch((e) => console.error('[crm] Devis accepted notification:', e))
+
   const updated = await devisService.getDevisById(id)
-  return c.json({ data: updated })
+  return c.json({ data: updated, project })
 })
 
 export default app

@@ -18,6 +18,7 @@ export default async function NewInvoicePage({
           project: Record<string, unknown>
           devis: Record<string, unknown> | null
           invoices: Array<Record<string, unknown>>
+          contacts: Array<Record<string, unknown>>
         }>(`projects/${projectId}/folder`)
       : Promise.resolve(null),
   ])
@@ -39,6 +40,12 @@ export default async function NewInvoicePage({
     : undefined
   const lineItemsFromProject = devisLineItems && devisLineItems.length > 0 ? devisLineItems : undefined
 
+  // Derive primary contact from project folder
+  const defaultContactId: string | undefined =
+    (folder?.project?.contact_id as string) ||
+    (folder?.contacts?.find((c) => c.is_primary)?.contact_id as string) ||
+    undefined
+
   return (
     <div className="space-y-6">
       <Heading as="h1" level="h1">
@@ -48,6 +55,7 @@ export default async function NewInvoicePage({
         contacts={contacts}
         projects={projects}
         defaultProjectId={projectId}
+        defaultContactId={defaultContactId}
         lineItemsFromProject={lineItemsFromProject}
       />
     </div>

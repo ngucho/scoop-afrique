@@ -488,7 +488,9 @@ app.patch('/homepage-sections/:id', requireRole('manager', 'admin'), async (c) =
 app.post('/newsletter-weekly-digest/preview', requireRole('editor', 'manager', 'admin'), async (c) => {
   const dbErr = requireDatabase(c)
   if (dbErr) return dbErr
-  const articles = await previewNewsletterWeeklyDigestArticles(8)
+  const body = await c.req.json().catch(() => ({})) as { exclude_ids?: string[] }
+  const excludeIds = Array.isArray(body.exclude_ids) ? (body.exclude_ids as string[]) : []
+  const articles = await previewNewsletterWeeklyDigestArticles(8, excludeIds)
   return c.json({ data: { articles } })
 })
 
@@ -496,11 +498,13 @@ app.post('/newsletter-weekly-digest/send', requireRole('editor', 'manager', 'adm
   const dbErr = requireDatabase(c)
   if (dbErr) return dbErr
   const user = c.get('user')
-  const parsed = weeklyDigestSendBody.safeParse(await c.req.json().catch(() => ({})))
+  const rawBody = await c.req.json().catch(() => ({})) as { dry_run?: boolean; exclude_ids?: string[] }
+  const parsed = weeklyDigestSendBody.safeParse(rawBody)
   if (!parsed.success) {
     return c.json({ error: 'Invalid body', code: 'VALIDATION_ERROR', details: parsed.error.flatten() }, 400)
   }
-  const result = await runNewsletterWeeklyDigest({ dryRun: parsed.data.dry_run === true })
+  const excludeIds = Array.isArray(rawBody.exclude_ids) ? (rawBody.exclude_ids as string[]) : []
+  const result = await runNewsletterWeeklyDigest({ dryRun: parsed.data.dry_run === true, excludeIds })
   await reader.appendAudit({
     actorId: user.id,
     entityType: 'newsletter_weekly_digest',

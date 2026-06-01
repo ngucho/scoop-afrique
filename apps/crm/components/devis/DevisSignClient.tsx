@@ -50,7 +50,9 @@ export function DevisSignClient({ devis, token }: { devis: DevisData; token: str
   const [signerName, setSignerName] = useState('')
   const [accepted, setAccepted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [signed, setSigned] = useState(Boolean(devis.signed_at))
+  // Already accepted: either via e-signature or via manual conversion to project
+  const isAlreadyAccepted = devis.status === 'accepted' || Boolean(devis.signed_at)
+  const [signed, setSigned] = useState(isAlreadyAccepted)
   const [signedData, setSignedData] = useState<{ signed_at?: string; signature_data?: string }>({
     signed_at: devis.signed_at,
     signature_data: devis.signature_data,
@@ -95,9 +97,14 @@ export function DevisSignClient({ devis, token }: { devis: DevisData; token: str
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Devis signé !</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {devis.signed_at ? 'Devis signé !' : 'Devis accepté'}
+            </h1>
             <p className="text-gray-600 mb-6">
-              Votre acceptation a bien été enregistrée pour le devis <span className="font-semibold">{devis.reference}</span>.
+              {devis.signed_at
+                ? <>Votre acceptation a bien été enregistrée pour le devis <span className="font-semibold">{devis.reference}</span>.</>
+                : <>Ce devis (<span className="font-semibold">{devis.reference}</span>) a déjà été accepté et un projet est en cours. Ce lien n&apos;est plus actif.</>
+              }
             </p>
             <div className="bg-gray-50 rounded-xl p-4 text-left text-sm space-y-1 mb-6">
               <p className="text-gray-500">Référence : <span className="text-gray-800 font-medium">{devis.reference}</span></p>
