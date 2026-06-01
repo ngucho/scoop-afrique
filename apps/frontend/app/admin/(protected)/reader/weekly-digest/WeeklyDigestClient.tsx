@@ -92,7 +92,7 @@ export function WeeklyDigestClient() {
         const r = await sendWeeklyNewsletterDigest(dryRun, Array.from(excludedIds))
         setLastResult({ ...r, isDryRun: dryRun })
       } catch {
-        setLastResult({ jobId: '', articleIds: [], recipientsAttempted: 0, recipientsSent: 0, recipientsFailed: 0, error: 'Erreur lors de l'envoi.', isDryRun: dryRun })
+        setLastResult({ jobId: '', articleIds: [], recipientsAttempted: 0, recipientsSent: 0, recipientsFailed: 0, error: "Erreur lors de l'envoi.", isDryRun: dryRun })
       }
     })
   }, [excludedIds])

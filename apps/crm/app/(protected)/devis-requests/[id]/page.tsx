@@ -49,24 +49,29 @@ export default async function DevisRequestDetailPage({
         <Heading as="h1" level="h1">
           Demande de devis — {name}
         </Heading>
-        {(req.archived || req.converted_to_devis_id || req.converted_to_contact_id || req.converted_to_project_id) && (
+        {Boolean(
+          req.archived || req.converted_to_devis_id || req.converted_to_contact_id || req.converted_to_project_id
+        ) && (
           <div className="flex flex-wrap gap-1.5 shrink-0 mt-1">
-            {req.converted_to_devis_id && (
+            {Boolean(req.converted_to_devis_id) && (
               <Link href={`/devis/${String(req.converted_to_devis_id)}`} className="crm-pill crm-pill-accepted text-xs hover:opacity-80">
                 Devis créé →
               </Link>
             )}
-            {req.converted_to_contact_id && (
+            {Boolean(req.converted_to_contact_id) && (
               <Link href={`/contacts/${String(req.converted_to_contact_id)}`} className="crm-pill crm-pill-sent text-xs hover:opacity-80">
                 Contact créé →
               </Link>
             )}
-            {req.converted_to_project_id && (
+            {Boolean(req.converted_to_project_id) && (
               <Link href={`/projects/${String(req.converted_to_project_id)}`} className="crm-pill text-xs hover:opacity-80" style={{ background: 'var(--primary-subtle)', color: 'var(--primary)' }}>
                 Projet →
               </Link>
             )}
-            {req.archived && !req.converted_to_devis_id && !req.converted_to_contact_id && !req.converted_to_project_id && (
+            {Boolean(req.archived) &&
+              !req.converted_to_devis_id &&
+              !req.converted_to_contact_id &&
+              !req.converted_to_project_id && (
               <span className="crm-pill crm-pill-draft text-xs">Archivé</span>
             )}
           </div>
@@ -109,7 +114,7 @@ export default async function DevisRequestDetailPage({
               ? new Date(req.created_at as string).toLocaleString('fr-FR')
               : '—'}
           </span>
-          {req.source_url && (
+          {Boolean(req.source_url) && (
             <a
               href={req.source_url as string}
               target="_blank"
@@ -125,7 +130,7 @@ export default async function DevisRequestDetailPage({
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-4">
-        {!req.converted_to_devis_id && !req.converted_to_contact_id && !req.archived && (
+        {!req.converted_to_devis_id && !req.converted_to_contact_id && !Boolean(req.archived) && (
           <>
             <Link href={`/contacts/new?devis_request_id=${id}`}>
               <Button>Créer un contact</Button>
