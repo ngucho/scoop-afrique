@@ -52,6 +52,7 @@ interface InvoiceBuilderProps {
   contacts?: Array<{ id: string; first_name?: string; last_name?: string }>
   projects?: Array<{ id: string; reference: string; title: string }>
   defaultProjectId?: string
+  defaultContactId?: string
   lineItemsFromProject?: Array<LineItemInput>
   /** When false, lines / TVA / réduction are read-only (paiements enregistrés, rôle éditeur). */
   canEditFinancialLines?: boolean
@@ -73,6 +74,7 @@ export function InvoiceBuilder({
   contacts = [],
   projects = [],
   defaultProjectId,
+  defaultContactId,
   lineItemsFromProject,
   canEditFinancialLines = true,
 }: InvoiceBuilderProps) {
@@ -98,6 +100,7 @@ export function InvoiceBuilder({
     defaultValues: {
       ...defaultValues,
       project_id: defaultProjectId ?? defaultValues?.project_id ?? '',
+      contact_id: defaultContactId ?? defaultValues?.contact_id ?? '',
       line_items: initialLineItems,
       tax_rate: defaultValues?.tax_rate ?? 0,
       discount_amount: defaultValues?.discount_amount ?? 0,
