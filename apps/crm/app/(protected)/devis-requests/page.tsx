@@ -167,9 +167,19 @@ export default async function DevisRequestsPage() {
                           </span>
                         </td>
                         <td>
-                          <Link href={`/devis-requests/${r.id}`} className="flex items-center justify-center p-1 text-muted-foreground hover:text-foreground">
-                            <ArrowRight className="h-3.5 w-3.5" />
-                          </Link>
+                          <div className="flex items-center gap-1 justify-end">
+                            <DevisRequestActions
+                              id={r.id as string}
+                              variant="card"
+                              isAdmin={isAdmin}
+                              archived={Boolean(r.archived)}
+                              convertedToDevisId={(r.converted_to_devis_id as string) ?? null}
+                              convertedToContactId={(r.converted_to_contact_id as string) ?? null}
+                            />
+                            <Link href={`/devis-requests/${r.id}`} className="flex items-center justify-center p-1 text-muted-foreground hover:text-foreground">
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}
