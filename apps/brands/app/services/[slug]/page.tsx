@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { ArrowLeft, CheckCircle2, Clock, PackageCheck } from 'lucide-react'
 import { Footer } from '@/components/footer'
 import { Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
@@ -13,11 +15,10 @@ type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const service = getServiceBySlug(slug)
-  if (!service) return { title: 'Service non trouvé' }
+  if (!service) return { title: 'Service non trouve' }
   const title = `${service.title} | Scoop Afrique`
-  const description = `${service.tagline} — ${service.summary} Prix : ${service.price}.`
+  const description = `${service.tagline} - ${service.summary} Prix : ${service.price}.`
   const url = `${BASE_URL}/services/${slug}`
-  // Service image for OG (absolute URL for social sharing)
   const imageUrl = service.image.startsWith('http') ? service.image : `${BASE_URL}${service.image}`
   return {
     title,
@@ -54,196 +55,157 @@ export default async function ServiceDetailPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 md:px-12 md:py-16">
-        {/* Hero */}
-        <div className="mb-12">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary bg-primary/5">
-              <ServiceIcon className="h-6 w-6 text-primary" />
-            </div>
+      <article>
+        <section className="relative overflow-hidden border-b border-border bg-foreground py-16 text-background md:py-24">
+          <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_18%_18%,rgba(239,35,60,0.65),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.14),transparent_42%)]" />
+          <div className="noise-overlay absolute inset-0 opacity-10" />
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 md:px-12 lg:grid-cols-[0.85fr_1fr] lg:px-20">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                {service.category === 'couverture' ? 'Couverture' : service.category === 'partenariat' ? 'Partenariat' : 'Contenu'}
-              </span>
+              <Link href="/services" className="mb-8 inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-background/60 hover:text-primary">
+                <ArrowLeft className="h-4 w-4" />
+                Toutes les offres
+              </Link>
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-background/15 bg-background/10">
+                  <ServiceIcon className="h-6 w-6 text-primary" />
+                </div>
+                <span className="font-mono text-xs uppercase tracking-widest text-background/58">
+                  {service.category === 'couverture' ? 'Couverture' : service.category === 'partenariat' ? 'Partenariat' : 'Contenu'}
+                </span>
+              </div>
+              <h1 className="max-w-3xl text-4xl font-black leading-tight text-background md:text-6xl" style={{ fontFamily: 'var(--font-headline)' }}>
+                {service.title}
+              </h1>
+              <p className="mt-5 max-w-2xl text-lg font-semibold leading-7 text-primary">{service.tagline}</p>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-background/70 md:text-base">{service.summary}</p>
+            </div>
+
+            <div className="grid gap-5">
+              <div className="relative min-h-[360px] overflow-hidden rounded-2xl border border-background/12 bg-background/10 shadow-2xl">
+                <Image src={service.image} alt="" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 560px" priority />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/16 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <p className="inline-flex rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">
+                    {service.price}
+                  </p>
+                  {service.priceNote && <p className="mt-3 text-sm text-white/72">{service.priceNote}</p>}
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-background/12 bg-background/8 p-4">
+                  <PackageCheck className="h-5 w-5 text-primary" />
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-background/58">Livrables</p>
+                  <p className="mt-1 text-lg font-black text-background">{service.deliverables.length} inclus</p>
+                </div>
+                <div className="rounded-2xl border border-background/12 bg-background/8 p-4">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <p className="mt-2 font-mono text-[10px] uppercase tracking-widest text-background/58">Delai</p>
+                  <p className="mt-1 text-lg font-black text-background">{service.turnaround ?? 'Sur devis'}</p>
+                </div>
+              </div>
             </div>
           </div>
-          <h1 className="mb-3 font-sans text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl md:text-4xl">
-            {service.title}
-          </h1>
-          <p className="mb-6 text-lg text-primary font-semibold">
-            {service.tagline}
-          </p>
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="font-sans text-2xl font-black text-primary">{service.price}</span>
-            {service.priceNote && (
-              <span className="text-sm text-muted-foreground">{service.priceNote}</span>
+        </section>
+
+        <section className="mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 md:px-12 md:py-24 lg:grid-cols-[0.68fr_0.32fr] lg:px-20">
+          <div className="space-y-10">
+            <section>
+              <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">Pourquoi ce service ?</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {service.why.map((item) => (
+                  <Card key={item} className="border-border p-4">
+                    <CheckCircle2 className="mb-3 h-5 w-5 text-primary" />
+                    <p className="text-sm leading-6 text-muted-foreground">{item}</p>
+                  </Card>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">Comment nous livrons</h2>
+              <div className="space-y-3">
+                {service.howWeDeliver.map((step, i) => (
+                  <div key={step} className="flex gap-4 rounded-2xl border border-border bg-card p-4">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-xs font-bold text-primary">
+                      {i + 1}
+                    </span>
+                    <p className="text-sm leading-6 text-muted-foreground">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">Livrables inclus</h2>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {service.deliverables.map((item) => (
+                  <div key={item} className="flex items-start gap-2 rounded-xl border border-border bg-muted/25 p-3 text-sm text-muted-foreground">
+                    <Dot size="sm" className="mt-1.5 shrink-0 text-primary" />
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {service.slug === 'couverture-mediatique' && (
+              <section>
+                <h2 className="mb-6 font-sans text-base font-bold uppercase tracking-wider text-foreground">Formules disponibles</h2>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  {couvertureFormules.map((formule) => (
+                    <Card key={formule.title} className="overflow-hidden border-border">
+                      <div className="relative aspect-video w-full bg-muted">
+                        <Image src={formule.image} alt="" fill className="object-cover" sizes="(max-width: 640px) 100vw, 50vw" />
+                      </div>
+                      <div className="p-5">
+                        <h3 className="mb-2 font-sans text-sm font-bold uppercase tracking-wider text-foreground">{formule.title}</h3>
+                        <p className="mb-3 font-sans text-xl font-black text-primary">{formule.price}</p>
+                        <ul className="space-y-1 text-xs text-muted-foreground">
+                          {formule.items.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
             )}
           </div>
-        </div>
 
-        {/* Image */}
-        <div className="relative mb-12 aspect-video w-full overflow-hidden rounded-[var(--radius-xl)] border border-[var(--surface-border)] bg-muted">
-          <Image
-            src={service.image}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 896px"
-            priority
-          />
-        </div>
+          <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+            <Card className="border-primary/20 bg-primary/5 p-6">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-primary">Budget</p>
+              <p className="mt-2 text-3xl font-black text-primary">{service.price}</p>
+              {service.priceNote && <p className="mt-2 text-sm text-muted-foreground">{service.priceNote}</p>}
+              <div className="mt-6 flex flex-col gap-3">
+                <CtaButton href={`/demander-devis?service=${service.slug}`} variant="fillHover">
+                  Demander un devis
+                </CtaButton>
+                <CtaButton href="/contact" variant="outline">
+                  Nous contacter
+                </CtaButton>
+              </div>
+            </Card>
 
-        {/* Résumé */}
-        <Card className="mb-12 border-[var(--surface-border)] p-6">
-          <h2 className="mb-3 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-            En bref
-          </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            {service.summary}
-          </p>
-        </Card>
+            <Card className="border-border p-6">
+              <h2 className="mb-4 font-sans text-sm font-bold uppercase tracking-wider text-foreground">Ideal pour</h2>
+              <div className="flex flex-wrap gap-2">
+                {service.idealFor.map((item) => (
+                  <span key={item} className="rounded-full border border-border bg-muted px-3 py-2 text-xs font-medium text-foreground">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </Card>
 
-        {/* Pourquoi ce service */}
-        <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-            Pourquoi ce service ?
-          </h2>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Ce service répond aux besoins suivants :
-          </p>
-          <ul className="space-y-2">
-            {service.why.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                <Dot size="sm" className="mt-1.5 shrink-0 text-primary" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+            {service.priceRationale && (
+              <Card className="border-border p-6">
+                <h2 className="mb-3 font-sans text-sm font-bold uppercase tracking-wider text-foreground">Approche tarifaire</h2>
+                <p className="text-sm leading-6 text-muted-foreground">{service.priceRationale}</p>
+              </Card>
+            )}
+          </aside>
         </section>
-
-        {/* Comment nous livrons */}
-        <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-            Comment nous livrons
-          </h2>
-          <ol className="space-y-3">
-            {service.howWeDeliver.map((step, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 font-mono text-xs font-bold text-primary">
-                  {i + 1}
-                </span>
-                <span>{step}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* Livrables */}
-        <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-            Livrables inclus
-          </h2>
-          <ul className="space-y-2">
-            {service.deliverables.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                <Dot size="sm" className="mt-1.5 shrink-0 text-primary" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* Idéal pour */}
-        <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-            Idéal pour
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {service.idealFor.map((item, i) => (
-              <span
-                key={i}
-                className="rounded-full border border-[var(--surface-border)] bg-muted px-4 py-2 text-xs font-medium text-foreground"
-              >
-                {item}
-              </span>
-            ))}
-          </div>
-        </section>
-
-        {/* Formules couverture (si applicable) */}
-        {service.slug === 'couverture-mediatique' && (
-          <section className="mb-12">
-            <h2 className="mb-6 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-              Formules disponibles
-            </h2>
-            <div className="grid gap-6 sm:grid-cols-2">
-              {couvertureFormules.map((formule) => (
-                <Card key={formule.title} className="overflow-hidden border-[var(--surface-border)]">
-                  <div className="relative aspect-video w-full bg-muted">
-                    <Image
-                      src={formule.image}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 100vw, 50vw"
-                    />
-                  </div>
-                  <div className="p-5">
-                    <h3 className="mb-2 font-sans text-sm font-bold uppercase tracking-wider text-foreground">
-                      {formule.title}
-                    </h3>
-                    <p className="mb-3 font-sans text-xl font-black text-primary">{formule.price}</p>
-                    <ul className="list-none space-y-1 text-xs text-muted-foreground">
-                      {formule.items.map((item) => (
-                        <li key={item}>• {item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Délai */}
-        {service.turnaround && (
-          <section className="mb-12">
-            <h2 className="mb-2 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-              Délai de livraison
-            </h2>
-            <p className="text-sm text-muted-foreground">{service.turnaround}</p>
-          </section>
-        )}
-
-        {/* Prix : notre approche */}
-        {service.priceRationale && (
-          <Card className="mb-12 border-primary/20 bg-primary/5 p-6">
-            <h2 className="mb-3 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-              Notre approche tarifaire
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {service.priceRationale}
-            </p>
-          </Card>
-        )}
-
-        {/* CTA */}
-        <Card className="border-primary/20 bg-primary/5 p-8 text-center">
-          <h2 className="mb-3 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-            Prêt à lancer votre projet ?
-          </h2>
-          <p className="mb-6 text-sm text-muted-foreground">
-            Demandez un devis personnalisé. Réponse sous 24–48 h.
-          </p>
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <CtaButton href={`/demander-devis?service=${service.slug}`} variant="fillHover">
-              Demander un devis
-            </CtaButton>
-            <CtaButton href="/contact" variant="outline">
-              Nous contacter
-            </CtaButton>
-          </div>
-        </Card>
       </article>
 
       <Footer />

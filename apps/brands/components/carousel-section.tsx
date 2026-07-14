@@ -6,31 +6,31 @@ import { ArrowUpRight, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 
 const slides = [
   {
-    src: '/images/carousel-1.jpg',
+    src: '/images/offre-couverture.jpg',
     title: 'Terrain',
     caption: 'Une equipe dans la rue, sur scene, au coeur du moment.',
     metric: 'Event coverage',
   },
   {
-    src: '/images/carousel-2.png',
+    src: '/images/offre-campagnes.jpg',
     title: 'Social first',
     caption: 'Des formats penses pour etre regardes, partages et commentes.',
     metric: 'TikTok / Reels',
   },
   {
-    src: '/images/carousel-3.png',
+    src: '/images/video-premium.jpg',
     title: 'Recit',
     caption: 'Interviews, reportages et angles qui donnent du poids au message.',
     metric: 'Editorial proof',
   },
   {
-    src: '/images/carousel-4.jpg',
+    src: '/images/podcast-interview.jpg',
     title: 'Influence',
     caption: 'Marques, artistes et institutions integres avec les bons codes.',
     metric: 'Brand moves',
   },
   {
-    src: '/images/carousel-5.jpg',
+    src: '/images/offre-partenariat.jpg',
     title: 'Afrique',
     caption: 'Un mouvement jeune, francophone, mobile et ambitieux.',
     metric: '12+ pays',
@@ -53,13 +53,13 @@ export function CarouselSection() {
       <div className="absolute inset-0 opacity-25 [background:radial-gradient(circle_at_25%_20%,rgba(239,35,60,0.7),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />
       <div className="noise-overlay absolute inset-0 opacity-10" />
 
-      <div className="relative mx-auto grid min-h-[680px] max-w-7xl items-center gap-8 px-4 py-14 sm:px-6 md:grid-cols-[0.95fr_1.05fr] md:px-12 md:py-20 lg:px-20">
+      <div className="relative mx-auto grid min-h-[760px] max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 md:min-h-[720px] md:grid-cols-[0.95fr_1.05fr] md:px-12 md:py-20 lg:px-20">
         <div className="z-10 max-w-xl">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-background/15 bg-background/10 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-background/75 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
             Proof reel
           </div>
-          <h2 className="font-sans text-4xl font-black uppercase leading-[0.92] tracking-normal text-background sm:text-5xl md:text-6xl">
+          <h2 className="font-sans text-4xl font-black uppercase leading-[0.98] tracking-normal text-background sm:text-5xl md:text-6xl">
             La marque entre dans la conversation.
           </h2>
           <p className="mt-6 max-w-md text-sm leading-relaxed text-background/70 md:text-base">
@@ -98,7 +98,7 @@ export function CarouselSection() {
           </div>
         </div>
 
-        <div className="relative min-h-[390px] md:min-h-[560px]">
+        <div className="relative min-h-[500px] md:min-h-[560px]">
           <div className="absolute left-2 top-4 z-20 rounded-2xl border border-background/15 bg-background/12 px-4 py-3 text-background shadow-2xl backdrop-blur md:left-0">
             <p className="font-mono text-[10px] uppercase tracking-widest text-background/60">{active.metric}</p>
             <p className="mt-1 font-sans text-2xl font-black uppercase">{active.title}</p>
@@ -120,7 +120,7 @@ export function CarouselSection() {
             </div>
           </div>
 
-          <div className="absolute bottom-0 right-0 z-20 max-w-[260px] rounded-2xl border border-background/15 bg-background p-4 text-foreground shadow-2xl md:right-8">
+          <div className="absolute bottom-2 right-0 z-20 max-w-[260px] rounded-2xl border border-background/15 bg-background p-4 text-foreground shadow-2xl md:bottom-0 md:right-8">
             <div className="mb-3 flex items-center justify-between">
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Next move</p>
               <ArrowUpRight className="h-4 w-4 text-primary" aria-hidden />
