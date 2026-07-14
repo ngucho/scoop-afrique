@@ -4,7 +4,6 @@ import { WhoWeAreSection } from '@/components/who-we-are-section'
 import { StatsSection } from '@/components/stats-section'
 import { ValuesSection } from '@/components/values-section'
 import { CarouselSection } from '@/components/carousel-section'
-import { OffersSection } from '@/components/offers-section'
 import { ProgramsTeaserSection } from '@/components/programs-teaser-section'
 import { ContactCtaSection } from '@/components/contact-cta-section'
 import { Footer } from '@/components/footer'
@@ -33,7 +32,6 @@ export default async function HomePage() {
         <StatsSection audience={audience} />
         <ValuesSection />
         <CarouselSection />
-        <OffersSection />
         <ProgramsTeaserSection />
         <ContactCtaSection />
         <Footer />
