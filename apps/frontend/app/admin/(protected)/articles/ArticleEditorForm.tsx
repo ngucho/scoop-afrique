@@ -66,6 +66,13 @@ import { formatDate } from '@/lib/formatDate'
 import { getYoutubeThumbnailUrl, isValidYoutubeUrl } from '@/lib/youtube'
 import { buildArticleEditorChecklist, countArticleContentWords } from '@/lib/articleEditorReadiness'
 import { buildArticleEditorPayload } from '@/lib/articleEditorPayload'
+import {
+  ARTICLE_EDITOR_STEPS,
+  canAccessArticleEditorStep,
+  getNextArticleEditorStep,
+  getPreviousArticleEditorStep,
+  type ArticleEditorStep,
+} from '@/lib/articleEditorWizard'
 import type { Article, Category } from '@/lib/api/types'
 
 /** Extract display name from email (e.g. prenom.nom@xxx.com → prenom.nom). */
@@ -120,6 +127,7 @@ export function ArticleEditorForm({
   const [metaTitle, setMetaTitle] = useState(article?.meta_title ?? '')
   const [metaDescription, setMetaDescription] = useState(article?.meta_description ?? '')
   const [status, setStatus] = useState(article?.status ?? 'draft')
+  const [newArticleStep, setNewArticleStep] = useState<ArticleEditorStep>('write')
 
   // --- Lock state ---
   const [lockInfo, setLockInfo] = useState<{ lockerEmail: string } | null>(null)
@@ -396,6 +404,17 @@ export function ArticleEditorForm({
     })
   }
 
+  function goToNextNewArticleStep() {
+    const next = getNextArticleEditorStep(newArticleStep)
+    if (next === 'prepare' && !canGoToPrepare) return
+    if (next === 'review' && !canGoToReview) return
+    setNewArticleStep(next)
+  }
+
+  function goToPreviousNewArticleStep() {
+    setNewArticleStep(getPreviousArticleEditorStep(newArticleStep))
+  }
+
   // --- Delete ---
   function handleDeleteClick() {
     if (!isEditing) return
@@ -576,6 +595,20 @@ export function ArticleEditorForm({
   const invalidVideoUrl = videoUrl.trim().length > 0 && !isValidYoutubeUrl(videoUrl)
   const canPersistArticle = title.trim().length > 0 && !invalidVideoUrl
   const contentWordCount = countArticleContentWords(content)
+  const isNewArticleWizard = !isEditing
+  const hasPreparation = Boolean(categoryId || tags.trim() || coverPreviewUrl || metaTitle.trim() || metaDescription.trim())
+  const canGoToPrepare = canAccessArticleEditorStep('prepare', {
+    hasTitle: title.trim().length >= 10,
+    hasBody: contentWordCount > 0,
+  })
+  const canGoToReview = canAccessArticleEditorStep('review', {
+    hasTitle: title.trim().length >= 10,
+    hasBody: contentWordCount > 0,
+    hasPreparation,
+  })
+  const showWritingSection = !isNewArticleWizard || newArticleStep === 'write'
+  const showPreparationSection = !isNewArticleWizard || newArticleStep === 'prepare'
+  const showReviewSection = isNewArticleWizard && newArticleStep === 'review'
   const editorChecklist = buildArticleEditorChecklist({
     title,
     excerpt,
@@ -678,7 +711,7 @@ export function ArticleEditorForm({
             <span className="hidden sm:inline">Sauvegarder</span>
           </button>
 
-          {status === 'draft' && (
+          {status === 'draft' && (!isNewArticleWizard || newArticleStep === 'review') && (
             <button
               type="button"
               onClick={() => handleSave('review')}
@@ -707,10 +740,78 @@ export function ArticleEditorForm({
         </div>
       </div>
 
+      {isNewArticleWizard ? (
+        <Card>
+          <CardContent className="space-y-4 p-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {ARTICLE_EDITOR_STEPS.map((step, index) => {
+                const active = step.id === newArticleStep
+                const accessible = canAccessArticleEditorStep(step.id, {
+                  hasTitle: title.trim().length >= 10,
+                  hasBody: contentWordCount > 0,
+                  hasPreparation,
+                })
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => accessible && setNewArticleStep(step.id)}
+                    disabled={!accessible}
+                    className={[
+                      'rounded-lg border px-3 py-3 text-left transition',
+                      active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                      !accessible ? 'cursor-not-allowed opacity-55' : '',
+                    ].join(' ')}
+                  >
+                    <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-primary">
+                      Etape {index + 1}
+                    </span>
+                    <span className="mt-1 block text-sm font-semibold">{step.label}</span>
+                    <span className="mt-0.5 block text-xs">{step.hint}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                {newArticleStep === 'write'
+                  ? 'Concentrez-vous sur le titre, le resume et le fond. Les metadonnees viennent apres.'
+                  : newArticleStep === 'prepare'
+                    ? 'Ajoutez la rubrique, les tags, la couverture et le SEO avant validation.'
+                    : 'Relisez le recapitulatif avant de creer, soumettre ou publier.'}
+              </p>
+              <div className="flex gap-2">
+                {newArticleStep !== 'write' ? (
+                  <button
+                    type="button"
+                    onClick={goToPreviousNewArticleStep}
+                    className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+                  >
+                    Retour
+                  </button>
+                ) : null}
+                {newArticleStep !== 'review' ? (
+                  <button
+                    type="button"
+                    onClick={goToNextNewArticleStep}
+                    disabled={newArticleStep === 'write' ? !canGoToPrepare : !canGoToReview}
+                    className="rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-background disabled:opacity-50"
+                  >
+                    {newArticleStep === 'write' ? 'Continuer' : 'Voir le recap'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Editor + Sidebar layout */}
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main editor area */}
-        <div className="space-y-4">
+        <div className={showWritingSection ? 'space-y-4' : 'hidden'}>
           {/* Title */}
           <input
             type="text"
@@ -870,6 +971,88 @@ export function ArticleEditorForm({
             </Card>
           )}
 
+          {showReviewSection ? (
+            <Card>
+              <CardContent className="space-y-4 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">Recapitulatif</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Derniere verification avant creation.
+                    </p>
+                  </div>
+                  <StatusBadge status={status} />
+                </div>
+                <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Titre</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{title || 'Sans titre'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Resume</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      {excerpt || 'Aucun resume renseigne.'}
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Rubrique</p>
+                      <p className="mt-1 text-sm text-foreground">
+                        {categories.find((category) => category.id === categoryId)?.name ?? 'Non renseignee'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Mots</p>
+                      <p className="mt-1 text-sm text-foreground">{contentWordCount}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Tags</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{tags || 'Aucun tag'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Visuel</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {coverPreviewKind === 'image'
+                        ? 'Image de couverture'
+                        : coverPreviewKind === 'video'
+                          ? 'Miniature YouTube'
+                          : 'Aucun visuel'}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSave('draft')}
+                    disabled={isPending || !canPersistArticle}
+                    className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+                  >
+                    Creer brouillon
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSave('review')}
+                    disabled={isPending || !canPersistArticle}
+                    className="rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-background disabled:opacity-50"
+                  >
+                    Soumettre
+                  </button>
+                  {userRole !== 'journalist' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSave('published')}
+                      disabled={isPending || !canPersistArticle}
+                      className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2"
+                    >
+                      Creer et publier
+                    </button>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
           {/* Readiness card */}
           <Card>
             <CardContent className="space-y-4 p-4">
@@ -904,6 +1087,8 @@ export function ArticleEditorForm({
             </CardContent>
           </Card>
 
+          {showPreparationSection ? (
+            <>
           {/* Metadata card */}
           <Card>
             <CardContent className="space-y-4 p-4">
@@ -1132,6 +1317,9 @@ export function ArticleEditorForm({
             </CardContent>
           </Card>
 
+            </>
+          ) : null}
+
           {/* Danger zone */}
           {isEditing && !isLocked && (
             <Card>
@@ -1169,7 +1357,17 @@ export function ArticleEditorForm({
               )}
               Sauver
             </button>
-            {status === 'draft' ? (
+            {isNewArticleWizard && newArticleStep !== 'review' ? (
+              <button
+                type="button"
+                onClick={goToNextNewArticleStep}
+                disabled={newArticleStep === 'write' ? !canGoToPrepare : !canGoToReview}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-3 text-sm font-semibold text-background disabled:opacity-50"
+              >
+                <IconChevronRight className="h-4 w-4" />
+                {newArticleStep === 'write' ? 'Continuer' : 'Recap'}
+              </button>
+            ) : status === 'draft' ? (
               <button
                 type="button"
                 onClick={() => handleSave('review')}

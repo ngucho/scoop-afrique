@@ -103,6 +103,14 @@ export function decodeArticleFeedCursor(raw: string | null | undefined): Article
   }
 }
 
+export function canCreateArticleWithStatus(
+  role: AppRole,
+  status: CreateArticleBody['status'],
+): boolean {
+  if (status !== 'published') return true
+  return role === 'editor' || role === 'manager' || role === 'admin'
+}
+
 /* ---------- Helpers ---------- */
 
 function displayNameFromEmail(email: string | null | undefined): string | null {
