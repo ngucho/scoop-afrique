@@ -22,7 +22,7 @@ function LogoBlock() {
         text="SCOOP"
         as="span"
         scramble={false}
-        className="font-[var(--font-scoop)] text-base font-black uppercase leading-none tracking-tight text-foreground sm:text-lg md:text-xl"
+        className="font-[var(--font-scoop)] text-base font-black uppercase leading-none tracking-tight text-background sm:text-lg md:text-xl"
       />
       <Dot size="md" className="shrink-0 align-middle max-sm:scale-90" />
       <GlitchText
@@ -90,7 +90,19 @@ export function ReaderHeader({ bannerAnnouncement, urgentBar, categories }: Read
           ) : null}
         </span>
       </AnnouncementBar>
-    ) : undefined
+    ) : (
+      <div className="relative z-[60] overflow-hidden border-b border-background/10 bg-foreground px-4 py-2 font-sans text-[11px] text-background/64 sm:px-6 lg:px-10">
+        <div className="mx-auto flex max-w-[1460px] flex-nowrap items-center justify-between gap-4 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <p className="min-w-max">
+            <span className="mr-2 font-black uppercase tracking-[0.16em] text-primary">Street mode</span>
+            Lis un article, puis le suivant. Simple.
+          </p>
+          <Link href="/search" className="hidden shrink-0 font-black uppercase tracking-[0.12em] text-background hover:text-primary md:block">
+            Rechercher
+          </Link>
+        </div>
+      </div>
+    )
 
   return (
     <EditorialReaderHeader
@@ -111,7 +123,7 @@ export function ReaderHeader({ bannerAnnouncement, urgentBar, categories }: Read
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              'rounded-full border border-primary/40 bg-primary/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20'
+              'rounded-full border border-background/15 bg-background/5 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-background transition-colors hover:bg-primary'
             )}
           >
             Annonceurs

@@ -26,6 +26,8 @@ import { getAccessToken } from '@auth0/nextjs-auth0/client'
 import { isValidYoutubeUrl, toYoutubeEmbedUrl } from '@/lib/youtube'
 import { normalizeAllowedEmbedPath, PRESET_EMBED_PATHS } from '@/lib/embedAllowlist'
 import { ArticleEmbed, buildArticleEmbedAttrs } from '@/extensions/tiptapArticleEmbed'
+import { KeyTakeaways } from '@/extensions/tiptapKeyTakeaways'
+import { buildDefaultKeyTakeawaysAttrs, normalizeKeyTakeawaysAttrs } from '@/lib/keyTakeaways'
 import { compressImageFileToJpegBase64 } from '@/lib/imageCompress'
 import { apiPostAuth } from '@/lib/api/adminClient'
 import type { ApiResponse, MediaRecord } from '@/lib/api/types'
@@ -391,6 +393,9 @@ function sanitizeNode(node: Record<string, unknown>): Record<string, unknown> {
     a.minHeight = Number.isFinite(mh) ? Math.min(Math.max(mh, 200), 1200) : 420
     out.attrs = a
   }
+  if (out.type === 'keyTakeaways') {
+    out.attrs = normalizeKeyTakeawaysAttrs(out.attrs)
+  }
 
   // Sanitize marks (each mark can also carry attrs)
   if (Array.isArray(out.marks)) {
@@ -629,6 +634,7 @@ export function TiptapEditor({
         height: 360,
       }),
       ArticleEmbed,
+      KeyTakeaways,
       Placeholder.configure({ placeholder: safePlaceholder }),
       CharacterCount,
     ],
@@ -739,6 +745,18 @@ export function TiptapEditor({
       .run()
   }, [editor])
 
+  const addKeyTakeaways = useCallback(() => {
+    if (!editor) return
+    editor
+      .chain()
+      .focus()
+      .insertContent({
+        type: 'keyTakeaways',
+        attrs: buildDefaultKeyTakeawaysAttrs(),
+      })
+      .run()
+  }, [editor])
+
   const addEmbedPath = useCallback(() => {
     if (!editor) return
     setPromptKind('embed')
@@ -812,7 +830,7 @@ export function TiptapEditor({
         setPromptError('')
       }
     },
-    [editor, promptKind, onMediaInserted],
+    [editor, promptKind],
   )
 
   const promptConfig =
@@ -1027,6 +1045,9 @@ export function TiptapEditor({
             title="Citation"
           >
             <IconQuote className={iconSize} />
+          </ToolbarButton>
+          <ToolbarButton onClick={addKeyTakeaways} title="Ce qu'il faut retenir">
+            <IconList className={iconSize} />
           </ToolbarButton>
           <ToolbarButton
             onClick={() =>

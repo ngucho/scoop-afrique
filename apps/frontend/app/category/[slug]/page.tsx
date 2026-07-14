@@ -1,11 +1,9 @@
-import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import { Heading, Button, SectionHeader, Breadcrumb, MotionEnter, Text } from 'scoop'
+import { ArrowRight } from 'lucide-react'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { ArticleCard } from '@/components/reader/ArticleCard'
-import { FeaturedHero } from '@/components/reader/FeaturedHero'
 import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { apiGet } from '@/lib/api/client'
 import { config } from '@/lib/config'
@@ -46,8 +44,7 @@ async function getArticlesByCategory(
 export async function generateStaticParams() {
   try {
     const res = await apiGet<{ data: Category[] }>('/categories', { revalidate: 600 })
-    const categories = res.data ?? []
-    return categories.map((c) => ({ slug: c.slug }))
+    return (res.data ?? []).map((c) => ({ slug: c.slug }))
   } catch {
     return []
   }
@@ -60,30 +57,18 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
   const category = await getCategoryBySlug(slug)
-  if (!category) return { title: 'Catégorie introuvable' }
-  const title = `${category.name} — Rubrique | Scoop.Afrique`
+  if (!category) return { title: 'Categorie introuvable' }
+  const title = `${category.name} - Scoop Afrique`
   const description =
     category.description?.trim() ||
-    `Articles, analyses et décryptages ${category.name.toLowerCase()} — Scoop Afrique.`
+    `Articles et lectures Scoop Afrique dans la rubrique ${category.name}.`
   const url = `${SITE_URL}/category/${encodeURIComponent(slug)}`
   return {
     title,
     description,
-    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-    openGraph: {
-      title,
-      description,
-      url,
-      siteName: 'Scoop.Afrique',
-      type: 'website',
-      locale: 'fr_FR',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
-    },
     alternates: { canonical: url },
+    openGraph: { title, description, url, siteName: 'Scoop Afrique', type: 'website' },
+    twitter: { card: 'summary_large_image', title, description },
   }
 }
 
@@ -97,8 +82,6 @@ export default async function CategoryPage({ params }: PageProps) {
     fetchAdPlacements(),
   ])
   const catTop = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, AD_SLOT_KEYS.CAT_TOP)
-  const listMid = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, AD_SLOT_KEYS.LIST_MID)
-
   const featured = articles[0]
   const rest = articles.slice(1)
   const url = `${SITE_URL}/category/${encodeURIComponent(slug)}`
@@ -109,119 +92,108 @@ export default async function CategoryPage({ params }: PageProps) {
     name: category.name,
     description: category.description ?? undefined,
     url,
-    isPartOf: { '@type': 'WebSite', name: 'Scoop.Afrique', url: SITE_URL },
+    isPartOf: { '@type': 'WebSite', name: 'Scoop Afrique', url: SITE_URL },
     numberOfItems: total,
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: articles.length,
-      itemListElement: articles.slice(0, 12).map((a, i) => ({
+      itemListElement: articles.slice(0, 12).map((article, index) => ({
         '@type': 'ListItem',
-        position: i + 1,
-        url: `${SITE_URL}/articles/${a.slug}`,
-        name: a.title,
+        position: index + 1,
+        url: `${SITE_URL}/articles/${article.slug}`,
+        name: article.title,
       })),
     },
-  }
-
-  const breadcrumbJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Accueil', item: `${SITE_URL}/` },
-      { '@type': 'ListItem', position: 2, name: 'Articles', item: `${SITE_URL}/articles` },
-      { '@type': 'ListItem', position: 3, name: category.name, item: url },
-    ],
   }
 
   return (
     <ReaderLayout>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <Breadcrumb
-          className="mb-6"
-          items={[
-            { label: 'Accueil', href: '/' },
-            { label: 'Articles', href: '/articles' },
-            { label: category.name },
-          ]}
-        />
-
-        <header className="mb-10">
-          <SectionHeader label="Rubrique" className="mb-4" />
-          <Heading as="h1" level="h1" className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {category.name}
-          </Heading>
-          <Text variant="muted" className="mt-3 max-w-2xl">
-            {category.description?.trim() ||
-              `Hub éditorial : les derniers articles classés dans « ${category.name} ».`}
-          </Text>
-        </header>
-
-        {catTop ? (
-          <MotionEnter as="div" className="mb-10 flex justify-center">
-            <AdSlotSection slotKey={AD_SLOT_KEYS.CAT_TOP} creative={catTop.creative} className="w-full max-w-3xl" />
-          </MotionEnter>
-        ) : null}
-
-        {featured ? (
-          <MotionEnter as="section" className="mb-12">
-            <SectionHeader label="À la une dans cette rubrique" className="mb-6" />
-            <FeaturedHero article={featured} />
-          </MotionEnter>
-        ) : null}
-
-        <section>
-          <SectionHeader label="Dans cette rubrique" className="mb-6" />
-          {rest.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2">
-              {rest.flatMap((article: Article, i: number) => {
-                const out: React.ReactNode[] = []
-                if (i === 2 && listMid) {
-                  out.push(
-                    <div key="ad-cat-mid" className="col-span-full flex justify-center py-2 sm:col-span-2">
-                      <AdSlotSection
-                        slotKey={AD_SLOT_KEYS.LIST_MID}
-                        creative={listMid.creative}
-                        className="w-full max-w-[300px]"
-                      />
-                    </div>
-                  )
-                }
-                out.push(
-                  <MotionEnter key={article.id} className="scoop-motion-hover-depth rounded-xl">
-                    <ArticleCard article={article} variant="row" />
-                  </MotionEnter>
-                )
-                return out
-              })}
+      <main className="bg-background text-foreground">
+        <section className="mx-auto max-w-[1460px] px-5 py-8 sm:px-8 lg:px-10 lg:py-12">
+          <Link href="/articles" className="font-sans text-xs font-black uppercase tracking-[0.12em] text-primary">
+            Articles
+          </Link>
+          <div className="mt-5 grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+            <div>
+              <p className="font-sans text-[10px] font-black uppercase tracking-[0.18em] text-primary">Rubrique</p>
+              <h1
+                className="mt-3 text-6xl font-black leading-[0.88] sm:text-8xl"
+                style={{ fontFamily: 'var(--font-headline)' }}
+              >
+                {category.name}
+              </h1>
             </div>
+            <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+              {category.description?.trim() ||
+                `Un fil simple pour lire les derniers sujets ${category.name}, sans te perdre dans trop de blocs.`}
+            </p>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-[1460px] px-5 pb-12 sm:px-8 lg:px-10">
+          {catTop ? (
+            <div className="mb-8 flex justify-center">
+              <AdSlotSection slotKey={AD_SLOT_KEYS.CAT_TOP} creative={catTop.creative} className="w-full max-w-3xl" />
+            </div>
+          ) : null}
+
+          {featured ? (
+            <div className="mb-10 grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-stretch">
+              <div className="rounded-[1.5rem] bg-foreground p-5 text-background sm:p-7">
+                <p className="font-sans text-[10px] font-black uppercase tracking-[0.16em] text-primary">A lancer</p>
+                <h2
+                  className="mt-4 text-4xl font-black leading-none sm:text-5xl"
+                  style={{ fontFamily: 'var(--font-headline)' }}
+                >
+                  Commence par ce sujet.
+                </h2>
+                <p className="mt-4 text-sm leading-6 text-background/64">
+                  Puis continue avec la file de lecture de cette rubrique.
+                </p>
+                <Link
+                  href={`/articles/${featured.slug}`}
+                  className="mt-7 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 font-sans text-xs font-black uppercase tracking-[0.1em] text-background"
+                >
+                  Lire maintenant <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </div>
+              <ArticleCard article={featured} imagePriority />
+            </div>
+          ) : null}
+
+          {rest.length > 0 ? (
+            <>
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <h2 className="font-sans text-sm font-black uppercase tracking-[0.14em]">Dans le fil</h2>
+                <Link href={`/articles?category=${encodeURIComponent(slug)}`} className="font-sans text-xs font-black uppercase tracking-[0.1em] text-primary">
+                  Tout voir
+                </Link>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {rest.map((article: Article, index: number) => (
+                  <ArticleCard key={article.id} article={article} variant={index < 2 ? 'default' : 'row'} imagePriority={index < 2} />
+                ))}
+              </div>
+            </>
           ) : articles.length === 0 ? (
-            <div className="rounded-xl border border-border bg-muted/30 px-6 py-16 text-center sm:px-12">
-              <Heading as="h2" level="h3" className="mb-2">
-                Aucun article
-              </Heading>
-              <p className="mb-6 text-muted-foreground">
-                Aucun article dans cette catégorie pour le moment.
+            <div className="rounded-[1.5rem] border border-border bg-card p-8 text-center sm:p-12">
+              <h2 className="text-3xl font-black" style={{ fontFamily: 'var(--font-headline)' }}>
+                Rien pour le moment.
+              </h2>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+                Cette rubrique n&apos;a pas encore d&apos;article publie.
               </p>
-              <Button asChild>
-                <Link href="/articles">Voir tous les articles</Link>
-              </Button>
+              <Link
+                href="/articles"
+                className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-foreground px-5 font-sans text-xs font-black uppercase tracking-[0.1em] text-background"
+              >
+                Voir tous les articles
+              </Link>
             </div>
           ) : null}
         </section>
-
-        {total > LIMIT ? (
-          <div className="mt-12 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Button asChild size="lg">
-              <Link href={`/articles?category=${encodeURIComponent(slug)}`}>Voir plus d&apos;articles</Link>
-            </Button>
-            <Text variant="muted" className="text-sm">
-              {total} articles au total dans cette rubrique.
-            </Text>
-          </div>
-        ) : null}
-      </div>
+      </main>
     </ReaderLayout>
   )
 }

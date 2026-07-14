@@ -9,8 +9,15 @@ import * as readerProfileService from '../services/reader-profile.service.js'
 import { getOrCreateProfile } from '../services/profile.service.js'
 import * as tribuneFollow from '../services/tribune-follow.service.js'
 import * as contributionService from '../services/contribution.service.js'
+import * as offlineService from '../services/offline.service.js'
+import { z } from 'zod'
 
 const app = new Hono()
+
+const savedArticleBodySchema = z.object({
+  article_id: z.string().uuid(),
+  offline_enabled: z.boolean().optional(),
+})
 
 app.use('*', requireReaderAuth)
 
@@ -149,6 +156,38 @@ app.get('/me/contributions', async (c) => {
     sort: 'latest',
   })
   return c.json({ data, next_cursor })
+})
+
+app.get('/me/saved-articles', async (c) => {
+  const reader = c.get('reader' as never) as { sub: string; email: string }
+  await readerSubscriberService.getOrCreateReaderSubscriber(reader.sub, reader.email)
+  const rows = await offlineService.listSavedArticles(reader.sub)
+  return c.json({ data: rows.map(offlineService.toOfflineManifestItem).filter(Boolean) })
+})
+
+app.post('/me/saved-articles', async (c) => {
+  const reader = c.get('reader' as never) as { sub: string; email: string }
+  await readerSubscriberService.getOrCreateReaderSubscriber(reader.sub, reader.email)
+  const parsed = savedArticleBodySchema.safeParse(await c.req.json().catch(() => ({})))
+  if (!parsed.success) {
+    return c.json({ error: 'Validation failed', details: parsed.error.flatten() }, 400)
+  }
+
+  const ok = await offlineService.saveArticleForReader({
+    auth0Sub: reader.sub,
+    articleId: parsed.data.article_id,
+    offlineEnabled: parsed.data.offline_enabled,
+  })
+  if (!ok) return c.json({ error: 'Article not found' }, 404)
+  return c.json({ data: { article_id: parsed.data.article_id, saved: true } }, 201)
+})
+
+app.delete('/me/saved-articles/:articleId', async (c) => {
+  const reader = c.get('reader' as never) as { sub: string; email: string }
+  const articleId = c.req.param('articleId')
+  const ok = await offlineService.unsaveArticleForReader(reader.sub, articleId)
+  if (!ok) return c.json({ error: 'Not found' }, 404)
+  return c.body(null, 204)
 })
 
 export default app

@@ -12,6 +12,7 @@ import * as likeService from '../services/like.service.js'
 import { getAuthUser } from '../lib/auth.js'
 import { config } from '../config/env.js'
 import { normalizePublicSearchQuery } from '../lib/search-query.js'
+import { isNotModified, setConditionalCacheHeaders, weakEtag } from '../lib/http-cache.js'
 
 const app = new Hono()
 
@@ -21,7 +22,7 @@ app.get('/most-read', async (c) => {
   const days = Math.min(Math.max(Number(c.req.query('days')) || 7, 1), 90)
   const limit = Math.min(Math.max(Number(c.req.query('limit')) || 8, 1), 15)
   const list = await articleService.getPublishedArticlesMostReadForHero(days, limit)
-  const presented = list.map((a) => articleService.presentArticleForPublicApi(a))
+  const presented = list.map((a) => articleService.presentArticleCardForPublicApi(a))
   c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
   return c.json({ data: presented })
 })
@@ -32,17 +33,30 @@ app.get('/', async (c) => {
   const category = c.req.query('category')
   const q = normalizePublicSearchQuery(c.req.query('q'))
   const tag = c.req.query('tag')
+  const cursor = c.req.query('cursor')
+  const useCursor = cursor !== undefined || c.req.query('pagination') === 'cursor'
   const page = Number(c.req.query('page')) || 1
   const limit = Math.min(Number(c.req.query('limit')) || 20, 100)
-  const { data, total } = await articleService.listArticles({
+  if (useCursor) {
+    const { data, next_cursor } = await articleService.listPublicArticleCardsCursor({
+      category: category || undefined,
+      q: q || undefined,
+      tag: tag || undefined,
+      cursor,
+      limit,
+    })
+    const presented = data.map((a) => articleService.presentArticleCardForPublicApi(a))
+    c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
+    return c.json({ data: presented, next_cursor, limit })
+  }
+  const { data, total } = await articleService.listPublicArticleCards({
     category: category || undefined,
     q: q || undefined,
     tag: tag || undefined,
     page,
     limit,
-    status: 'published',
   })
-  const presented = data.map((a) => articleService.presentArticleForPublicApi(a))
+  const presented = data.map((a) => articleService.presentArticleCardForPublicApi(a))
   // Cache article lists for 30s, serve stale for 5 min while revalidating
   c.header('Cache-Control', 'public, max-age=30, stale-while-revalidate=300')
   return c.json({ data: presented, total, page, limit })
@@ -63,8 +77,13 @@ app.get('/:id', async (c) => {
     articleService.incrementViewCount(article.id).catch(() => {})
   }
 
-  // Cache single articles for 60s, stale for 10 min
-  c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=600')
+  const cacheMetadata = {
+    etag: weakEtag(['article', article.id, article.version, article.updated_at]),
+    lastModified: new Date(article.updated_at).toUTCString(),
+    cacheControl: 'public, max-age=60, stale-while-revalidate=600',
+  }
+  setConditionalCacheHeaders(c, cacheMetadata)
+  if (isNotModified(c.req.raw.headers, cacheMetadata)) return c.body(null, 304)
   return c.json({ data: articleService.presentArticleForPublicApi(article) })
 })
 
