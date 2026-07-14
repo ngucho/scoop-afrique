@@ -136,8 +136,8 @@ export default async function ProgrammeDetailPage({ params }: Props) {
           <CtaButton href={`/demander-devis?programme=${program.slug}`} variant="fillHover">
             Brief sponsoring — {program.title}
           </CtaButton>
-          <CtaButton href="/tarifs" variant="outline">
-            Grille tarifaire
+          <CtaButton href="/services" variant="outline">
+            Offres & prix
           </CtaButton>
           <CtaButton href="https://www.scoop-afrique.com" variant="outline" external>
             Voir le média en ligne

@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const service = getServiceBySlug(slug)
   if (!service) return { title: 'Service non trouvé' }
   const title = `${service.title} | Scoop Afrique`
-  const description = `${service.tagline} — ${service.summary} Tarifs : ${service.price}.`
+  const description = `${service.tagline} — ${service.summary} Prix : ${service.price}.`
   const url = `${BASE_URL}/services/${slug}`
   // Service image for OG (absolute URL for social sharing)
   const imageUrl = service.image.startsWith('http') ? service.image : `${BASE_URL}${service.image}`

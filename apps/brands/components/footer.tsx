@@ -18,7 +18,6 @@ const pageLinks: NavLinkItem[] = [
   { label: 'Lire scoop-afrique.com', href: wwwPath('/'), external: true },
   { label: 'Offres & services', href: '/services' },
   { label: 'Programmes sponsoring', href: '/programmes' },
-  { label: 'Tarifs & grille 2026', href: '/tarifs' },
   { label: 'Réalisations', href: '/realisations' },
   { label: 'FAQ', href: '/faq' },
   { label: 'À propos', href: '/a-propos' },

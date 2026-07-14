@@ -32,6 +32,19 @@
   to { width: 100%; }
 }
 
+@keyframes brand-pan {
+  0%, 100% {
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.08) translate3d(-1.5%, -1%, 0);
+  }
+}
+
+.animate-brand-pan {
+  animation: brand-pan 9s ease-in-out infinite;
+}
+
 .noise-overlay {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   opacity: 0.03;
@@ -78,7 +91,8 @@
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
-  .animate-fade-in {
+  .animate-fade-in,
+  .animate-brand-pan {
     animation: none;
     opacity: 1;
     transform: none;

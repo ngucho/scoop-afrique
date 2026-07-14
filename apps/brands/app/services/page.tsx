@@ -21,7 +21,7 @@ export default async function ServicesPage() {
   const audience = await getBrandAudienceSummary()
   const stats = [
     { icon: Users, value: audience.totalSocial.display, label: 'Audience sociale' },
-    { icon: BarChart3, value: audience.siteVisits.display, label: 'Visites mensuelles site' },
+    { icon: BarChart3, value: audience.stats.find((s) => s.key === 'tiktok')?.display ?? '+1M', label: 'TikTok' },
     { icon: Target, value: '5', label: 'Offres modulaires' },
   ]
 
