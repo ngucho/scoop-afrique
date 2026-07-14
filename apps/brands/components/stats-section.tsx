@@ -1,99 +1,28 @@
-'use client'
+import type { BrandAudienceSummary } from '@/lib/brand-audience'
 
-import { useEffect, useState } from 'react'
-
-const fallbackStats = [
-  { value: '+1,4 M', label: 'Abonnés cumulés' },
-  { value: '910 K', label: 'TikTok' },
-  { value: '410 K', label: 'Facebook (monétisé)' },
-  { value: '12+', label: 'Pays' },
-]
-
-function formatMetricLabel(platform: string, metricKey: string): string {
-  const p = platform.toLowerCase()
-  const m = metricKey.toLowerCase()
-  if (m === 'followers' || m === 'subscribers') return `${p} — abonnés`
-  if (m === 'views' || m === 'views_30d') return `${p} — vues`
-  if (m === 'countries_reach') return 'Pays (portée)'
-  return `${platform} — ${metricKey}`
-}
-
-function formatMetricValue(raw: string): string {
-  const n = Number(raw.replace(',', '.'))
-  if (Number.isNaN(n)) return raw
-  if (n >= 1_000_000) return `+${(n / 1_000_000).toFixed(1).replace('.', ',')} M`
-  if (n >= 1_000) return `${Math.round(n / 1_000)} K`
-  return n.toLocaleString('fr-FR')
-}
-
-export function StatsSection() {
-  const [stats, setStats] = useState(fallbackStats)
-  const [source, setSource] = useState<'live' | 'fallback'>('fallback')
-
-  useEffect(() => {
-    const api = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '')
-    if (!api) return
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await fetch(`${api}/api/v1/public/audience/summary`, { cache: 'no-store' })
-        if (!res.ok) return
-        const json = (await res.json()) as {
-          data?: { platform: string; metric_key: string; value_numeric: string }[]
-        }
-        const rows = json.data ?? []
-        if (rows.length === 0 || cancelled) return
-        const mapped = rows.slice(0, 8).map((r) => ({
-          value: formatMetricValue(r.value_numeric),
-          label: formatMetricLabel(r.platform, r.metric_key),
-        }))
-        if (!cancelled) {
-          setStats(mapped.length >= 4 ? mapped.slice(0, 4) : mapped)
-          setSource('live')
-        }
-      } catch {
-        /* keep fallback */
-      }
-    })()
-    return () => { cancelled = true }
-  }, [])
+export function StatsSection({ audience }: { audience: BrandAudienceSummary }) {
+  const stats = [audience.totalSocial, ...audience.stats, audience.siteVisits]
 
   return (
-    <section className="relative overflow-hidden border-y border-border bg-card py-16 md:py-20">
-      {/* Accent ligne gauche */}
-      <div className="absolute left-0 top-0 h-full w-1 bg-primary" aria-hidden />
+    <section className="relative overflow-hidden border-y border-border bg-card py-14 md:py-18">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-20">
+        <div className="mb-8 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">Audience verifiee</p>
+            <h2 className="mt-2 text-2xl font-black text-foreground md:text-3xl" style={{ fontFamily: 'var(--font-headline)' }}>
+              Une puissance sociale, pas une promesse.
+            </h2>
+          </div>
+          <p className="max-w-sm text-sm text-muted-foreground">{audience.sourceLabel}</p>
+        </div>
 
-      <div className="mx-auto max-w-7xl px-6 md:px-12 lg:px-20">
-        {/* Source label */}
-        <p className="mb-10 font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-          Audience —{' '}
-          {source === 'live'
-            ? 'chiffres synchronisés depuis le back-office Scoop'
-            : 'mars 2026 · analytics internes'}
-        </p>
-
-        {/* Stats en grande typographie éditoriale */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-4">
-          {stats.map((s, i) => (
-            <div
-              key={s.label}
-              className="relative"
-            >
-              {i > 0 ? (
-                <span
-                  className="absolute -left-4 top-0 hidden h-full w-px bg-border md:block"
-                  aria-hidden
-                />
-              ) : null}
-              <p
-                className="font-sans text-[clamp(2rem,4vw,3rem)] font-black leading-none text-primary"
-                style={{ fontFamily: 'var(--font-headline)' }}
-              >
-                {s.value}
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {stats.map((stat) => (
+            <div key={stat.key} className="rounded-xl border border-border bg-background p-4">
+              <p className="text-[clamp(1.8rem,4vw,3.2rem)] font-black leading-none text-primary" style={{ fontFamily: 'var(--font-headline)' }}>
+                {stat.display}
               </p>
-              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                {s.label}
-              </p>
+              <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{stat.label}</p>
             </div>
           ))}
         </div>
