@@ -109,7 +109,7 @@ function DevisFormInner() {
 
   if (status === 'success') {
     return (
-      <main className="min-h-screen bg-background text-foreground">
+      <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
         <article className="mx-auto max-w-2xl px-4 py-16 sm:px-8 sm:py-20">
           <Card className="border-primary/20 bg-primary/5 p-6 text-center sm:p-12">
             <CheckCircle className="mx-auto mb-6 h-16 w-16 text-primary" />
@@ -130,7 +130,7 @@ function DevisFormInner() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <article className="mx-auto max-w-2xl px-4 py-14 sm:px-8 sm:py-16">
         <div className="mb-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
           <Dot size="sm" className="text-primary" />

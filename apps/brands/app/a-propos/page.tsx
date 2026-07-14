@@ -35,7 +35,7 @@ export default async function AboutPage() {
   const stats = [audience.totalSocial, ...audience.stats]
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <section className="border-b border-border bg-card py-14 sm:py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-8 md:px-12 lg:px-20">
           <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary sm:tracking-[0.28em]">Manifeste</p>

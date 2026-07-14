@@ -40,7 +40,7 @@ export default async function ProgrammeDetailPage({ params }: Props) {
   if (!program) notFound()
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <article className="mx-auto max-w-3xl px-4 py-14 sm:px-8 sm:py-16 md:px-12 md:py-24">
         <nav className="mb-8 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
           <Link href="/programmes" className="text-primary transition-colors hover:underline">

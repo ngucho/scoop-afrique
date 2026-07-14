@@ -42,7 +42,7 @@ const departments = [
 
 export default function ContactPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <article className="mx-auto max-w-4xl px-4 py-14 sm:px-8 sm:py-16">
         <Heading as="h1" level="h1" className="mb-4 break-words">
           Contactez <span className="text-primary">Scoop Afrique</span>

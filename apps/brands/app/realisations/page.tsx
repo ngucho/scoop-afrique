@@ -87,7 +87,7 @@ const stats = [
 
 export default function RealisationsPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <section className="relative overflow-hidden border-b border-border bg-card py-14 sm:py-20 md:py-28">
         <div className="mx-auto max-w-6xl px-4 sm:px-8 md:px-12">
           <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
