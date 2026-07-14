@@ -32,7 +32,7 @@ const pillars = [
 
 export default async function AboutPage() {
   const audience = await getBrandAudienceSummary()
-  const stats = [audience.totalSocial, ...audience.stats, audience.siteVisits]
+  const stats = [audience.totalSocial, ...audience.stats]
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -53,7 +53,7 @@ export default async function AboutPage() {
       <section className="py-14">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-20">
           <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">{audience.sourceLabel}</p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {stats.map((stat) => (
               <Card key={stat.key} className="p-4">
                 <p className="text-3xl font-black text-primary" style={{ fontFamily: 'var(--font-headline)' }}>{stat.display}</p>

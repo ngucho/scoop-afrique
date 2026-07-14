@@ -13,7 +13,6 @@ const NAV = [
   { label: 'Lire le média', href: READER_HOME },
   { label: 'Offres', href: '/services' },
   { label: 'Programmes', href: '/programmes' },
-  { label: 'Tarifs', href: '/tarifs' },
   { label: 'Réalisations', href: '/realisations' },
   { label: 'À propos', href: '/a-propos' },
   { label: 'Contact', href: '/contact' },

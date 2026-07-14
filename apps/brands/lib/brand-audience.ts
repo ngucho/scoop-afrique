@@ -17,7 +17,6 @@ export interface BrandAudienceStat {
 export interface BrandAudienceSummary {
   stats: BrandAudienceStat[]
   totalSocial: BrandAudienceStat
-  siteVisits: BrandAudienceStat
   sourceLabel: string
 }
 
@@ -26,7 +25,6 @@ const FALLBACKS: Record<string, { label: string; value: number }> = {
   facebook: { label: 'Facebook', value: 488_000 },
   instagram: { label: 'Instagram', value: 46_600 },
   threads: { label: 'Threads', value: 101_000 },
-  site: { label: 'Visites mensuelles site', value: 10_000 },
 }
 
 function normalizeKey(platform: string): string {
@@ -35,18 +33,12 @@ function normalizeKey(platform: string): string {
   if (p.includes('facebook') || p === 'fb') return 'facebook'
   if (p.includes('instagram') || p === 'ig') return 'instagram'
   if (p.includes('thread')) return 'threads'
-  if (p.includes('site') || p.includes('web') || p.includes('website')) return 'site'
   return p
 }
 
 function metricIsAudience(metricKey: string): boolean {
   const key = metricKey.toLowerCase()
   return key === 'followers' || key === 'subscribers' || key === 'audience'
-}
-
-function metricIsSiteVisits(metricKey: string): boolean {
-  const key = metricKey.toLowerCase()
-  return key === 'visits' || key === 'visits_30d' || key === 'sessions' || key === 'pageviews'
 }
 
 export function formatAudienceNumber(value: number): string {
@@ -62,10 +54,6 @@ function pickRows(rows: AudienceMetricRow[]): Map<string, AudienceMetricRow> {
   const picked = new Map<string, AudienceMetricRow>()
   for (const row of rows) {
     const key = normalizeKey(row.platform)
-    if (key === 'site') {
-      if (metricIsSiteVisits(row.metric_key)) picked.set('site', row)
-      continue
-    }
     if (metricIsAudience(row.metric_key)) picked.set(key, row)
   }
   return picked
@@ -86,10 +74,8 @@ export function buildBrandAudienceSummary(rows: AudienceMetricRow[]): BrandAudie
       source: row ? 'admin' as const : 'fallback' as const,
     }
   })
-  const siteRow = picked.get('site')
-  const siteValue = siteRow ? Number(siteRow.value_numeric) : FALLBACKS.site.value
   const totalValue = stats.reduce((sum, stat) => sum + stat.value, 0)
-  const hasAdmin = stats.some((stat) => stat.source === 'admin') || !!siteRow
+  const hasAdmin = stats.some((stat) => stat.source === 'admin')
 
   return {
     stats,
@@ -99,13 +85,6 @@ export function buildBrandAudienceSummary(rows: AudienceMetricRow[]): BrandAudie
       value: totalValue,
       display: formatAudienceNumber(totalValue),
       source: hasAdmin ? 'admin' : 'fallback',
-    },
-    siteVisits: {
-      key: 'site',
-      label: FALLBACKS.site.label,
-      value: siteValue,
-      display: formatAudienceNumber(siteValue),
-      source: siteRow ? 'admin' : 'fallback',
     },
     sourceLabel: hasAdmin ? 'Synchronise depuis admin / audience metrics' : 'Fallback media kit 2026',
   }

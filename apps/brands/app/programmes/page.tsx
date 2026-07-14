@@ -92,8 +92,8 @@ export default function ProgrammesPage() {
             <CtaButton href="/demander-devis" variant="fillHover">
               Demander un devis
             </CtaButton>
-            <CtaButton href="/tarifs" variant="outline">
-              Voir la grille tarifaire
+            <CtaButton href="/services" variant="outline">
+              Voir les offres & prix
             </CtaButton>
             <CtaButton href="mailto:contact@scoop-afrique.com" variant="outline" external>
               contact@scoop-afrique.com

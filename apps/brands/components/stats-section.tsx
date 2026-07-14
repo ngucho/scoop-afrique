@@ -1,7 +1,7 @@
 import type { BrandAudienceSummary } from '@/lib/brand-audience'
 
 export function StatsSection({ audience }: { audience: BrandAudienceSummary }) {
-  const stats = [audience.totalSocial, ...audience.stats, audience.siteVisits]
+  const stats = [audience.totalSocial, ...audience.stats]
 
   return (
     <section className="relative overflow-hidden border-y border-border bg-card py-14 md:py-18">
@@ -16,7 +16,7 @@ export function StatsSection({ audience }: { audience: BrandAudienceSummary }) {
           <p className="max-w-sm text-sm text-muted-foreground">{audience.sourceLabel}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           {stats.map((stat) => (
             <div key={stat.key} className="rounded-xl border border-border bg-background p-4">
               <p className="text-[clamp(1.8rem,4vw,3.2rem)] font-black leading-none text-primary" style={{ fontFamily: 'var(--font-headline)' }}>

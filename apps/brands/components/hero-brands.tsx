@@ -8,7 +8,7 @@ export function HeroBrands({ audience }: { audience: BrandAudienceSummary }) {
   const heroStats = [
     audience.totalSocial,
     audience.stats.find((s) => s.key === 'tiktok')!,
-    audience.siteVisits,
+    audience.stats.find((s) => s.key === 'facebook')!,
   ]
 
   return (
@@ -53,8 +53,8 @@ export function HeroBrands({ audience }: { audience: BrandAudienceSummary }) {
               <CtaButton href="/demander-devis" variant="fillHover">
                 Construire une campagne
               </CtaButton>
-              <CtaButton href="/tarifs" variant="outline">
-                Voir les tarifs 2026
+              <CtaButton href="/services" variant="outline">
+                Voir les offres
               </CtaButton>
             </div>
           </div>
@@ -72,7 +72,7 @@ export function HeroBrands({ audience }: { audience: BrandAudienceSummary }) {
               ))}
             </div>
             <p className="mt-5 text-xs leading-5 text-muted-foreground">
-              TikTok, Facebook, Instagram, Threads et site media: des points d&apos;entree differents, un meme recit africain.
+              TikTok, Facebook, Instagram et Threads: des points d&apos;entree differents, un meme recit africain.
             </p>
           </div>
         </div>
