@@ -2,11 +2,21 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { PublicArticleCard } from './article.service.js'
 import {
+  canCreateArticleWithStatus,
   decodeArticleFeedCursor,
   encodeArticleFeedCursor,
   presentArticleForPublicApi,
   presentArticleCardForPublicApi,
 } from './article.service.js'
+
+test('canCreateArticleWithStatus allows published creation only for editor roles', () => {
+  assert.equal(canCreateArticleWithStatus('journalist', 'draft'), true)
+  assert.equal(canCreateArticleWithStatus('journalist', 'review'), true)
+  assert.equal(canCreateArticleWithStatus('journalist', 'published'), false)
+  assert.equal(canCreateArticleWithStatus('editor', 'published'), true)
+  assert.equal(canCreateArticleWithStatus('manager', 'published'), true)
+  assert.equal(canCreateArticleWithStatus('admin', 'published'), true)
+})
 
 test('presentArticleCardForPublicApi keeps list payloads free of article content', () => {
   const card: PublicArticleCard = {
