@@ -8,7 +8,7 @@
  * - Computes word_count / reading_time_min on every save.
  * - Uses collaborator service for canEdit checks.
  */
-import { eq, and, desc, sql, or, ilike, isNotNull } from 'drizzle-orm'
+import { eq, and, desc, sql, or, ilike, isNotNull, inArray } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { articles, articleViewEvents, categories, profiles, readerPublicProfiles } from '../db/schema.js'
 import { config } from '../config/env.js'
@@ -16,6 +16,8 @@ import type { CreateArticleBody, UpdateArticleBody } from '../schemas/article.js
 import type { AppRole } from './profile.service.js'
 import { createRevision } from './revision.service.js'
 import { canEditArticle } from './collaborator.service.js'
+import { scoreFuzzySearch } from '../lib/fuzzy-search.js'
+import { getYoutubeThumbnailUrl } from '../lib/youtube-thumbnail.js'
 
 /* ---------- Types ---------- */
 
@@ -59,6 +61,8 @@ export interface ArticleWithAuthor extends Article {
   reader_public_display_name?: string | null
 }
 
+export type PublicArticleCard = Omit<ArticleWithAuthor, 'content' | 'last_saved_by'>
+
 /** Published rows for sitemap (minimal fields, no drafts). */
 export interface SitemapArticleEntry {
   slug: string
@@ -76,6 +80,27 @@ export interface ListOptions {
   tag?: string
   /** If true, return all statuses (admin listing). */
   allowAllStatuses?: boolean
+}
+
+export interface ArticleFeedCursor {
+  published_at: string
+  id: string
+}
+
+export function encodeArticleFeedCursor(cursor: ArticleFeedCursor): string {
+  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url')
+}
+
+export function decodeArticleFeedCursor(raw: string | null | undefined): ArticleFeedCursor | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as Partial<ArticleFeedCursor>
+    if (typeof parsed.id !== 'string' || typeof parsed.published_at !== 'string') return null
+    if (Number.isNaN(Date.parse(parsed.published_at))) return null
+    return { id: parsed.id, published_at: parsed.published_at }
+  } catch {
+    return null
+  }
 }
 
 /* ---------- Helpers ---------- */
@@ -97,10 +122,26 @@ export function presentArticleForPublicApi(article: ArticleWithAuthor): ArticleW
     article.author_display_name?.trim() ||
     article.reader_public_display_name?.trim() ||
     displayNameFromEmail(article.author?.email ?? null)
+  const videoThumbnailUrl = getYoutubeThumbnailUrl(article.video_url)
   const { reader_public_display_name: _r, ...rest } = article
   return {
     ...rest,
-    og_image_url: article.og_image_url ?? article.cover_image_url,
+    og_image_url: article.og_image_url ?? article.cover_image_url ?? videoThumbnailUrl,
+    author_display_name: mergedName?.trim() || null,
+  }
+}
+
+export function presentArticleCardForPublicApi(article: PublicArticleCard): PublicArticleCard {
+  const mergedName =
+    article.author_display_name?.trim() ||
+    article.reader_public_display_name?.trim() ||
+    displayNameFromEmail(article.author?.email ?? null)
+  const videoThumbnailUrl = getYoutubeThumbnailUrl(article.video_url)
+  const { reader_public_display_name: _r, ...rest } = article
+  return {
+    ...rest,
+    cover_image_url: article.cover_image_url ?? videoThumbnailUrl,
+    og_image_url: article.og_image_url ?? article.cover_image_url ?? videoThumbnailUrl,
     author_display_name: mergedName?.trim() || null,
   }
 }
@@ -243,6 +284,12 @@ function toArticleWithAuthor(
   }
 }
 
+function toPublicArticleCard(row: Record<string, unknown>): PublicArticleCard {
+  const full = toArticleWithAuthor(row)
+  const { content: _content, last_saved_by: _lastSavedBy, ...card } = full
+  return card
+}
+
 /* ---------- List ---------- */
 
 export async function listArticles(
@@ -344,6 +391,248 @@ export async function listArticles(
     })
   )
   return { data, total }
+}
+
+export async function listPublicArticleCards(
+  options: Pick<ListOptions, 'category' | 'q' | 'page' | 'limit' | 'tag'>
+): Promise<{ data: PublicArticleCard[]; total: number }> {
+  if (!config.database) return { data: [], total: 0 }
+  const db = getDb()
+  const limit = Math.min(options.limit ?? 20, 100)
+  const offset = ((options.page ?? 1) - 1) * limit
+
+  const conditions = [eq(articles.status, 'published'), isNotNull(articles.publishedAt)]
+
+  if (options.category) {
+    const [cat] = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, options.category)).limit(1)
+    if (!cat) return { data: [], total: 0 }
+    conditions.push(eq(articles.categoryId, cat.id))
+  }
+
+  if (options.tag) {
+    conditions.push(sql`${options.tag} = ANY(${articles.tags})`)
+  }
+
+  const whereClause = and(...conditions)
+
+  if (options.q) {
+    const maxCandidates = 1500
+    const rows = await db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        title: articles.title,
+        excerpt: articles.excerpt,
+        coverImageUrl: articles.coverImageUrl,
+        coverImageCredit: articles.coverImageCredit,
+        coverImageSource: articles.coverImageSource,
+        videoUrl: articles.videoUrl,
+        coverVideoCredit: articles.coverVideoCredit,
+        categoryId: articles.categoryId,
+        authorId: articles.authorId,
+        authorDisplayName: articles.authorDisplayName,
+        tags: articles.tags,
+        status: articles.status,
+        publishedAt: articles.publishedAt,
+        scheduledAt: articles.scheduledAt,
+        metaTitle: articles.metaTitle,
+        metaDescription: articles.metaDescription,
+        ogImageUrl: articles.ogImageUrl,
+        viewCount: articles.viewCount,
+        wordCount: articles.wordCount,
+        readingTimeMin: articles.readingTimeMin,
+        version: articles.version,
+        lastSavedBy: articles.lastSavedBy,
+        createdAt: articles.createdAt,
+        updatedAt: articles.updatedAt,
+        authorEmail: profiles.email,
+        readerPublicDisplayName: readerPublicProfiles.displayName,
+        catId: categories.id,
+        catName: categories.name,
+        catSlug: categories.slug,
+      })
+      .from(articles)
+      .leftJoin(profiles, eq(articles.authorId, profiles.id))
+      .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
+      .leftJoin(categories, eq(articles.categoryId, categories.id))
+      .where(whereClause)
+      .orderBy(desc(articles.publishedAt))
+      .limit(maxCandidates)
+
+    const cards = rows.map((r) =>
+      toPublicArticleCard({
+        ...r,
+        categoryId: r.catId ?? undefined,
+        categoryName: r.catName ?? undefined,
+        categorySlug: r.catSlug ?? undefined,
+      })
+    )
+    const scored = scoreFuzzySearch(options.q, cards.map((card) => ({
+      item: card,
+      fields: [
+        { value: card.title, weight: 4 },
+        { value: card.excerpt, weight: 2 },
+        { value: card.tags.join(' '), weight: 2 },
+        { value: card.category?.name, weight: 2 },
+        { value: card.author_display_name, weight: 1 },
+      ],
+    })))
+    const paged = scored.slice(offset, offset + limit).map((result) => result.item)
+    return { data: paged, total: scored.length }
+  }
+
+  const [countRow, rows] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(articles)
+      .where(whereClause),
+    db
+      .select({
+        id: articles.id,
+        slug: articles.slug,
+        title: articles.title,
+        excerpt: articles.excerpt,
+        coverImageUrl: articles.coverImageUrl,
+        coverImageCredit: articles.coverImageCredit,
+        coverImageSource: articles.coverImageSource,
+        videoUrl: articles.videoUrl,
+        coverVideoCredit: articles.coverVideoCredit,
+        categoryId: articles.categoryId,
+        authorId: articles.authorId,
+        authorDisplayName: articles.authorDisplayName,
+        tags: articles.tags,
+        status: articles.status,
+        publishedAt: articles.publishedAt,
+        scheduledAt: articles.scheduledAt,
+        metaTitle: articles.metaTitle,
+        metaDescription: articles.metaDescription,
+        ogImageUrl: articles.ogImageUrl,
+        viewCount: articles.viewCount,
+        wordCount: articles.wordCount,
+        readingTimeMin: articles.readingTimeMin,
+        version: articles.version,
+        lastSavedBy: articles.lastSavedBy,
+        createdAt: articles.createdAt,
+        updatedAt: articles.updatedAt,
+        authorEmail: profiles.email,
+        readerPublicDisplayName: readerPublicProfiles.displayName,
+        catId: categories.id,
+        catName: categories.name,
+        catSlug: categories.slug,
+      })
+      .from(articles)
+      .leftJoin(profiles, eq(articles.authorId, profiles.id))
+      .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
+      .leftJoin(categories, eq(articles.categoryId, categories.id))
+      .where(whereClause)
+      .orderBy(desc(articles.publishedAt))
+      .limit(limit)
+      .offset(offset),
+  ])
+
+  const data = rows.map((r) =>
+    toPublicArticleCard({
+      ...r,
+      categoryId: r.catId ?? undefined,
+      categoryName: r.catName ?? undefined,
+      categorySlug: r.catSlug ?? undefined,
+    })
+  )
+  return { data, total: countRow[0]?.count ?? 0 }
+}
+
+export async function listPublicArticleCardsCursor(options: {
+  category?: string
+  q?: string
+  tag?: string
+  cursor?: string | null
+  limit?: number
+}): Promise<{ data: PublicArticleCard[]; next_cursor: string | null }> {
+  if (!config.database) return { data: [], next_cursor: null }
+  const db = getDb()
+  const limit = Math.min(options.limit ?? 20, 100)
+  const cursor = decodeArticleFeedCursor(options.cursor)
+
+  const conditions = [eq(articles.status, 'published'), isNotNull(articles.publishedAt)]
+
+  if (options.category) {
+    const [cat] = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, options.category)).limit(1)
+    if (!cat) return { data: [], next_cursor: null }
+    conditions.push(eq(articles.categoryId, cat.id))
+  }
+
+  if (options.tag) {
+    conditions.push(sql`${options.tag} = ANY(${articles.tags})`)
+  }
+
+  if (options.q) {
+    conditions.push(or(ilike(articles.title, `%${options.q}%`), ilike(articles.excerpt, `%${options.q}%`))!)
+  }
+
+  if (cursor) {
+    conditions.push(sql`(${articles.publishedAt}, ${articles.id}) < (${new Date(cursor.published_at)}, ${cursor.id}::uuid)`)
+  }
+
+  const rows = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      excerpt: articles.excerpt,
+      coverImageUrl: articles.coverImageUrl,
+      coverImageCredit: articles.coverImageCredit,
+      coverImageSource: articles.coverImageSource,
+      videoUrl: articles.videoUrl,
+      coverVideoCredit: articles.coverVideoCredit,
+      categoryId: articles.categoryId,
+      authorId: articles.authorId,
+      authorDisplayName: articles.authorDisplayName,
+      tags: articles.tags,
+      status: articles.status,
+      publishedAt: articles.publishedAt,
+      scheduledAt: articles.scheduledAt,
+      metaTitle: articles.metaTitle,
+      metaDescription: articles.metaDescription,
+      ogImageUrl: articles.ogImageUrl,
+      viewCount: articles.viewCount,
+      wordCount: articles.wordCount,
+      readingTimeMin: articles.readingTimeMin,
+      version: articles.version,
+      lastSavedBy: articles.lastSavedBy,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      authorEmail: profiles.email,
+      readerPublicDisplayName: readerPublicProfiles.displayName,
+      catId: categories.id,
+      catName: categories.name,
+      catSlug: categories.slug,
+    })
+    .from(articles)
+    .leftJoin(profiles, eq(articles.authorId, profiles.id))
+    .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
+    .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .where(and(...conditions))
+    .orderBy(desc(articles.publishedAt), desc(articles.id))
+    .limit(limit + 1)
+
+  const pageRows = rows.slice(0, limit)
+  const data = pageRows.map((r) =>
+    toPublicArticleCard({
+      ...r,
+      categoryId: r.catId ?? undefined,
+      categoryName: r.catName ?? undefined,
+      categorySlug: r.catSlug ?? undefined,
+    })
+  )
+
+  const last = data[data.length - 1]
+  return {
+    data,
+    next_cursor:
+      rows.length > limit && last?.published_at
+        ? encodeArticleFeedCursor({ id: last.id, published_at: last.published_at })
+        : null,
+  }
 }
 
 /* ---------- Get by ID / slug ---------- */
@@ -476,17 +765,68 @@ export async function listTopPublishedArticleIdsByAllTimeViews(limit: number): P
 export async function getPublishedArticlesMostReadForHero(
   days: number,
   maxCandidates: number,
-): Promise<ArticleWithAuthor[]> {
+): Promise<PublicArticleCard[]> {
   let ids = await listPublishedArticleIdsByRecentViewEvents(days, maxCandidates)
   if (ids.length === 0) {
     ids = await listTopPublishedArticleIdsByAllTimeViews(maxCandidates)
   }
-  const out: ArticleWithAuthor[] = []
-  for (const id of ids) {
-    const a = await getArticleByIdOrSlug(id, true)
-    if (a) out.push(a)
-  }
-  return out
+  return listPublishedArticleCardsByIds(ids)
+}
+
+export async function listPublishedArticleCardsByIds(ids: string[]): Promise<PublicArticleCard[]> {
+  if (!config.database || ids.length === 0) return []
+  const db = getDb()
+  const rows = await db
+    .select({
+      id: articles.id,
+      slug: articles.slug,
+      title: articles.title,
+      excerpt: articles.excerpt,
+      coverImageUrl: articles.coverImageUrl,
+      coverImageCredit: articles.coverImageCredit,
+      coverImageSource: articles.coverImageSource,
+      videoUrl: articles.videoUrl,
+      coverVideoCredit: articles.coverVideoCredit,
+      categoryId: articles.categoryId,
+      authorId: articles.authorId,
+      authorDisplayName: articles.authorDisplayName,
+      tags: articles.tags,
+      status: articles.status,
+      publishedAt: articles.publishedAt,
+      scheduledAt: articles.scheduledAt,
+      metaTitle: articles.metaTitle,
+      metaDescription: articles.metaDescription,
+      ogImageUrl: articles.ogImageUrl,
+      viewCount: articles.viewCount,
+      wordCount: articles.wordCount,
+      readingTimeMin: articles.readingTimeMin,
+      version: articles.version,
+      lastSavedBy: articles.lastSavedBy,
+      createdAt: articles.createdAt,
+      updatedAt: articles.updatedAt,
+      authorEmail: profiles.email,
+      readerPublicDisplayName: readerPublicProfiles.displayName,
+      catId: categories.id,
+      catName: categories.name,
+      catSlug: categories.slug,
+    })
+    .from(articles)
+    .leftJoin(profiles, eq(articles.authorId, profiles.id))
+    .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
+    .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .where(and(inArray(articles.id, ids), eq(articles.status, 'published'), isNotNull(articles.publishedAt)))
+
+  const rank = new Map(ids.map((id, index) => [id, index]))
+  return rows
+    .map((r) =>
+      toPublicArticleCard({
+        ...r,
+        categoryId: r.catId ?? undefined,
+        categoryName: r.catName ?? undefined,
+        categorySlug: r.catSlug ?? undefined,
+      })
+    )
+    .sort((a, b) => (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER))
 }
 
 /* ---------- Create ---------- */

@@ -1,6 +1,18 @@
 import { Heading, Blockquote, BlockquoteContent } from 'scoop'
+import {
+  Banknote,
+  Building2,
+  Database,
+  Globe2,
+  Landmark,
+  Target,
+  TrendingUp,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
 import { getYoutubeEmbedSrc } from '@/lib/youtube'
 import { normalizeAllowedEmbedPath } from '@/lib/embedAllowlist'
+import { normalizeKeyTakeawaysAttrs, type KeyTakeawayIcon } from '@/lib/keyTakeaways'
 
 /**
  * ArticleBody — renders Tiptap JSON content for the reader.
@@ -79,6 +91,54 @@ function getTextAlign(attrs?: Record<string, unknown>): React.CSSProperties | un
     return { textAlign: align as 'left' | 'center' | 'right' | 'justify' }
   }
   return undefined
+}
+
+const KEY_TAKEAWAY_ICONS: Record<KeyTakeawayIcon, LucideIcon> = {
+  database: Database,
+  trend: TrendingUp,
+  target: Target,
+  building: Building2,
+  banknote: Banknote,
+  users: Users,
+  globe: Globe2,
+  landmark: Landmark,
+}
+
+function KeyTakeawaysBlock({ attrs }: { attrs?: Record<string, unknown> }) {
+  const block = normalizeKeyTakeawaysAttrs(attrs)
+
+  return (
+    <section className="not-prose my-8 rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-center gap-2 border-b border-border pb-3">
+        <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+        <h2 className="font-sans text-[11px] font-black uppercase tracking-[0.16em] text-primary">
+          {block.title}
+        </h2>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {block.items.map((item, index) => {
+          const Icon = KEY_TAKEAWAY_ICONS[item.icon]
+          return (
+            <article
+              key={`${item.value}-${index}`}
+              className="rounded-lg border border-border bg-background p-4"
+            >
+              <Icon className="h-5 w-5 text-primary" aria-hidden />
+              <p className="mt-4 font-serif text-xl font-black leading-tight text-foreground">
+                {item.value}
+              </p>
+              <p className="mt-2 font-sans text-[11px] font-black uppercase tracking-[0.12em] text-foreground">
+                {item.label}
+              </p>
+              <p className="mt-1 font-sans text-sm leading-relaxed text-muted-foreground">
+                {item.body}
+              </p>
+            </article>
+          )
+        })}
+      </div>
+    </section>
+  )
 }
 
 function TiptapBlock({ node }: { node: TiptapNode }) {
@@ -217,6 +277,9 @@ function TiptapBlock({ node }: { node: TiptapNode }) {
       )
     }
 
+    case 'keyTakeaways':
+      return <KeyTakeawaysBlock attrs={node.attrs} />
+
     case 'horizontalRule':
       return <hr className="my-8 border-border" />
 
@@ -329,8 +392,8 @@ function TiptapInline({ nodes }: { nodes?: TiptapNode[] }) {
                   el = (
                     <mark
                       key={`hl${i}`}
-                      className="rounded px-0.5"
-                      style={color ? { backgroundColor: color } : { backgroundColor: '#fef08a' }}
+                      className="rounded bg-secondary px-0.5"
+                      style={color ? { backgroundColor: color } : undefined}
                     >
                       {el}
                     </mark>

@@ -1,64 +1,78 @@
 import Link from 'next/link'
-import { Heading, Card, CardContent } from 'scoop'
-import { formatDateShort } from '@/lib/formatDate'
 import {
-  IconFileText,
-  IconEye,
-  IconMessages,
-  IconClock,
-  IconPlus,
-  IconArrowRight,
+  IconAd,
   IconAlertCircle,
-  IconTrendingUp,
-  IconUsers,
-  IconClick,
+  IconArrowRight,
   IconChartBar,
-  IconCategory,
+  IconClock,
+  IconEye,
+  IconFileText,
+  IconMessages,
+  IconPlus,
+  IconUsers,
 } from '@tabler/icons-react'
+import { formatDateShort } from '@/lib/formatDate'
 import { getAdminSession } from '@/lib/admin/session'
 import { fetchDashboardStats, fetchAdminArticles, fetchReaderKpis } from '@/lib/admin/fetchers'
-import {
-  STATUS_LABELS,
-  STATUS_COLORS,
-  hasMinRole,
-  canViewReaderInsights,
-  type AppRole,
-} from '@/lib/admin/rbac'
+import { STATUS_LABELS, hasMinRole, canViewReaderInsights, type AppRole } from '@/lib/admin/rbac'
 
-function StatCard({
+function numberFr(value: number) {
+  return value.toLocaleString('fr-FR')
+}
+
+function percentFr(value: number | null | undefined) {
+  if (value == null) return 'N/A'
+  return value.toLocaleString('fr-FR', { style: 'percent', maximumFractionDigits: 2 })
+}
+
+function SignalCard({
   label,
   value,
-  icon: Icon,
   href,
-  accent,
+  tone = 'light',
+  children,
 }: {
   label: string
-  value: number | string
-  icon: React.ComponentType<{ className?: string }>
+  value: string | number
   href?: string
-  accent?: string
+  tone?: 'dark' | 'red' | 'lime' | 'light'
+  children?: React.ReactNode
 }) {
-  const card = (
-    <Card className={`hover-lift transition-shadow hover:shadow-md ${href ? 'cursor-pointer' : ''}`}>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`rounded-lg p-2.5 ${accent ?? 'bg-primary/10 text-primary'}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-sm text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
+  const toneClass = {
+    dark: 'border border-border bg-card text-foreground',
+    red: 'border border-primary/20 bg-primary/8 text-foreground',
+    lime: 'border border-border bg-secondary/45 text-foreground',
+    light: 'border border-border bg-card text-foreground',
+  }[tone]
+
+  const body = (
+    <div className={`min-h-[132px] rounded-[1.5rem] p-5 shadow-[var(--shadow-sm)] ${toneClass}`}>
+      <p className="font-sans text-[10px] font-black uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-4 text-4xl font-black leading-none">{value}</p>
+      {children ? <div className="mt-4 text-sm leading-5 text-muted-foreground">{children}</div> : null}
+    </div>
   )
-  return href ? <Link href={href}>{card}</Link> : card
+
+  return href ? <Link href={href}>{body}</Link> : body
+}
+
+function ActionLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 font-sans text-xs font-black uppercase tracking-[0.1em] text-primary-foreground hover:bg-primary/90"
+    >
+      {children}
+      <IconArrowRight className="h-4 w-4" />
+    </Link>
+  )
 }
 
 export default async function AdminDashboardPage() {
   const [adminSession, stats, recentArticles, readerKpis] = await Promise.all([
     getAdminSession(),
     fetchDashboardStats(),
-    fetchAdminArticles({ limit: 5 }),
+    fetchAdminArticles({ limit: 6 }),
     fetchReaderKpis(),
   ])
 
@@ -69,414 +83,189 @@ export default async function AdminDashboardPage() {
     adminSession?.name?.split(' ')[0] ??
     adminSession?.email?.split('@')[0] ??
     'Utilisateur'
+  const avgCtr = readerKpis?.adCtrBySlot.filter((row) => row.ctr != null)
+  const avgCtrValue = avgCtr && avgCtr.length > 0
+    ? avgCtr.reduce((sum, row) => sum + (row.ctr ?? 0), 0) / avgCtr.length
+    : null
 
   return (
-    <div className="space-y-8">
-      {/* Welcome header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <Heading as="h1" level="h2">
-            Bonjour, {greetingName}
-          </Heading>
-          <p className="mt-1 text-muted-foreground">
-            {role === 'journalist' && "Voici l'état de vos articles."}
-            {role === 'editor' && 'Voici la file de révision et votre équipe.'}
-            {role === 'manager' && "Vue d'ensemble du pipeline éditorial."}
-            {role === 'admin' && 'Tableau de bord système complet.'}
-          </p>
-        </div>
-        <Link
-          href="/admin/articles/new"
-          className="press-effect inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <IconPlus className="h-4 w-4" />
-          Nouvel article
-        </Link>
-      </div>
-
-      {/* Stats grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" style={{ animationDelay: '0.1s' }}>
-        <StatCard
-          label="Articles publiés"
-          value={stats.published}
-          icon={IconFileText}
-          href="/admin/articles?status=published"
-          accent="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-        />
-        <StatCard
-          label="Brouillons"
-          value={stats.drafts}
-          icon={IconClock}
-          href="/admin/articles?status=draft"
-        />
-        <StatCard
-          label="En révision"
-          value={stats.inReview}
-          icon={IconEye}
-          href="/admin/articles?status=review"
-          accent="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-        />
-        {hasMinRole(role, 'editor') ? (
-          <StatCard
-            label="Commentaires en attente"
-            value={stats.pendingComments}
-            icon={IconMessages}
-            href="/admin/comments?status=pending"
-            accent="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-          />
-        ) : (
-          <StatCard
-            label="Total articles"
-            value={stats.totalArticles}
-            icon={IconTrendingUp}
-            href="/admin/articles"
-          />
-        )}
-      </div>
-
-      {/* Reader platform KPIs (editor+) */}
-      {showReaderKpis && readerKpis && (
-        <div className="space-y-4">
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <Heading as="h2" level="h4">
-                Reader & engagement
-              </Heading>
-              <p className="text-xs text-muted-foreground">
-                Abonnés newsletter, CTR publicitaire (30 j.), catégories et articles les plus lus.
-              </p>
-            </div>
-            <Link
-              href="/admin/reader/subscribers"
-              className="text-sm font-medium text-primary hover:underline"
+    <main className="space-y-8 bg-background text-foreground">
+      <section className="rounded-[2rem] border border-border bg-card p-5 shadow-[var(--shadow-sm)] sm:p-7">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="font-sans text-[10px] font-black uppercase tracking-[0.18em] text-primary">
+              Cockpit
+            </p>
+            <h1
+              className="mt-3 text-5xl font-black leading-[0.9] sm:text-7xl"
+              style={{ fontFamily: 'var(--font-headline)' }}
             >
-              Gérer les abonnés
+              Bonjour, {greetingName}.
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Pipeline editorial, reader, ads et audience: les signaux utiles pour decider vite.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <ActionLink href="/admin/articles/new">
+              <IconPlus className="h-4 w-4" />
+              Nouvel article
+            </ActionLink>
+            <Link
+              href="/"
+              className="inline-flex h-10 items-center rounded-full border border-border bg-background px-4 font-sans text-xs font-black uppercase tracking-[0.1em] text-foreground hover:border-primary hover:text-primary"
+            >
+              Voir le site
             </Link>
           </div>
+        </div>
+      </section>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Abonnés confirmés"
-              value={readerKpis.newsletterTotals.confirmed}
-              icon={IconUsers}
-              href="/admin/reader/subscribers?status=confirmed"
-              accent="bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300"
-            />
-            <StatCard
-              label="En attente (double opt-in)"
-              value={readerKpis.newsletterTotals.pending}
-              icon={IconClock}
-              href="/admin/reader/subscribers?status=pending"
-            />
-            <StatCard
-              label="Désinscriptions"
-              value={readerKpis.newsletterTotals.unsubscribed}
-              icon={IconMessages}
-              href="/admin/reader/subscribers?status=unsubscribed"
-            />
-            <StatCard
-              label="Emplacements ads (CTR moy.)"
-              value={(() => {
-                const withCtr = readerKpis.adCtrBySlot.filter((x) => x.ctr != null)
-                if (withCtr.length === 0) return '—'
-                const avg =
-                  withCtr.reduce((s, x) => s + (x.ctr ?? 0), 0) / withCtr.length
-                return avg.toLocaleString('fr-FR', { style: 'percent', maximumFractionDigits: 2 })
-              })()}
-              icon={IconClick}
-              href="/admin/reader/ads"
-              accent="bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300"
-            />
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SignalCard label="Publies" value={numberFr(stats.published)} href="/admin/articles?status=published" tone="light">
+          Articles disponibles cote reader.
+        </SignalCard>
+        <SignalCard label="Brouillons" value={numberFr(stats.drafts)} href="/admin/articles?status=draft" tone="light">
+          Contenus a relancer ou nettoyer.
+        </SignalCard>
+        <SignalCard label="Revision" value={numberFr(stats.inReview)} href="/admin/articles?status=review" tone={stats.inReview > 0 ? 'red' : 'lime'}>
+          {stats.inReview > 0 ? 'A traiter avant publication.' : 'File de revision calme.'}
+        </SignalCard>
+        <SignalCard
+          label={hasMinRole(role, 'editor') ? 'Commentaires' : 'Total articles'}
+          value={hasMinRole(role, 'editor') ? numberFr(stats.pendingComments) : numberFr(stats.totalArticles)}
+          href={hasMinRole(role, 'editor') ? '/admin/comments?status=pending' : '/admin/articles'}
+          tone="light"
+        >
+          {hasMinRole(role, 'editor') ? 'Commentaires en attente.' : 'Volume editorial global.'}
+        </SignalCard>
+      </section>
+
+      {hasMinRole(role, 'editor') && stats.inReview > 0 ? (
+        <section className="flex flex-col gap-4 rounded-[1.5rem] border border-primary/20 bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3">
+            <IconAlertCircle className="mt-1 h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <h2 className="font-sans text-sm font-black uppercase tracking-[0.12em]">Action urgente</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {stats.inReview} article{stats.inReview > 1 ? 's' : ''} attend{stats.inReview > 1 ? 'ent' : ''} une validation.
+              </p>
+            </div>
+          </div>
+          <ActionLink href="/admin/articles?status=review">Voir la file</ActionLink>
+        </section>
+      ) : null}
+
+      {showReaderKpis && readerKpis ? (
+        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[1.5rem] bg-card p-5">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-sans text-[10px] font-black uppercase tracking-[0.16em] text-primary">Reader</p>
+                <h2 className="mt-1 text-2xl font-black">Audience & monetisation</h2>
+              </div>
+              <IconChartBar className="h-7 w-7 text-primary" />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SignalCard label="Abonnes" value={numberFr(readerKpis.newsletterTotals.confirmed)} href="/admin/reader/subscribers?status=confirmed" tone="light" />
+              <SignalCard label="Pending" value={numberFr(readerKpis.newsletterTotals.pending)} href="/admin/reader/subscribers?status=pending" tone="light" />
+              <SignalCard label="CTR ads" value={percentFr(avgCtrValue)} href="/admin/reader/ads" tone="lime" />
+              <SignalCard label="Desinscrits" value={numberFr(readerKpis.newsletterTotals.unsubscribed)} href="/admin/reader/subscribers?status=unsubscribed" tone="light" />
+            </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <IconChartBar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">CTR par emplacement (30 j.)</span>
-                </div>
-                {readerKpis.adCtrBySlot.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Aucun événement — les impressions/clics sont enregistrés côté reader.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border text-left text-muted-foreground">
-                          <th className="py-2 pr-2">Slot</th>
-                          <th className="py-2 pr-2 tabular-nums">Impr.</th>
-                          <th className="py-2 pr-2 tabular-nums">Clics</th>
-                          <th className="py-2 tabular-nums">CTR</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {readerKpis.adCtrBySlot.map((row) => (
-                          <tr key={row.slot_key} className="border-b border-border/60 last:border-0">
-                            <td className="py-2 font-mono text-xs">{row.slot_key}</td>
-                            <td className="py-2 tabular-nums">{row.impressions}</td>
-                            <td className="py-2 tabular-nums">{row.clicks}</td>
-                            <td className="py-2 tabular-nums">
-                              {row.ctr != null
-                                ? row.ctr.toLocaleString('fr-FR', {
-                                    style: 'percent',
-                                    maximumFractionDigits: 2,
-                                  })
-                                : '—'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <IconCategory className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Top catégories (vues cumulées)</span>
-                </div>
-                {readerKpis.topCategories.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Pas encore de données.</p>
-                ) : (
-                  <ul className="space-y-2 text-sm">
-                    {readerKpis.topCategories.slice(0, 6).map((c) => (
-                      <li
-                        key={c.category_id ?? 'none'}
-                        className="flex items-center justify-between gap-2 border-b border-border/50 pb-2 last:border-0 last:pb-0"
-                      >
-                        <span className="font-medium">{c.name}</span>
-                        <span className="tabular-nums text-muted-foreground">
-                          {c.total_views.toLocaleString('fr-FR')} vues · {c.article_count} art.
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <Heading as="h3" level="h5">
-                Articles les plus lus
-              </Heading>
-              <Link href="/admin/articles?status=published" className="text-sm font-medium text-primary hover:underline">
+          <div className="rounded-[1.5rem] bg-card p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-sans text-sm font-black uppercase tracking-[0.14em]">Top contenus</h2>
+              <Link href="/admin/articles?status=published" className="font-sans text-xs font-black uppercase tracking-[0.1em] text-primary">
                 Articles
               </Link>
             </div>
-            {readerKpis.topArticles.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucun article publié.</p>
-            ) : (
-              <div className="overflow-hidden rounded-lg border border-border">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/50">
-                      <th className="px-4 py-3 text-left font-medium text-muted-foreground">Titre</th>
-                      <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">
-                        Catégorie
-                      </th>
-                      <th className="px-4 py-3 text-right font-medium text-muted-foreground">Vues</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {readerKpis.topArticles.map((a) => (
-                      <tr key={a.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`/admin/articles/${a.id}/edit`}
-                            className="font-medium hover:text-primary"
-                          >
-                            {a.title}
-                          </Link>
-                        </td>
-                        <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                          {a.category_slug ?? '—'}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                          {a.view_count.toLocaleString('fr-FR')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="divide-y divide-border">
+              {readerKpis.topArticles.slice(0, 6).map((article, index) => (
+                <Link key={article.id} href={`/admin/articles/${article.id}/edit`} className="grid grid-cols-[2rem_1fr_auto] gap-3 py-3">
+                  <span className="text-xl font-black text-muted-foreground/45">{index + 1}</span>
+                  <span className="min-w-0">
+                    <span className="line-clamp-1 font-medium">{article.title}</span>
+                    <span className="text-xs text-muted-foreground">{article.category_slug ?? 'sans rubrique'}</span>
+                  </span>
+                  <span className="font-sans text-sm font-black">{numberFr(article.view_count)}</span>
+                </Link>
+              ))}
+              {readerKpis.topArticles.length === 0 ? <p className="py-8 text-sm text-muted-foreground">Pas encore de donnees.</p> : null}
+            </div>
           </div>
+        </section>
+      ) : null}
 
-          {readerKpis.subscriberGrowth.length > 0 && (
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-2 text-sm font-medium">Inscriptions newsletter (par semaine)</div>
-                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                  {readerKpis.subscriberGrowth.map((g) => (
-                    <span key={g.week_start} className="rounded-md border border-border px-2 py-1">
-                      Sem. {g.week_start}:{' '}
-                      <strong className="text-foreground">{g.new_subscribers}</strong>
-                    </span>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {readerKpis.audienceLatest && readerKpis.audienceLatest.length > 0 && (
-            <Card>
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <IconUsers className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Audience &amp; réseaux (derniers snapshots)</span>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border text-left text-muted-foreground">
-                        <th className="py-2 pr-2">Plateforme</th>
-                        <th className="py-2 pr-2">Métrique</th>
-                        <th className="py-2 pr-2">Date</th>
-                        <th className="py-2 tabular-nums">Valeur</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {readerKpis.audienceLatest.slice(0, 12).map((row, i) => (
-                        <tr key={`${row.platform}-${row.metric_key}-${i}`} className="border-b border-border/60 last:border-0">
-                          <td className="py-2 font-mono text-xs">{row.platform}</td>
-                          <td className="py-2">{row.metric_key}</td>
-                          <td className="py-2 text-muted-foreground">{row.snapshot_date}</td>
-                          <td className="py-2 tabular-nums font-medium">{row.value_numeric}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  <Link href="/admin/reader/audience-metrics" className="font-medium text-primary hover:underline">
-                    Saisir un KPI
-                  </Link>{' '}
-                  (interface) ou API{' '}
-                  <span className="font-mono">POST /admin/reader/audience-metrics</span> (éditeur+). Public :{' '}
-                  <span className="font-mono">GET /public/audience/summary</span> (site marques). Job batch :{' '}
-                  <span className="font-mono">pnpm job:ingest-audience-metrics</span>.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+      <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[1.5rem] bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-sans text-sm font-black uppercase tracking-[0.14em]">Articles recents</h2>
+            <Link href="/admin/articles" className="font-sans text-xs font-black uppercase tracking-[0.1em] text-primary">
+              Voir tout
+            </Link>
+          </div>
+          <div className="divide-y divide-border">
+            {recentArticles.data.map((article) => (
+              <Link key={article.id} href={`/admin/articles/${article.id}/edit`} className="grid gap-3 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                <span className="min-w-0">
+                  <span className="line-clamp-1 font-medium">{article.title}</span>
+                  <span className="text-xs text-muted-foreground">{article.category?.name ?? 'sans rubrique'}</span>
+                </span>
+                <span className="w-fit rounded-full bg-muted px-3 py-1 font-sans text-[10px] font-black uppercase tracking-[0.1em] text-muted-foreground">
+                  {STATUS_LABELS[article.status] ?? article.status}
+                </span>
+                <span className="text-xs text-muted-foreground">{formatDateShort(article.published_at ?? article.updated_at)}</span>
+              </Link>
+            ))}
+            {recentArticles.data.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <IconFileText className="h-10 w-10 text-muted-foreground/45" />
+                <p className="text-sm text-muted-foreground">Aucun article pour le moment.</p>
+                <ActionLink href="/admin/articles/new">Creer un article</ActionLink>
+              </div>
+            ) : null}
+          </div>
         </div>
-      )}
 
-      {/* Alert for pending reviews (editors+) */}
-      {hasMinRole(role, 'editor') && stats.inReview > 0 && (
-        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800/50 dark:bg-amber-950/20">
-          <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <div>
-            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
-              {stats.inReview} article{stats.inReview > 1 ? 's' : ''} en attente de
-              révision
-            </p>
-            <Link
-              href="/admin/articles?status=review"
-              className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-amber-700 underline-offset-2 hover:underline dark:text-amber-300"
-            >
-              Voir la file de révision
-              <IconArrowRight className="h-3 w-3" />
+        <div className="rounded-[1.5rem] border border-border bg-card p-5 shadow-[var(--shadow-sm)]">
+          <h2 className="font-sans text-sm font-black uppercase tracking-[0.14em] text-primary">Acces rapides</h2>
+          <div className="mt-5 grid gap-3">
+            <Link href="/admin/articles" className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 hover:border-primary hover:text-primary">
+              <span className="flex items-center gap-3"><IconFileText className="h-5 w-5" /> Articles</span>
+              <IconArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/admin/comments" className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 hover:border-primary hover:text-primary">
+              <span className="flex items-center gap-3"><IconMessages className="h-5 w-5" /> Commentaires</span>
+              <IconArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/admin/reader/subscribers" className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 hover:border-primary hover:text-primary">
+              <span className="flex items-center gap-3"><IconUsers className="h-5 w-5" /> Abonnes</span>
+              <IconArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href="/admin/reader/ads" className="flex items-center justify-between rounded-2xl border border-border bg-background p-4 hover:border-primary hover:text-primary">
+              <span className="flex items-center gap-3"><IconAd className="h-5 w-5" /> Ads</span>
+              <IconArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* Recent articles */}
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <Heading as="h2" level="h4">
-            Articles récents
-          </Heading>
-          <Link
-            href="/admin/articles"
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            Voir tout
-          </Link>
-        </div>
-
-        {recentArticles.data.length > 0 ? (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/50">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                    Titre
-                  </th>
-                  <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground sm:table-cell">
-                    Statut
-                  </th>
-                  <th className="hidden px-4 py-3 text-left font-medium text-muted-foreground md:table-cell">
-                    Date
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                    Vues
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentArticles.data.map((article) => (
-                  <tr
-                    key={article.id}
-                    className="border-b border-border last:border-0 transition-colors hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/admin/articles/${article.id}/edit`}
-                        className="font-medium hover:text-primary"
-                      >
-                        {article.title}
-                      </Link>
-                      {article.category && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          {article.category.name}
-                        </p>
-                      )}
-                    </td>
-                    <td className="hidden px-4 py-3 sm:table-cell">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          STATUS_COLORS[article.status] ?? ''
-                        }`}
-                      >
-                        {STATUS_LABELS[article.status] ?? article.status}
-                      </span>
-                    </td>
-                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
-                      {formatDateShort(article.published_at ?? article.updated_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {article.view_count?.toLocaleString('fr-FR') ?? 0}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
-              <IconFileText className="h-10 w-10 text-muted-foreground/50" />
-              <p className="text-muted-foreground">Aucun article pour le moment.</p>
-              <Link
-                href="/admin/articles/new"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-              >
-                <IconPlus className="h-4 w-4" />
-                Créer votre premier article
-              </Link>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SignalCard label="Programmes" value={numberFr(stats.scheduled)} href="/admin/articles?status=scheduled" tone="light">
+          <IconClock className="mr-2 inline h-4 w-4" /> Articles planifies.
+        </SignalCard>
+        <SignalCard label="Commentaires total" value={numberFr(stats.totalComments)} href="/admin/comments" tone="light">
+          <IconMessages className="mr-2 inline h-4 w-4" /> Activite communautaire.
+        </SignalCard>
+        <SignalCard label="Total articles" value={numberFr(stats.totalArticles)} href="/admin/articles" tone="light">
+          <IconEye className="mr-2 inline h-4 w-4" /> Base editoriale.
+        </SignalCard>
+        <SignalCard label="Role" value={role} href="/admin/profile" tone="light">
+          Permissions et profil courant.
+        </SignalCard>
+      </section>
+    </main>
   )
 }

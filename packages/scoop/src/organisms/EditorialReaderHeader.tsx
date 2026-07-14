@@ -72,28 +72,28 @@ export function EditorialReaderHeader({
 
   const navLinkClass = (active: boolean) =>
     cn(
-      'text-xs font-medium uppercase tracking-widest transition-opacity hover:opacity-80',
-      active ? 'font-bold text-primary' : 'text-muted-foreground'
+      'rounded-full px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors',
+      active ? 'bg-primary text-primary-foreground' : 'text-background/78 hover:bg-background/10 hover:text-background'
     )
 
   const catLinkClass = (active: boolean) =>
     cn(
-      'whitespace-nowrap pb-2 text-[10px] font-black uppercase tracking-[0.15em] transition-colors',
-      active ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'
+      'whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition-colors',
+      active ? 'bg-secondary text-foreground' : 'bg-background/7 text-background/72 hover:bg-background/12 hover:text-background'
     )
 
-  const drawerLinkClass = 'rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted'
+  const drawerLinkClass = 'rounded-md px-3 py-2 text-sm font-medium hover:bg-muted'
 
   return (
     <div className={cn('min-w-0 max-w-full', className)}>
       {banner}
 
-      <header className="sticky top-0 z-50 w-full min-w-0 max-w-full border-b border-border/80 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
-        <div className="mx-auto flex h-16 max-w-7xl min-w-0 items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-50 w-full min-w-0 max-w-full border-b border-background/10 bg-foreground text-background">
+        <div className="mx-auto flex h-[72px] max-w-[1460px] min-w-0 items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6 lg:px-10">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <button
               type="button"
-              className="rounded-full p-2 text-foreground transition-opacity hover:opacity-80 md:hidden"
+              className="rounded-full p-2 text-background transition-colors hover:bg-background/10 md:hidden"
               aria-label="Menu"
               onClick={() => setDrawerOpen(true)}
             >
@@ -104,7 +104,7 @@ export function EditorialReaderHeader({
             </Link>
           </div>
 
-          <nav className="hidden items-center gap-8 md:flex" aria-label="Navigation">
+          <nav className="hidden items-center gap-1.5 md:flex" aria-label="Navigation">
             {mainNav.map((item) => (
               <Link key={item.href} href={item.href} className={navLinkClass(item.active)}>
                 {item.label}
@@ -116,25 +116,25 @@ export function EditorialReaderHeader({
             {rightSlot}
             <Link
               href={searchHref}
-              className="rounded-full p-2 text-foreground transition-opacity hover:opacity-80"
+              className="rounded-full bg-card px-3 py-2 text-foreground transition-colors hover:bg-secondary"
               aria-label={searchAriaLabel}
             >
-              <Search className="h-6 w-6" />
+              <Search className="h-5 w-5" />
             </Link>
             <Link
               href={accountHref}
-              className="hidden rounded-full border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary transition-colors hover:bg-muted sm:inline-flex"
+              className="hidden rounded-full border border-background/15 px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-primary-foreground transition-colors hover:border-primary hover:bg-primary sm:inline-flex"
             >
               {accountLabel}
             </Link>
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl min-w-0 overflow-x-auto border-t border-transparent px-4 pb-2 [scrollbar-width:none] sm:px-6 lg:px-8 [&::-webkit-scrollbar]:hidden">
+        <div className="mx-auto max-w-[1460px] min-w-0 overflow-x-auto border-t border-background/10 px-4 pb-2 pt-2 [scrollbar-width:none] sm:px-6 lg:px-10 [&::-webkit-scrollbar]:hidden">
           {secondaryNav ? (
             <div className="min-w-0 py-2">{secondaryNav}</div>
           ) : (
-            <nav className="flex min-w-0 items-center gap-4 py-2 sm:gap-6" aria-label="Rubriques">
+            <nav className="flex min-w-0 items-center gap-2" aria-label="Rubriques">
               {categoryNav.map((item) => (
                 <Link key={item.href} href={item.href} className={catLinkClass(item.active)}>
                   {item.label}
@@ -149,16 +149,16 @@ export function EditorialReaderHeader({
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[60] bg-black/40 md:hidden"
+            className="fixed inset-0 z-[60] bg-foreground/40 md:hidden"
             aria-label="Fermer le menu"
             onClick={() => setDrawerOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 z-[70] w-[min(100%,20rem)] border-r border-border bg-background p-4 shadow-lg md:hidden">
+          <div className="fixed inset-y-0 left-0 z-[70] w-[min(100%,20rem)] border-r border-background/10 bg-foreground p-4 text-background shadow-lg md:hidden">
             <div className="mb-6 flex items-center justify-between">
               <Link href={logoHref} aria-label={logoAriaLabel} onClick={() => setDrawerOpen(false)}>
                 {logo}
               </Link>
-              <button type="button" className="rounded-lg p-2" aria-label="Fermer" onClick={() => setDrawerOpen(false)}>
+              <button type="button" className="rounded-full p-2 hover:bg-background/10" aria-label="Fermer" onClick={() => setDrawerOpen(false)}>
                 <X className="h-5 w-5" />
               </button>
             </div>

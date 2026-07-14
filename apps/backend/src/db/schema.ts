@@ -591,6 +591,26 @@ export const readerSubscribers = pgTable('reader_subscribers', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const readerSavedArticles = pgTable(
+  'reader_saved_articles',
+  {
+    auth0Sub: text('auth0_sub')
+      .notNull()
+      .references(() => readerSubscribers.auth0Sub, { onDelete: 'cascade' }),
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => articles.id, { onDelete: 'cascade' }),
+    offlineEnabled: boolean('offline_enabled').notNull().default(true),
+    savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.auth0Sub, t.articleId] }),
+    index('reader_saved_articles_auth0_saved_idx').on(t.auth0Sub, t.savedAt),
+    index('reader_saved_articles_article_idx').on(t.articleId),
+  ],
+)
+
 export const emailOutbound = pgTable('email_outbound', {
   id: uuid('id').primaryKey().defaultRandom(),
   kind: text('kind').notNull(),

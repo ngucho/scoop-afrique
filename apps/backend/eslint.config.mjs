@@ -1,4 +1,4 @@
-import js from '@eslint/js'
+import js from '@eslint/js/src/index.js'
 import tseslint from 'typescript-eslint'
 
 export default [

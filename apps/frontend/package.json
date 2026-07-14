@@ -7,6 +7,7 @@
     "prebuild": "pnpm --filter @scoop-afrique/api-logger run build",
     "build": "next build",
     "start": "next start -p 3001",
+    "test": "node --import tsx --test \"lib/**/*.test.ts\"",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -62,6 +63,7 @@
     "eslint-config-next": "^16.1.6",
     "postcss": "^8.5.1",
     "tailwindcss": "^4.1.9",
+    "tsx": "^4.21.0",
     "tw-animate-css": "^1.3.3",
     "typescript": "^5.7.2"
   }

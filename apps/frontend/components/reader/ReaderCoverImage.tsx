@@ -2,9 +2,6 @@ import Image from 'next/image'
 import { cn } from 'scoop'
 import { absoluteReaderImageUrl } from '@/lib/readerImageSrc'
 
-/**
- * Couverture optimisée (next/image `fill`) — remplit le cadre en `object-cover`.
- */
 export function ReaderCoverImage({
   src,
   alt,
@@ -13,15 +10,16 @@ export function ReaderCoverImage({
   className,
   imgClassName,
   aspectClassName = 'aspect-video',
+  fit = 'cover',
 }: {
   src: string
   alt: string
   sizes: string
   priority?: boolean
-  /** Conteneur relatif (ratio + overflow) */
   className?: string
   imgClassName?: string
   aspectClassName?: string
+  fit?: 'cover' | 'contain'
 }) {
   const absolute = absoluteReaderImageUrl(src)
   if (!absolute) return null
@@ -35,7 +33,7 @@ export function ReaderCoverImage({
         sizes={sizes}
         priority={priority}
         quality={85}
-        className={cn('object-cover object-center', imgClassName)}
+        className={cn(fit === 'contain' ? 'object-contain object-center' : 'object-cover object-center', imgClassName)}
       />
     </div>
   )

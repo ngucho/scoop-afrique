@@ -54,6 +54,7 @@ import chromePublicRoutes from './routes/chrome-public.js'
 import writerArticlesRoutes from './routes/writer-articles.js'
 import adminWriterApiKeysRoutes from './routes/admin/writer-api-keys.js'
 import sitemapPublicRoutes from './routes/sitemap.js'
+import offlineRoutes from './routes/offline.js'
 
 assertConfig()
 
@@ -88,6 +89,7 @@ app.route(`${prefix}/public/devis-sign`, publicDevisSignRoutes)
 app.route(`${prefix}/tribune`, tribuneRoutes)
 app.route(`${prefix}/writer`, writerArticlesRoutes)
 app.route(`${prefix}/sitemap`, sitemapPublicRoutes)
+app.route(`${prefix}/offline`, offlineRoutes)
 
 /* ---- Admin API v1 ---- */
 app.route(`${prefix}/admin/articles`, adminArticlesRoutes)
