@@ -1,126 +1,80 @@
-'use client'
-
 import Image from 'next/image'
 import { CtaButton } from '@/components/cta-button'
+import type { BrandAudienceSummary } from '@/lib/brand-audience'
 
 const HERO_IMAGE = '/images/hero-brands.png'
 
-export function HeroBrands() {
+export function HeroBrands({ audience }: { audience: BrandAudienceSummary }) {
+  const heroStats = [
+    audience.totalSocial,
+    audience.stats.find((s) => s.key === 'tiktok')!,
+    audience.siteVisits,
+  ]
+
   return (
-    <section className="relative min-h-screen overflow-hidden bg-background">
-      {/* Image de fond */}
+    <section className="relative min-h-[92vh] overflow-hidden bg-background">
       <div className="absolute inset-0 z-0">
         <Image
           src={HERO_IMAGE}
           alt=""
           fill
-          className="object-cover object-center opacity-30 dark:opacity-20"
+          className="object-cover object-center opacity-40"
           priority
           sizes="100vw"
-          onError={(e) => {
-            const t = e.target as HTMLImageElement
-            t.style.display = 'none'
-          }}
         />
-        {/* Gradient éditorial : bg clair en bas pour lisibilité */}
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-background via-background/85 to-background/60"
-          aria-hidden
-        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,var(--background)_0%,color-mix(in_srgb,var(--background)_92%,transparent)_44%,color-mix(in_srgb,var(--background)_48%,transparent)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent" />
       </div>
 
-      {/* Pattern africain décoratif */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(45deg, var(--primary) 0, var(--primary) 1px, transparent 0, transparent 50%), repeating-linear-gradient(-45deg, var(--primary) 0, var(--primary) 1px, transparent 0, transparent 50%)',
-          backgroundSize: '48px 48px',
-        }}
-        aria-hidden
-      />
-
-      {/* Contenu */}
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 py-20 sm:px-8 md:px-12 md:py-24 lg:px-20">
-        <div className="max-w-3xl">
-          {/* Overline */}
-          <div className="mb-5 flex items-center gap-3">
-            <span className="h-[3px] w-8 rounded-full bg-primary" aria-hidden />
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-primary">
-              Média panafricain · Abidjan · fondé en 2025
-            </p>
-          </div>
-
-          {/* Headline principale — oversized Newsreader */}
-          <h1
-            className="mb-6 text-[clamp(2.2rem,5.5vw,4.5rem)] font-bold leading-[1.05] tracking-tight text-foreground"
-            style={{ fontFamily: 'var(--font-headline)' }}
-          >
-            La voix de la{' '}
-            <span
-              className="relative inline-block"
-              style={{
-                backgroundImage: 'var(--gradient-primary)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              jeunesse africaine
-            </span>
-            {' '}— votre partenaire contenu
-          </h1>
-
-          {/* Description */}
-          <p className="mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg sm:leading-relaxed">
-            Plus de{' '}
-            <strong className="font-semibold text-foreground">1,4 million d&apos;abonnés cumulés</strong>{' '}
-            (mars 2026) sur TikTok, Facebook, Instagram, YouTube et Threads. Formats mobiles,
-            réponse sous 48 h, tarifs publiés.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
-            <CtaButton href="/demander-devis" variant="fillHover">
-              Demander un devis
-            </CtaButton>
-            <CtaButton href="#offres" variant="outline">
-              Voir les offres
-            </CtaButton>
-          </div>
-
-          {/* Lien programmes */}
-          <p className="mt-7 font-sans text-xs text-muted-foreground">
-            <a
-              href="/programmes"
-              className="inline-flex items-center gap-1 text-primary underline-offset-4 transition-opacity hover:underline hover:opacity-80"
-            >
-              Programmes éditoriaux &amp; sponsoring
-              <span aria-hidden>→</span>
-            </a>
-            {' '}— Scoop Game, Canapé sans filtre, micro-trottoirs…
-          </p>
-        </div>
-
-        {/* Stats inline sous le titre */}
-        <div className="mt-16 flex flex-wrap gap-8 border-t border-border pt-10 sm:gap-12">
-          {[
-            { value: '+1,4 M', label: 'Abonnés cumulés' },
-            { value: '910 K', label: 'TikTok' },
-            { value: '12+', label: 'Pays touchés' },
-          ].map((s) => (
-            <div key={s.label} className="min-w-[80px]">
-              <p
-                className="font-sans text-2xl font-black text-primary sm:text-3xl"
-                style={{ fontFamily: 'var(--font-headline)' }}
-              >
-                {s.value}
-              </p>
-              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                {s.label}
+      <div className="relative z-10 mx-auto flex min-h-[92vh] max-w-7xl flex-col justify-end px-5 pb-10 pt-28 sm:px-8 md:px-12 lg:px-20">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.62fr)_minmax(320px,0.38fr)] lg:items-end">
+          <div className="max-w-4xl">
+            <div className="mb-5 flex flex-wrap items-center gap-3">
+              <span className="h-[3px] w-8 rounded-full bg-primary" aria-hidden />
+              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.28em] text-primary">
+                Media digital panafricain · Abidjan · Afrique au centre
               </p>
             </div>
-          ))}
+
+            <h1
+              className="max-w-4xl text-[clamp(2.8rem,7vw,6.4rem)] font-black leading-[0.9] text-foreground"
+              style={{ fontFamily: 'var(--font-headline)' }}
+            >
+              Pas seulement un media. Un mouvement pour une Afrique qui se raconte elle-meme.
+            </h1>
+
+            <p className="mt-7 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+              Scoop Afrique connecte les marques, institutions et projets ambitieux a une jeunesse africaine urbaine,
+              mobile et exigeante. Nous produisons des campagnes natives, des couvertures terrain et des formats sociaux
+              qui vivent dans la conversation, pas autour d&apos;elle.
+            </p>
+
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <CtaButton href="/demander-devis" variant="fillHover">
+                Construire une campagne
+              </CtaButton>
+              <CtaButton href="/tarifs" variant="outline">
+                Voir les tarifs 2026
+              </CtaButton>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background/86 p-4 shadow-2xl backdrop-blur md:p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">{audience.sourceLabel}</p>
+            <div className="mt-4 grid gap-3">
+              {heroStats.map((stat) => (
+                <div key={stat.key} className="flex items-end justify-between gap-4 border-t border-border pt-3 first:border-t-0 first:pt-0">
+                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <p className="text-3xl font-black text-primary" style={{ fontFamily: 'var(--font-headline)' }}>
+                    {stat.display}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-xs leading-5 text-muted-foreground">
+              TikTok, Facebook, Instagram, Threads et site media: des points d&apos;entree differents, un meme recit africain.
+            </p>
+          </div>
         </div>
       </div>
     </section>
