@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!program) return { title: 'Programme' }
   const url = `${BASE_URL}/programmes/${slug}`
   return {
-    title: `${program.title} — sponsoring`,
+    title: `${program.title} - sponsoring`,
     description: program.cardSummary,
     alternates: { canonical: url },
     openGraph: {
@@ -41,23 +41,25 @@ export default async function ProgrammeDetailPage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <article className="mx-auto max-w-3xl px-6 py-16 md:px-12 md:py-24">
-        <nav className="mb-8 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+      <article className="mx-auto max-w-3xl px-4 py-14 sm:px-8 sm:py-16 md:px-12 md:py-24">
+        <nav className="mb-8 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
           <Link href="/programmes" className="text-primary transition-colors hover:underline">
-            ← Tous les programmes
+            Tous les programmes
           </Link>
         </nav>
-        <p className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-primary">
+        <p className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-primary sm:text-xs sm:tracking-widest">
           <Dot size="sm" className="text-primary" />
           {program.pillar}
         </p>
-        <Heading as="h1" level="h1" className="mb-4">
+        <Heading as="h1" level="h1" className="mb-4 break-words">
           {program.title}
         </Heading>
-        <p className="mb-10 text-lg font-medium text-muted-foreground">{program.tagline}</p>
+        <p className="mb-10 text-base font-medium leading-7 text-muted-foreground sm:text-lg">{program.tagline}</p>
 
         <section className="mb-12 space-y-4 text-sm leading-relaxed text-muted-foreground md:text-base">
-          <h2 className="font-sans text-base font-bold uppercase tracking-wider text-foreground">Le format</h2>
+          <h2 className="break-words font-sans text-base font-bold uppercase tracking-wide text-foreground sm:tracking-wider">
+            Le format
+          </h2>
           <p>{program.whatItIs}</p>
           <p>
             <span className="font-medium text-foreground">Rythme indicatif : </span>
@@ -65,12 +67,12 @@ export default async function ProgrammeDetailPage({ params }: Props) {
           </p>
           <p>
             <span className="font-medium text-foreground">Plateformes : </span>
-            {program.platforms.join(' · ')}
+            {program.platforms.join(' - ')}
           </p>
         </section>
 
         <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">
+          <h2 className="mb-4 break-words font-sans text-base font-bold uppercase tracking-wide text-foreground sm:tracking-wider">
             Ce que les partenaires gagnent
           </h2>
           <ul className="space-y-3 text-sm text-muted-foreground md:text-base">
@@ -84,63 +86,65 @@ export default async function ProgrammeDetailPage({ params }: Props) {
         </section>
 
         <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">Déclinaisons</h2>
+          <h2 className="mb-4 break-words font-sans text-base font-bold uppercase tracking-wide text-foreground sm:tracking-wider">
+            Declinaisons
+          </h2>
           <div className="space-y-4">
             {program.formats.map((f) => (
               <Card key={f.name} className="border-border p-5">
-                <h3 className="mb-1 font-sans text-sm font-bold text-foreground">{f.name}</h3>
-                <p className="text-sm text-muted-foreground">{f.description}</p>
+                <h3 className="mb-1 break-words font-sans text-sm font-bold text-foreground">{f.name}</h3>
+                <p className="text-sm leading-6 text-muted-foreground">{f.description}</p>
               </Card>
             ))}
           </div>
         </section>
 
         <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">
+          <h2 className="mb-4 break-words font-sans text-base font-bold uppercase tracking-wide text-foreground sm:tracking-wider">
             Profils de partenaires
           </h2>
           <ul className="space-y-2 text-sm text-muted-foreground md:text-base">
             {program.idealSponsors.map((item) => (
               <li key={item} className="flex gap-3">
                 <span className="text-primary" aria-hidden>
-                  ·
+                  -
                 </span>
-                {item}
+                <span>{item}</span>
               </li>
             ))}
           </ul>
         </section>
 
         <section className="mb-12">
-          <h2 className="mb-4 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-            Exemples d’activation
+          <h2 className="mb-4 break-words font-sans text-base font-bold uppercase tracking-wide text-foreground sm:tracking-wider">
+            Exemples d&apos;activation
           </h2>
           <ul className="space-y-2 text-sm text-muted-foreground md:text-base">
             {program.integrationExamples.map((item) => (
               <li key={item} className="flex gap-3">
                 <Dot size="sm" className="mt-1.5 shrink-0 text-primary" />
-                {item}
+                <span>{item}</span>
               </li>
             ))}
           </ul>
         </section>
 
-        <Card className="mb-12 border-border bg-muted/30 p-6">
-          <h2 className="mb-2 font-sans text-sm font-bold uppercase tracking-wider text-foreground">
-            Transparence & indépendance
+        <Card className="mb-12 border-border bg-muted/30 p-5 sm:p-6">
+          <h2 className="mb-2 break-words font-sans text-sm font-bold uppercase tracking-wide text-foreground sm:tracking-wider">
+            Transparence & independance
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">{program.editorialNote}</p>
         </Card>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <CtaButton href={`/demander-devis?programme=${program.slug}`} variant="fillHover">
-            Brief sponsoring — {program.title}
+          <CtaButton href={`/demander-devis?programme=${program.slug}`} variant="fillHover" className="w-full justify-center sm:w-auto">
+            Brief sponsoring - {program.title}
           </CtaButton>
-          <CtaButton href="/services" variant="outline">
+          <CtaButton href="/services" variant="outline" className="w-full justify-center sm:w-auto">
             Offres & prix
           </CtaButton>
-          <CtaButton href="https://www.scoop-afrique.com" variant="outline" external>
-            Voir le média en ligne
+          <CtaButton href="https://www.scoop-afrique.com" variant="outline" external className="w-full justify-center sm:w-auto">
+            Voir le media en ligne
           </CtaButton>
         </div>
       </article>

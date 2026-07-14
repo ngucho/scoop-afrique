@@ -21,12 +21,12 @@ export default function StrategieEditorialePage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="border-b border-[var(--surface-border)] bg-[var(--surface)] py-12 md:py-16">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 md:px-12 lg:px-20">
-          <div className="mb-4 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        <div className="mx-auto max-w-4xl px-4 sm:px-8 md:px-12 lg:px-20">
+          <div className="mb-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
             <DotIcon size="sm" className="text-primary" />
             Stratégie 2026
           </div>
-          <h1 className="font-sans text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl md:text-4xl">
+          <h1 className="break-words font-sans text-2xl font-bold uppercase tracking-tight text-foreground sm:text-3xl md:text-4xl">
             Notre stratégie <span className="text-primary">éditoriale</span>
           </h1>
           <p className="mt-4 max-w-2xl text-sm text-muted-foreground sm:text-base">
@@ -37,14 +37,14 @@ export default function StrategieEditorialePage() {
       </section>
 
       <section className="py-12 md:py-16">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 md:px-12 lg:px-20">
+        <div className="mx-auto max-w-4xl px-4 sm:px-8 md:px-12 lg:px-20">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-8 flex flex-wrap gap-1 border-0 bg-transparent p-0">
+            <TabsList className="mb-8 flex w-full snap-x gap-2 overflow-x-auto border-0 bg-transparent p-0 pb-2">
               {tabs.map((tab) => (
                 <TabsTrigger
                   key={tab.id}
                   value={tab.id}
-                  className="rounded-full border border-[var(--surface-border)] px-4 py-2 text-xs data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary sm:text-sm"
+                  className="shrink-0 snap-start rounded-full border border-[var(--surface-border)] px-3 py-2 text-xs data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-primary sm:px-4 sm:text-sm"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -52,8 +52,8 @@ export default function StrategieEditorialePage() {
             </TabsList>
 
             <TabsContent value="vision" className="mt-0">
-              <Card className="border-[var(--surface-border)] p-6 md:p-8">
-                <h2 className="mb-4 font-sans text-lg font-bold uppercase tracking-wider text-foreground">
+              <Card className="border-[var(--surface-border)] p-5 sm:p-6 md:p-8">
+                <h2 className="mb-4 break-words font-sans text-base font-bold uppercase tracking-wide text-foreground sm:text-lg sm:tracking-wider">
                   Vision & axes stratégiques
                 </h2>
                 <p className="mb-6 text-sm leading-relaxed text-muted-foreground">

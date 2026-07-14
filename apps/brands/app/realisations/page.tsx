@@ -88,13 +88,13 @@ const stats = [
 export default function RealisationsPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="relative overflow-hidden border-b border-border bg-card py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
-          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+      <section className="relative overflow-hidden border-b border-border bg-card py-14 sm:py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 md:px-12">
+          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
             <Dot size="sm" className="text-primary" />
             Portfolio CRM
           </div>
-          <Heading as="h1" level="h1" className="mt-4 mb-6">
+          <Heading as="h1" level="h1" className="mt-4 mb-6 break-words">
             Nos <span className="text-primary">realisations</span>
           </Heading>
           <p className="max-w-2xl text-lg text-muted-foreground">
@@ -106,7 +106,7 @@ export default function RealisationsPage() {
             .
           </p>
           <p className="mt-2 text-xs text-muted-foreground">Source : CRM Supabase + analytics internes plateformes.</p>
-          <div className="mt-10 grid grid-cols-2 gap-6 md:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="font-sans text-2xl font-black text-primary md:text-3xl">{stat.value}</div>
@@ -118,9 +118,9 @@ export default function RealisationsPage() {
       </section>
 
       <section className="border-b border-border bg-muted/20 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 md:px-12">
           <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">Ils nous ont fait confiance</h2>
-          <p className="mb-10 font-sans text-2xl font-black uppercase tracking-tight text-foreground md:text-3xl">
+          <p className="mb-10 break-words font-sans text-2xl font-black uppercase tracking-tight text-foreground md:text-3xl">
             Entreprises & <span className="text-primary">projets verifies</span>
           </p>
           <div className="grid gap-6 md:grid-cols-2">
@@ -139,9 +139,9 @@ export default function RealisationsPage() {
       </section>
 
       <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 md:px-12">
           <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">Autres references CRM</h2>
-          <p className="mb-12 font-sans text-3xl font-black uppercase tracking-tight text-foreground md:text-4xl">
+          <p className="mb-12 break-words font-sans text-3xl font-black uppercase tracking-tight text-foreground md:text-4xl">
             Projets <span className="text-primary">associes</span>
           </p>
           <div className="grid gap-5 md:grid-cols-2">
@@ -150,7 +150,7 @@ export default function RealisationsPage() {
                 <div className="mb-5 flex items-start justify-between gap-4">
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-widest text-primary">{r.company}</p>
-                    <h3 className="mt-2 font-sans text-xl font-bold uppercase tracking-wider text-foreground">{r.project}</h3>
+                    <h3 className="mt-2 break-words font-sans text-lg font-bold uppercase tracking-wide text-foreground sm:text-xl sm:tracking-wider">{r.project}</h3>
                   </div>
                 </div>
                 <p className="text-sm leading-6 text-muted-foreground">{r.detail}</p>
@@ -161,21 +161,21 @@ export default function RealisationsPage() {
       </section>
 
       <section className="border-t border-border bg-card py-16">
-        <div className="mx-auto max-w-6xl px-6 text-center md:px-12">
+        <div className="mx-auto max-w-6xl px-4 text-center sm:px-8 md:px-12">
           <p className="mb-6 text-muted-foreground">
             Suivez le fil editorial en direct ou lancez un brief : meme equipe, deux entrees selon votre besoin.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <CtaButton href={wwwPath('/')} variant="outline" external>
+            <CtaButton href={wwwPath('/')} variant="outline" external className="w-full justify-center sm:w-auto">
               Lire scoop-afrique.com
             </CtaButton>
-            <CtaButton href="/demander-devis" variant="fillHover">
+            <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
               Demander un devis
             </CtaButton>
-            <CtaButton href="https://www.tiktok.com/@Scoop.Afrique" variant="outline" external>
+            <CtaButton href="https://www.tiktok.com/@Scoop.Afrique" variant="outline" external className="w-full justify-center sm:w-auto">
               TikTok
             </CtaButton>
-            <CtaButton href="https://www.instagram.com/Scoop.Afrique" variant="outline" external>
+            <CtaButton href="https://www.instagram.com/Scoop.Afrique" variant="outline" external className="w-full justify-center sm:w-auto">
               Instagram
             </CtaButton>
           </div>

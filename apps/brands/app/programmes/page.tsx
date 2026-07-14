@@ -38,22 +38,22 @@ export default function ProgrammesPage() {
   return (
     <main className="min-h-screen bg-foreground text-background">
       <article className="overflow-hidden">
-        <section className="relative border-b border-background/10 px-5 py-20 sm:px-8 md:px-12 md:py-28 lg:px-20">
+        <section className="relative border-b border-background/10 px-4 py-14 sm:px-8 sm:py-20 md:px-12 md:py-28 lg:px-20">
           <div className="absolute inset-0 opacity-25 [background:radial-gradient(circle_at_20%_10%,rgba(239,35,60,0.75),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />
           <div className="noise-overlay absolute inset-0 opacity-10" />
           <div className="relative mx-auto max-w-7xl">
-            <p className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-primary">
+            <p className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-primary sm:text-xs sm:tracking-widest">
               <Dot size="sm" className="text-primary" />
               Programmes sponsorisables
             </p>
-            <h1 className="max-w-5xl text-5xl font-black uppercase leading-[0.95] text-background md:text-7xl" style={{ fontFamily: 'var(--font-headline)' }}>
+            <h1 className="max-w-5xl break-words text-[clamp(2.4rem,12vw,5rem)] font-black uppercase leading-[0.98] text-background md:text-7xl" style={{ fontFamily: 'var(--font-headline)' }}>
               Choisissez le programme que votre marque peut habiter.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-background/70 md:text-lg">
               Un catalogue de formats recurrents, pense comme une plateforme de rendez-vous : episodes, saisons, extraits,
               integrations natives et pages detaillees pour cadrer le sponsoring.
             </p>
-            <div className="mt-10 flex flex-wrap gap-3 font-mono text-[10px] uppercase tracking-widest text-background/65">
+            <div className="mt-8 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-background/65 sm:mt-10 sm:gap-3 sm:tracking-widest">
               <span className="rounded-full border border-background/15 px-4 py-2">Saisons</span>
               <span className="rounded-full border border-background/15 px-4 py-2">Episodes</span>
               <span className="rounded-full border border-background/15 px-4 py-2">Clips courts</span>
@@ -62,8 +62,8 @@ export default function ProgrammesPage() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 md:px-12 lg:px-20">
-          <div className="mb-8 flex items-end justify-between gap-6">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-8 sm:py-14 md:px-12 lg:px-20">
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6">
             <div>
               <p className="font-mono text-xs uppercase tracking-widest text-primary">A l&apos;affiche</p>
               <h2 className="mt-2 text-2xl font-black uppercase text-background md:text-3xl">Nos formats originaux</h2>
@@ -77,7 +77,7 @@ export default function ProgrammesPage() {
             {editorialPrograms.map((p, i) => (
               <AnimatedSection key={p.slug} animation="fade-in-up" delay={i * 0.06}>
                 <Link href={`/programmes/${p.slug}`} className="group block h-full">
-                  <div className="relative flex min-h-[520px] overflow-hidden rounded-2xl border border-background/10 bg-background/8 shadow-2xl transition duration-500 hover:-translate-y-2 hover:border-primary/60">
+                  <div className="relative flex min-h-[390px] overflow-hidden rounded-2xl border border-background/10 bg-background/8 shadow-2xl transition duration-500 hover:-translate-y-2 hover:border-primary/60 sm:min-h-[460px] md:min-h-[520px]">
                     <Image
                       src={visuals[i % visuals.length]}
                       alt=""
@@ -90,7 +90,7 @@ export default function ProgrammesPage() {
                       <span className="mb-3 inline-flex rounded-full bg-primary px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
                         {p.pillar}
                       </span>
-                      <h3 className="text-3xl font-black uppercase leading-none text-white md:text-4xl">{p.title}</h3>
+                      <h3 className="break-words text-2xl font-black uppercase leading-none text-white sm:text-3xl md:text-4xl">{p.title}</h3>
                       <p className="mt-3 min-h-[48px] text-sm font-medium leading-6 text-white/78">{p.tagline}</p>
                       <p className="mt-5 line-clamp-3 text-sm leading-6 text-white/62">{p.cardSummary}</p>
                       <span className="mt-6 inline-flex font-mono text-xs uppercase tracking-widest text-primary">
@@ -104,21 +104,21 @@ export default function ProgrammesPage() {
           </div>
         </section>
 
-        <section className="border-t border-background/10 px-5 py-16 sm:px-8 md:px-12 lg:px-20">
-          <div className="mx-auto max-w-7xl rounded-2xl border border-background/10 bg-background p-8 text-foreground md:p-10">
-            <h2 className="text-3xl font-black uppercase md:text-4xl">Prochaine etape</h2>
+        <section className="border-t border-background/10 px-4 py-14 sm:px-8 sm:py-16 md:px-12 lg:px-20">
+          <div className="mx-auto max-w-7xl rounded-2xl border border-background/10 bg-background p-5 text-foreground sm:p-8 md:p-10">
+            <h2 className="break-words text-2xl font-black uppercase sm:text-3xl md:text-4xl">Prochaine etape</h2>
             <p className="mt-3 mb-6 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
               Indiquez-nous le programme, votre budget indicatif et la periode souhaitee. Nous revenons avec une proposition
               claire : emplacements, livrables, calendrier et mentions.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <CtaButton href="/demander-devis" variant="fillHover">
+              <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
                 Demander un devis
               </CtaButton>
-              <CtaButton href="/services" variant="outline">
+              <CtaButton href="/services" variant="outline" className="w-full justify-center sm:w-auto">
                 Voir les offres & prix
               </CtaButton>
-              <CtaButton href="mailto:contact@scoop-afrique.com" variant="outline" external>
+              <CtaButton href="mailto:contact@scoop-afrique.com" variant="outline" external className="w-full justify-center sm:w-auto">
                 contact@scoop-afrique.com
               </CtaButton>
             </div>

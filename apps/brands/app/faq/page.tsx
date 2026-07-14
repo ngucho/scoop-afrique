@@ -140,12 +140,12 @@ const faqs = [
 export default function FaqPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <article className="mx-auto max-w-4xl px-6 py-16">
-        <div className="mb-4 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+      <article className="mx-auto max-w-4xl px-4 py-14 sm:px-8 sm:py-16">
+        <div className="mb-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
           <Dot size="sm" className="text-primary" />
           Questions frequentes
         </div>
-        <Heading as="h1" level="h1" className="mb-4">
+        <Heading as="h1" level="h1" className="mb-4 break-words">
           <span className="text-primary">FAQ</span>
         </Heading>
         <p className="mb-16 text-lg text-muted-foreground">
@@ -154,25 +154,25 @@ export default function FaqPage() {
 
         <div className="space-y-6">
           {faqs.map((faq, i) => (
-            <Card key={i} className="border-border p-6">
-              <h2 className="mb-3 font-sans text-lg font-bold uppercase tracking-wider text-foreground">{faq.q}</h2>
-              <div className="text-muted-foreground [&_strong]:font-medium [&_strong]:text-foreground">{faq.a}</div>
+            <Card key={i} className="border-border p-5 sm:p-6">
+              <h2 className="mb-3 break-words font-sans text-base font-bold uppercase tracking-wide text-foreground sm:text-lg sm:tracking-wider">{faq.q}</h2>
+              <div className="break-words text-sm leading-7 text-muted-foreground sm:text-base [&_strong]:font-medium [&_strong]:text-foreground">{faq.a}</div>
             </Card>
           ))}
         </div>
 
-        <Card className="mt-16 border-primary/20 bg-primary/5 p-8 text-center">
-          <Heading as="h2" level="h2" className="mb-4">
+        <Card className="mt-16 border-primary/20 bg-primary/5 p-5 text-center sm:p-8">
+          <Heading as="h2" level="h2" className="mb-4 break-words">
             Une autre question ?
           </Heading>
           <p className="mb-6 text-muted-foreground">
             Ecrivez-nous ou passez par le formulaire : nous detaillons le perimetre, les livrables et le calendrier.
           </p>
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <CtaButton href="/demander-devis" variant="fillHover">
+            <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
               Demander un devis
             </CtaButton>
-            <CtaButton href="/contact" variant="outline">
+            <CtaButton href="/contact" variant="outline" className="w-full justify-center sm:w-auto">
               Contact
             </CtaButton>
           </div>
