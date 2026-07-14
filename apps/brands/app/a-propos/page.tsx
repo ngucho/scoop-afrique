@@ -36,10 +36,10 @@ export default async function AboutPage() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="border-b border-border bg-card py-20 md:py-28">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-20">
-          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">Manifeste</p>
-          <h1 className="mt-4 max-w-5xl text-4xl font-black leading-tight md:text-7xl" style={{ fontFamily: 'var(--font-headline)' }}>
+      <section className="border-b border-border bg-card py-14 sm:py-20 md:py-28">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 md:px-12 lg:px-20">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary sm:tracking-[0.28em]">Manifeste</p>
+          <h1 className="mt-4 max-w-5xl break-words text-[clamp(2.35rem,12vw,5rem)] font-black leading-[0.98] md:text-7xl" style={{ fontFamily: 'var(--font-headline)' }}>
             L&apos;Afrique doit etre racontee par ses propres voix.
           </h1>
           <p className="mt-6 max-w-3xl text-base leading-7 text-muted-foreground">
@@ -51,12 +51,12 @@ export default async function AboutPage() {
       </section>
 
       <section className="py-14">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-20">
-          <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">{audience.sourceLabel}</p>
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 md:px-12 lg:px-20">
+          <p className="mb-5 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:tracking-[0.28em]">{audience.sourceLabel}</p>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {stats.map((stat) => (
               <Card key={stat.key} className="p-4">
-                <p className="text-3xl font-black text-primary" style={{ fontFamily: 'var(--font-headline)' }}>{stat.display}</p>
+                <p className="break-words text-2xl font-black text-primary sm:text-3xl" style={{ fontFamily: 'var(--font-headline)' }}>{stat.display}</p>
                 <p className="mt-2 text-xs text-muted-foreground">{stat.label}</p>
               </Card>
             ))}
@@ -65,12 +65,12 @@ export default async function AboutPage() {
       </section>
 
       <section className="border-y border-border bg-card py-16 md:py-24">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 md:px-12 lg:px-20">
           <div className="grid gap-4 md:grid-cols-3">
             {pillars.map((pillar) => (
               <Card key={pillar.title} className="p-5">
                 <Dot size="sm" className="text-primary" />
-                <h2 className="mt-4 text-2xl font-black text-foreground" style={{ fontFamily: 'var(--font-headline)' }}>
+                <h2 className="mt-4 break-words text-2xl font-black text-foreground" style={{ fontFamily: 'var(--font-headline)' }}>
                   {pillar.title}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-muted-foreground">{pillar.text}</p>
@@ -81,10 +81,10 @@ export default async function AboutPage() {
       </section>
 
       <section className="py-16 md:py-24">
-        <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 md:px-12 lg:grid-cols-[0.42fr_0.58fr] lg:px-20">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-8 md:px-12 lg:grid-cols-[0.42fr_0.58fr] lg:px-20">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">Pour les partenaires</p>
-            <h2 className="mt-3 text-3xl font-black md:text-5xl" style={{ fontFamily: 'var(--font-headline)' }}>
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary sm:tracking-[0.28em]">Pour les partenaires</p>
+            <h2 className="mt-3 break-words text-3xl font-black md:text-5xl" style={{ fontFamily: 'var(--font-headline)' }}>
               Une marque ne loue pas notre audience. Elle entre dans une conversation.
             </h2>
           </div>
@@ -98,16 +98,16 @@ export default async function AboutPage() {
               innovation, souverainete economique ou impact social.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
-              <CtaButton href="/services" variant="outline">Voir les offres</CtaButton>
-              <CtaButton href="/demander-devis" variant="fillHover">Demander un devis</CtaButton>
-              <CtaButton href={wwwPath('/')} variant="outline" external>Lire le media</CtaButton>
+              <CtaButton href="/services" variant="outline" className="w-full justify-center sm:w-auto">Voir les offres</CtaButton>
+              <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">Demander un devis</CtaButton>
+              <CtaButton href={wwwPath('/')} variant="outline" external className="w-full justify-center sm:w-auto">Lire le media</CtaButton>
             </div>
           </div>
         </div>
       </section>
 
       <section className="border-t border-border py-12">
-        <div className="mx-auto max-w-7xl px-5 text-sm text-muted-foreground sm:px-8 md:px-12 lg:px-20">
+        <div className="mx-auto max-w-7xl px-4 text-sm text-muted-foreground sm:px-8 md:px-12 lg:px-20">
           <p>
             Siege: Abidjan, Cocody Riviera Faya. Contact:{' '}
             <Link href="/contact" className="text-primary underline-offset-4 hover:underline">

@@ -53,13 +53,13 @@ export function CarouselSection() {
       <div className="absolute inset-0 opacity-25 [background:radial-gradient(circle_at_25%_20%,rgba(239,35,60,0.7),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />
       <div className="noise-overlay absolute inset-0 opacity-10" />
 
-      <div className="relative mx-auto grid min-h-[760px] max-w-7xl items-center gap-10 px-5 py-16 sm:px-8 md:min-h-[720px] md:grid-cols-[0.95fr_1.05fr] md:px-12 md:py-20 lg:px-20">
-        <div className="z-10 max-w-xl">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-14 sm:px-8 md:min-h-[720px] md:grid-cols-[0.95fr_1.05fr] md:px-12 md:py-20 lg:px-20">
+        <div className="z-10 max-w-xl min-w-0">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-background/15 bg-background/10 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-background/75 backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
             Proof reel
           </div>
-          <h2 className="font-sans text-4xl font-black uppercase leading-[0.98] tracking-normal text-background sm:text-5xl md:text-6xl">
+          <h2 className="break-words font-sans text-3xl font-black uppercase leading-[0.98] tracking-normal text-background sm:text-5xl md:text-6xl">
             La marque entre dans la conversation.
           </h2>
           <p className="mt-6 max-w-md text-sm leading-relaxed text-background/70 md:text-base">
@@ -98,13 +98,13 @@ export function CarouselSection() {
           </div>
         </div>
 
-        <div className="relative min-h-[500px] md:min-h-[560px]">
+        <div className="relative min-h-[460px] sm:min-h-[500px] md:min-h-[560px]">
           <div className="absolute left-2 top-4 z-20 rounded-2xl border border-background/15 bg-background/12 px-4 py-3 text-background shadow-2xl backdrop-blur md:left-0">
             <p className="font-mono text-[10px] uppercase tracking-widest text-background/60">{active.metric}</p>
             <p className="mt-1 font-sans text-2xl font-black uppercase">{active.title}</p>
           </div>
 
-          <div className="absolute inset-x-0 top-10 mx-auto aspect-[4/5] max-w-[420px] overflow-hidden rounded-[2rem] border border-background/10 bg-background/10 shadow-[0_50px_120px_rgba(0,0,0,0.45)] md:right-0 md:mx-0 md:max-w-[520px]">
+          <div className="absolute inset-x-0 top-10 mx-auto aspect-[4/5] max-w-[min(92vw,420px)] overflow-hidden rounded-[1.5rem] border border-background/10 bg-background/10 shadow-[0_50px_120px_rgba(0,0,0,0.45)] sm:rounded-[2rem] md:right-0 md:mx-0 md:max-w-[520px]">
             <Image
               key={active.src}
               src={active.src}
@@ -120,7 +120,7 @@ export function CarouselSection() {
             </div>
           </div>
 
-          <div className="absolute bottom-2 right-0 z-20 max-w-[260px] rounded-2xl border border-background/15 bg-background p-4 text-foreground shadow-2xl md:bottom-0 md:right-8">
+          <div className="absolute bottom-2 right-0 z-20 max-w-[min(76vw,260px)] rounded-2xl border border-background/15 bg-background p-4 text-foreground shadow-2xl md:bottom-0 md:right-8">
             <div className="mb-3 flex items-center justify-between">
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Next move</p>
               <ArrowUpRight className="h-4 w-4 text-primary" aria-hidden />

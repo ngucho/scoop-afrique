@@ -9,13 +9,13 @@ export function ContactCtaSection() {
       <div className="absolute inset-0 opacity-35 [background:radial-gradient(circle_at_15%_20%,rgba(239,35,60,0.75),transparent_24%),radial-gradient(circle_at_82%_72%,rgba(255,255,255,0.18),transparent_26%)]" />
       <div className="noise-overlay absolute inset-0 opacity-10" />
 
-      <div className="relative mx-auto grid max-w-7xl gap-10 px-6 md:grid-cols-[1.05fr_0.95fr] md:items-center md:px-12 lg:px-20">
-        <div>
+      <div className="relative mx-auto grid max-w-7xl gap-10 px-4 sm:px-8 md:grid-cols-[1.05fr_0.95fr] md:items-center md:px-12 lg:px-20">
+        <div className="min-w-0">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-background/15 bg-background/10 px-3 py-2 font-mono text-[10px] uppercase tracking-widest text-background/75">
             <Send className="h-3.5 w-3.5 text-primary" aria-hidden />
             Brief room
           </div>
-          <h2 className="font-sans text-4xl font-black uppercase leading-[0.9] tracking-normal text-background sm:text-5xl md:text-6xl">
+          <h2 className="break-words font-sans text-3xl font-black uppercase leading-[0.95] tracking-normal text-background sm:text-5xl md:text-6xl">
             Un brief clair. Une reponse exploitable.
           </h2>
         </div>
@@ -35,10 +35,10 @@ export function ContactCtaSection() {
             indicateurs de suivi. Les prix restent visibles dans chaque offre, le devis final precise le perimetre.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <CtaButton href="/demander-devis" variant="fillHover">
+            <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
               Demander un devis
             </CtaButton>
-            <CtaButton href="/contact" variant="outline">
+            <CtaButton href="/contact" variant="outline" className="w-full justify-center sm:w-auto">
               Contact & WhatsApp
             </CtaButton>
           </div>
