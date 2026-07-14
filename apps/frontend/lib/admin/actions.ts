@@ -48,7 +48,7 @@ export async function updateArticle(id: string, data: Record<string, unknown>): 
 
 export async function publishArticle(
   id: string,
-  payload?: { content?: unknown; title?: string; excerpt?: string | null },
+  payload?: Record<string, unknown>,
 ): Promise<Article> {
   const token = await getToken()
   const res = await apiPostAuth<ApiResponse<Article>>(
