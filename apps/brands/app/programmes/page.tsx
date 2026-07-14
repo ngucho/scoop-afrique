@@ -36,7 +36,7 @@ const visuals = [
 
 export default function ProgrammesPage() {
   return (
-    <main className="min-h-screen bg-foreground text-background">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-foreground text-background">
       <article className="overflow-hidden">
         <section className="relative border-b border-background/10 px-4 py-14 sm:px-8 sm:py-20 md:px-12 md:py-28 lg:px-20">
           <div className="absolute inset-0 opacity-25 [background:radial-gradient(circle_at_20%_10%,rgba(239,35,60,0.75),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />

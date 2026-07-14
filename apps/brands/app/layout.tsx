@@ -165,7 +165,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
+      <body className={`${geistMono.variable} ${brasika.variable} w-full max-w-full overflow-x-hidden font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <BrandsHeader />
           {children}

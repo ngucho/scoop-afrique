@@ -26,7 +26,7 @@ export default async function HomePage() {
       <div className="hidden lg:block">
         <CursorTracker />
       </div>
-      <main className="min-h-screen bg-background">
+      <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background">
         <HeroBrands audience={audience} />
         <WhoWeAreSection />
         <StatsSection audience={audience} />

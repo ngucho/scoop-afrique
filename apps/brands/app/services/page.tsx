@@ -27,7 +27,7 @@ export default async function ServicesPage() {
   ]
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <section className="relative overflow-hidden border-b border-border bg-foreground py-14 text-background sm:py-20 md:py-28">
         <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_18%_18%,rgba(239,35,60,0.65),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.14),transparent_42%)]" />
         <div className="noise-overlay absolute inset-0 opacity-10" />

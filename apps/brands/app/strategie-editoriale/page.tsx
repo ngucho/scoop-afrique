@@ -19,7 +19,7 @@ export default function StrategieEditorialePage() {
   const [activeTab, setActiveTab] = useState('vision')
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <section className="border-b border-[var(--surface-border)] bg-[var(--surface)] py-12 md:py-16">
         <div className="mx-auto max-w-4xl px-4 sm:px-8 md:px-12 lg:px-20">
           <div className="mb-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">

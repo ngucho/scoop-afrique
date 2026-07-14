@@ -54,7 +54,7 @@ export default async function ServiceDetailPage({ params }: Props) {
   const ServiceIcon = service.icon
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
       <article>
         <section className="relative overflow-hidden border-b border-border bg-foreground py-12 text-background sm:py-16 md:py-24">
           <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_18%_18%,rgba(239,35,60,0.65),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.14),transparent_42%)]" />
