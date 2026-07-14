@@ -350,6 +350,25 @@ export async function updateSubscriberSegments(
   revReader()
 }
 
+export async function relaunchPendingSubscribers(limit = 100): Promise<{
+  attempted: number
+  sent: number
+  failed: number
+  skipped: number
+}> {
+  const token = await getToken()
+  const res = await apiPostAuth<{
+    data: {
+      attempted: number
+      sent: number
+      failed: number
+      skipped: number
+    }
+  }>('/admin/reader/subscribers/relaunch-pending', token, { limit })
+  revReader()
+  return res.data
+}
+
 export async function createNewsletterCampaign(data: Record<string, unknown>): Promise<void> {
   const token = await getToken()
   await apiPostAuth('/admin/reader/newsletter-campaigns', token, data)

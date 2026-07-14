@@ -63,6 +63,7 @@ const envSchema = z.object({
   /** Resend webhook signing secret (Svix) for delivery events */
   RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
   /** Shared secret for cron / internal job HTTP triggers */
+  CRON_SECRET: z.string().min(1).optional(),
   DIGEST_CRON_SECRET: z.string().min(1).optional(),
   /** Public reader site base URL (for digest links, unsubscribe). */
   PUBLIC_SITE_URL: z.string().url().optional(),
@@ -149,7 +150,7 @@ export const config = {
         }
       : null,
 
-  digestCronSecret: env.DIGEST_CRON_SECRET ?? null,
+  digestCronSecret: env.CRON_SECRET ?? env.DIGEST_CRON_SECRET ?? null,
 
   publicSiteUrl: env.PUBLIC_SITE_URL ?? null,
 

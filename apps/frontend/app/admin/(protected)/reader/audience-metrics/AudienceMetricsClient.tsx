@@ -108,7 +108,9 @@ export function AudienceMetricsClient({ recent, latest, userRole }: Props) {
       // 7-day delta
       let delta7d: number | null = null
       if (metricRows.length >= 2 && latestValue !== null) {
-        const cutoff = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
+        const referenceDate = new Date(latestDate ?? metricRows[metricRows.length - 1]!.snapshot_date)
+        referenceDate.setDate(referenceDate.getDate() - 7)
+        const cutoff = referenceDate.toISOString().slice(0, 10)
         const before = metricRows.filter((r) => r.snapshot_date <= cutoff)
         const beforeVal = before.length ? Number(before[before.length - 1]!.value_numeric) : null
         if (beforeVal && beforeVal > 0) delta7d = (latestValue - beforeVal) / beforeVal
