@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { newsletterSubscribers } from '../db/schema.js'
 import { config } from '../config/env.js'
@@ -53,6 +53,39 @@ async function sendNewsletterConfirmationEmail(toEmail: string, token: string): 
     return { ok: false, error: msg }
   }
   return { ok: true }
+}
+
+export async function resendPendingConfirmations(
+  limit = 100,
+): Promise<{ attempted: number; sent: number; failed: number; skipped: number }> {
+  if (!config.database) return { attempted: 0, sent: 0, failed: 0, skipped: 0 }
+  const db = getDb()
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 500)
+  const rows = await db
+    .select({
+      email: newsletterSubscribers.email,
+      token: newsletterSubscribers.token,
+    })
+    .from(newsletterSubscribers)
+    .where(and(eq(newsletterSubscribers.status, 'pending'), isNotNull(newsletterSubscribers.token)))
+    .orderBy(asc(newsletterSubscribers.subscribedAt))
+    .limit(safeLimit)
+
+  let sent = 0
+  let failed = 0
+  let skipped = 0
+
+  for (const row of rows) {
+    if (!row.token) {
+      skipped += 1
+      continue
+    }
+    const result = await sendNewsletterConfirmationEmail(row.email, row.token)
+    if (result.ok) sent += 1
+    else failed += 1
+  }
+
+  return { attempted: rows.length, sent, failed, skipped }
 }
 
 export async function subscribe(

@@ -355,10 +355,10 @@ export function CampaignCard({
               { label: 'Action', align: 'right' },
             ]}
             rows={campaign.creatives.map((cr) => [
-              <span className="font-mono text-xs">{cr.format ?? 'native'}</span>,
-              <span className="font-medium">{cr.headline}</span>,
-              <span className="max-w-[200px] truncate text-muted-foreground">{cr.link_url}</span>,
-              <div className="flex justify-end gap-2">
+              <span key="format" className="font-mono text-xs">{cr.format ?? 'native'}</span>,
+              <span key="headline" className="font-medium">{cr.headline}</span>,
+              <span key="link" className="max-w-[200px] truncate text-muted-foreground">{cr.link_url}</span>,
+              <div key="actions" className="flex justify-end gap-2">
                 <Button
                   type="button"
                   variant="text"
