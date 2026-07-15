@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto'
 import type { Context } from 'hono'
 
+export function honoRequestHeaders(c: Context): { get(name: string): string | undefined | null } {
+  return {
+    get: (name) => c.req.header(name),
+  }
+}
+
 export function weakEtag(parts: Array<string | number | null | undefined>): string {
   const payload = parts.map((p) => (p == null ? '' : String(p))).join('|')
   const hash = createHash('sha1').update(payload).digest('base64url')
