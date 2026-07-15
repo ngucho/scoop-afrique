@@ -1,178 +1,158 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Play, BarChart3, Users, Mic2, Headphones } from 'lucide-react'
-import { PlaceholderImage } from '@/components/placeholder-image'
+import { ArrowUpRight, BarChart3, CheckCircle2, Target, Users } from 'lucide-react'
 import { Footer } from '@/components/footer'
 import { Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
 import { serviceOffers, couvertureFormules } from '@/lib/services-data'
+import { getBrandAudienceSummary } from '@/lib/brand-audience'
 
 const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
-  title: 'Services & Offres B2B',
+  title: 'Offres & prix annonceurs',
   description:
-    'Couverture événementielle, publication, interview, promo concert, partenariat de marque. Scoop Afrique accompagne marques et organisateurs avec une audience panafricaine.',
+    'Prix, formats et details des offres Scoop Afrique : couverture terrain, publications premium, campagnes sociales, interviews et partenariats.',
   alternates: { canonical: `${BASE_URL}/services` },
-  openGraph: {
-    type: 'website',
-    url: `${BASE_URL}/services`,
-    title: 'Services & Offres B2B | Scoop Afrique',
-    description: 'Couverture événementielle, contenus sponsorisés, campagnes digitales pour annonceurs et partenaires.',
-    siteName: 'Scoop Afrique',
-    images: [{ url: `${BASE_URL}/og-image.png`, width: 1200, height: 630, alt: 'Scoop Afrique Services' }],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Services | Scoop Afrique',
-    description: 'Couverture événementielle, contenus sponsorisés, campagnes digitales pour annonceurs et partenaires.',
-    images: ['/og-image.png'],
-  },
 }
 
-const stats = [
-  { icon: BarChart3, value: '5+', label: 'Réseaux actifs' },
-  { icon: Users, value: '+1,4M', label: 'Abonnés cumulés (mars 2026)' },
-]
+export default async function ServicesPage() {
+  const audience = await getBrandAudienceSummary()
+  const featured = serviceOffers[0]
+  const stats = [
+    { icon: Users, value: audience.totalSocial.display, label: 'Audience sociale' },
+    { icon: BarChart3, value: audience.stats.find((s) => s.key === 'tiktok')?.display ?? '+1M', label: 'TikTok' },
+    { icon: Target, value: '5', label: 'Offres modulaires' },
+  ]
 
-export default function ServicesPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <section className="relative overflow-hidden border-b border-border bg-card py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
-          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            <Dot size="sm" className="text-primary" />
-            Nos services B2B
-          </div>
-          <h1 className="mt-4 mb-6 font-sans text-2xl font-bold uppercase tracking-tight text-foreground md:text-3xl">
-            Couverture, contenu & <span className="text-primary">partenariats</span>
-          </h1>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Tournage, montage et diffusion sur TikTok, Instagram, Facebook, YouTube et Threads. Nos offres sont calées sur une
-            grille 2026 publique (FCFA TTC) : vous savez à quoi vous attendre avant le premier appel. Pour les formats
-            récurrents — interviews longues, jeux avec personnalités, micro-trottoirs — voir aussi{' '}
-            <Link href="/programmes" className="text-primary underline-offset-4 hover:underline">
-              les programmes sponsoring
-            </Link>
-            .
-          </p>
-          <div className="mt-10 flex flex-wrap gap-6">
-            {stats.map((s) => (
-              <div key={s.label} className="flex items-center gap-3">
-                <s.icon className="h-8 w-8 text-primary" />
-                <div>
-                  <span className="block font-sans text-xl font-bold text-primary">{s.value}</span>
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">{s.label}</span>
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
+      <section className="relative overflow-hidden border-b border-border bg-foreground py-14 text-background sm:py-20 md:py-28">
+        <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_18%_18%,rgba(239,35,60,0.65),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.14),transparent_42%)]" />
+        <div className="noise-overlay absolute inset-0 opacity-10" />
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 sm:gap-10 sm:px-8 md:px-12 lg:grid-cols-[1fr_0.82fr] lg:px-20">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-primary sm:text-xs sm:tracking-widest">
+              <Dot size="sm" className="text-primary" />
+              Offres & prix 2026
+            </div>
+            <h1 className="mt-4 max-w-4xl break-words text-[clamp(2.35rem,12vw,4.5rem)] font-black leading-[0.98] text-background md:text-6xl" style={{ fontFamily: 'var(--font-headline)' }}>
+              Achetez l&apos;audience utile. Choisissez le bon format.
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-7 text-background/72">
+              Couverture terrain, contenus sponsorises, campagnes sociales, interviews et brand deals: chaque offre indique
+              son prix, ses livrables, son usage naturel et la prochaine action.
+            </p>
+            <div className="mt-10 grid gap-3 sm:grid-cols-3">
+              {stats.map((s) => (
+                <div key={s.label} className="rounded-2xl border border-background/12 bg-background/8 p-4 backdrop-blur">
+                  <s.icon className="h-6 w-6 text-primary" />
+                  <span className="mt-3 block text-2xl font-black text-primary">{s.value}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-background/58">{s.label}</span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+
+          <Link href={`/services/${featured.slug}`} className="group relative min-h-[320px] overflow-hidden rounded-2xl border border-background/12 bg-background/10 shadow-2xl sm:min-h-[430px]">
+            <Image src={featured.image} alt="" fill className="object-cover transition duration-700 group-hover:scale-105" sizes="(max-width: 1024px) 100vw, 520px" priority />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/25 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-6 text-white md:p-8">
+              <p className="mb-3 inline-flex rounded-full bg-primary px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
+                {featured.price}
+              </p>
+              <h2 className="max-w-md break-words text-2xl font-black leading-tight sm:text-3xl md:text-4xl" style={{ fontFamily: 'var(--font-headline)' }}>
+                {featured.title}
+              </h2>
+              <p className="mt-3 max-w-md text-sm leading-6 text-white/78">{featured.summary}</p>
+              <span className="mt-5 inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-primary">
+                Voir le detail <ArrowUpRight className="h-4 w-4" />
+              </span>
+            </div>
+          </Link>
         </div>
       </section>
 
-      <section id="services" className="scroll-mt-24 py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
-          <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">Nos services</h2>
-          <p className="mb-4 font-sans text-xl font-bold uppercase tracking-tight text-foreground md:text-2xl">
-            Cliquez sur un service pour en savoir plus
-          </p>
-          <p className="mb-10 max-w-2xl text-sm text-muted-foreground">
-            Chaque service est détaillé : ce qu&apos;il couvre, comment nous le livrons, les livrables inclus et notre approche tarifaire.
-          </p>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="border-b border-border bg-card py-10">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 sm:px-8 md:grid-cols-3 md:px-12 lg:px-20">
+          {['Prix visibles', 'Livrables detailles', 'Brief en 24-48h'].map((item) => (
+            <div key={item} className="flex items-center gap-3 rounded-2xl border border-border bg-background p-4">
+              <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">{item}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="services" className="scroll-mt-24 py-16 md:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 md:px-12 lg:px-20">
+          <div className="mb-10 grid gap-4 md:grid-cols-[0.7fr_0.3fr] md:items-end">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-widest text-primary">Catalogue annonceurs</p>
+              <h2 className="mt-3 break-words text-3xl font-black leading-tight md:text-5xl" style={{ fontFamily: 'var(--font-headline)' }}>
+                Une page claire pour comparer les offres.
+              </h2>
+            </div>
+            <p className="text-sm leading-7 text-muted-foreground">
+              Chaque carte renvoie vers une page detaillee avec usage, livrables, delais, prix et formulaire pre-rempli.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
             {serviceOffers.map((service) => (
               <Link key={service.slug} href={`/services/${service.slug}`} className="group block">
-                <Card className="h-full overflow-hidden border-border transition-all hover:border-primary/50 hover:shadow-lg">
-                  <div className="relative aspect-[16/10] w-full bg-muted">
-                    <Image
-                      src={service.image}
-                      alt=""
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
-                    <div className="absolute bottom-3 left-3 rounded border border-border bg-background/90 px-3 py-1 font-mono text-xs font-bold text-foreground backdrop-blur">
-                      {service.price}
+                <Card className="h-full overflow-hidden border-border transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl">
+                  <div className="grid h-full md:grid-cols-[220px_1fr]">
+                    <div className="relative min-h-[180px] bg-muted sm:min-h-[220px]">
+                      <Image src={service.image} alt="" fill className="object-cover transition group-hover:scale-105" sizes="260px" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent md:bg-black/10" />
                     </div>
-                  </div>
-                  <div className="p-5">
-                    <service.icon className="mb-3 h-8 w-8 text-primary" />
-                    <h3 className="mb-2 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-                      {service.title}
-                    </h3>
-                    <p className="mb-4 text-sm text-muted-foreground">{service.summary}</p>
-                    <span className="font-mono text-xs uppercase tracking-widest text-primary group-hover:underline">
-                      Découvrir le service →
-                    </span>
+                    <div className="p-5">
+                      <service.icon className="mb-4 h-8 w-8 text-primary" />
+                      <p className="mb-2 inline-flex rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{service.price}</p>
+                      <h2 className="break-words text-2xl font-black text-foreground" style={{ fontFamily: 'var(--font-headline)' }}>
+                        {service.title}
+                      </h2>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{service.summary}</p>
+                      <span className="mt-5 inline-flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-primary group-hover:underline">
+                        Decouvrir le service <ArrowUpRight className="h-4 w-4" />
+                      </span>
+                    </div>
                   </div>
                 </Card>
               </Link>
             ))}
           </div>
-          <div className="mt-12 text-center">
-            <CtaButton href="/demander-devis" variant="fillHover">
-              Demander un devis personnalisé
-            </CtaButton>
-          </div>
         </div>
       </section>
 
-      <section id="formules-couverture" className="border-t border-border bg-card py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
-          <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">Formules couverture</h2>
-          <p className="mb-10 font-sans text-xl font-bold uppercase tracking-tight text-foreground md:text-2xl">
-            Couverture <span className="text-primary">médiatique</span> — détail des formules
-          </p>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+      <section className="border-t border-border bg-card py-16 md:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-8 md:px-12 lg:px-20">
+          <h2 className="break-words text-3xl font-black text-foreground md:text-5xl" style={{ fontFamily: 'var(--font-headline)' }}>
+            Formules couverture terrain
+          </h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {couvertureFormules.map((formule) => (
-              <Card key={formule.title} className="overflow-hidden border-border transition-shadow hover:shadow-lg">
-                <div className="relative aspect-video w-full bg-muted">
-                  <PlaceholderImage
-                    src={formule.image}
-                    alt=""
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                    fallback={<Play className="h-16 w-16 text-muted-foreground/50" />}
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="mb-2 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-                    {formule.title}
-                  </h3>
-                  <p className="mb-4 font-sans text-2xl font-black text-primary">{formule.price}</p>
-                  <ul className="list-none space-y-2 text-sm text-muted-foreground">
-                    {formule.items.map((item) => (
-                      <li key={item} className="flex items-start gap-2">
-                        <Dot size="sm" className="mt-1.5 shrink-0 text-primary" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+              <Card key={formule.title} className="p-5">
+                <p className="text-xl font-black text-primary">{formule.price}</p>
+                <h3 className="mt-2 text-lg font-black text-foreground">{formule.title}</h3>
+                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  {formule.items.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <Dot size="sm" className="mt-1.5 shrink-0 text-primary" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </Card>
             ))}
           </div>
-          <div className="mt-8 text-center">
-            <CtaButton href="/services/couverture-mediatique" variant="outline">
-              Voir la fiche complète
+          <div className="mt-10">
+            <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
+              Construire un dispositif
             </CtaButton>
           </div>
-        </div>
-      </section>
-
-      <section className="border-t border-border py-16">
-        <div className="mx-auto max-w-6xl px-6 text-center md:px-12">
-          <p className="mb-6 text-muted-foreground">
-            Contenu sponsorisé, reportages, documentaires : tarifs sur devis.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Mic2 className="h-8 w-8 text-primary" aria-hidden />
-            <Headphones className="h-8 w-8 text-primary" aria-hidden />
-          </div>
-          <Link href="/contact" className="mt-6 inline-block text-primary hover:underline">
-            contact@scoop-afrique.com
-          </Link>
         </div>
       </section>
 

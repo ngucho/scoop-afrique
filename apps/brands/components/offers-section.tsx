@@ -1,63 +1,63 @@
-'use client'
-
 import Link from 'next/link'
 import Image from 'next/image'
-import { Card } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
-import { AnimatedSection } from '@/components/animated-section'
 import { serviceOffers } from '@/lib/services-data'
 
 export function OffersSection() {
   return (
-    <section id="offres" className="relative scroll-mt-28 overflow-hidden bg-background py-20 md:py-28 lg:py-32">
-      <div className="mx-auto max-w-7xl px-6 md:px-12 lg:px-20">
-        <h2 className="mb-2 font-sans text-lg font-semibold uppercase tracking-wider text-foreground">Nos offres B2B</h2>
-        <p className="mb-10 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Cinq familles de prestations alignées sur notre grille 2026 : couverture terrain, publications ponctuelles, promo
-          artistes & événements, interviews, partenariats mensuels.
-        </p>
-        <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {serviceOffers.map((offer, i) => (
-              <AnimatedSection key={offer.slug} animation="fade-in-up" delay={i * 0.05}>
-                <Link href={`/services/${offer.slug}`} className="group block">
-                  <Card className="h-full overflow-hidden transition-all duration-300 hover:border-primary/50 hover:shadow-[var(--shadow-lg)]">
-                    <div className="relative aspect-[16/10] w-full bg-muted">
-                      <Image
-                        src={offer.image}
-                        alt=""
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        onError={(e) => {
-                          const t = e.target as HTMLImageElement
-                          t.style.display = 'none'
-                          t.parentElement?.classList.add('js-fallback-visible')
-                        }}
-                      />
-                      <div className="absolute inset-0 hidden items-center justify-center bg-muted [.js-fallback-visible_&]:flex">
-                        <offer.icon className="h-16 w-16 text-muted-foreground/50" />
-                      </div>
-                      <div className="absolute bottom-3 left-3 rounded border border-border bg-background/90 px-3 py-1 font-mono text-xs font-bold text-foreground backdrop-blur">
-                        {offer.price}
-                      </div>
-                    </div>
-                    <div className="p-5">
-                      <h3 className="mb-1.5 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-                        {offer.title}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{offer.summary}</p>
-                      <span className="mt-4 inline-block font-mono text-xs uppercase tracking-widest text-primary group-hover:underline">
-                        Découvrir le service →
-                      </span>
-                    </div>
-                  </Card>
-                </Link>
-              </AnimatedSection>
+    <section id="offres" className="relative scroll-mt-28 overflow-hidden bg-background py-18 md:py-28">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-20">
+        <div className="mb-10 grid gap-6 lg:grid-cols-[0.5fr_0.5fr] lg:items-end">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">Offres annonceurs</p>
+            <h2 className="mt-3 text-3xl font-black leading-tight text-foreground md:text-5xl" style={{ fontFamily: 'var(--font-headline)' }}>
+              Achetez de l&apos;attention utile, pas juste une impression.
+            </h2>
+          </div>
+          <p className="text-sm leading-7 text-muted-foreground md:text-base">
+            Nos offres sont pensees pour une audience africaine mobile: video courte, terrain, article, activation sociale
+            et partenariat recurrent. Chaque pack part d&apos;un objectif clair: visibilite, credibilite, mobilisation ou presence durable.
+          </p>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-5">
+          {serviceOffers.map((offer, index) => (
+            <Link
+              key={offer.slug}
+              href={`/services/${offer.slug}`}
+              className={`group relative overflow-hidden rounded-2xl border border-border bg-card transition hover:-translate-y-1 hover:border-primary/50 hover:shadow-2xl ${
+                index === 0 ? 'lg:col-span-2 lg:row-span-2' : 'lg:col-span-1'
+              }`}
+            >
+              <div className={`${index === 0 ? 'aspect-[16/13]' : 'aspect-[4/5]'} relative bg-muted`}>
+                <Image
+                  src={offer.image}
+                  alt=""
+                  fill
+                  className="object-cover transition duration-500 group-hover:scale-105"
+                  sizes="(max-width: 1024px) 100vw, 33vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/86 via-black/30 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+                  <div className="mb-3 inline-flex rounded-full bg-primary px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary-foreground">
+                    {offer.price}
+                  </div>
+                  <h3 className="text-xl font-black leading-tight" style={{ fontFamily: 'var(--font-headline)' }}>
+                    {offer.title}
+                  </h3>
+                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-white/78">{offer.tagline}</p>
+                </div>
+              </div>
+            </Link>
           ))}
         </div>
-        <div className="mt-12 text-center">
+
+        <div className="mt-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-xl text-sm text-muted-foreground">
+            Besoin d&apos;une proposition specifique? On assemble les formats selon votre objectif, votre calendrier et votre marche.
+          </p>
           <CtaButton href="/demander-devis" variant="fillHover">
-            Demander un devis personnalisé
+            Demander un devis
           </CtaButton>
         </div>
       </div>

@@ -26,18 +26,18 @@ export function StickyDevisBar() {
   return (
     <div
       className={cn(
-        'pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-all duration-300 ease-out',
+        'pointer-events-none fixed inset-x-0 bottom-0 z-40 flex max-w-full justify-center overflow-x-hidden p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-all duration-300 ease-out',
         visible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
       )}
       aria-hidden={!visible}
     >
-      <div className="pointer-events-auto flex max-w-lg flex-col gap-2 rounded-2xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:gap-4 sm:px-5">
-        <p className="text-center text-xs text-muted-foreground sm:text-left sm:text-sm">
+      <div className="pointer-events-auto flex w-full max-w-lg min-w-0 flex-col gap-2 rounded-2xl border border-border bg-background/95 px-4 py-3 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+        <p className="min-w-0 break-words text-center text-xs text-muted-foreground sm:text-left sm:text-sm">
           <span className="font-medium text-foreground">Partenariat ou campagne ?</span> Brief en 2 minutes — réponse sous 24–48 h.
         </p>
         <Link
           href="/demander-devis"
-          className="inline-flex shrink-0 items-center justify-center rounded-full bg-primary px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 sm:text-sm"
+          className="inline-flex min-w-0 shrink-0 items-center justify-center rounded-full bg-primary px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-primary-foreground transition-colors hover:bg-primary/90 sm:text-sm"
         >
           Demander un devis
         </Link>

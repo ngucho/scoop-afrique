@@ -1,38 +1,34 @@
-'use client'
-
 import { CtaButton } from '@/components/cta-button'
 
 export function WhoWeAreSection() {
   return (
-    <section className="border-b border-[var(--surface-border)] bg-background py-16 md:py-20">
-      <div className="mx-auto max-w-3xl px-6 md:px-12 lg:px-20">
-        <h2 className="mb-6 font-sans text-lg font-semibold uppercase tracking-wider text-foreground">
-          Qui sommes-nous ?
-        </h2>
-        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-          Scoop Afrique est un média numérique né à Abidjan en 2025. Nous mélangeons rigueur d’information, esthétique
-          soignée et codes du divertissement pour parler à une audience majoritairement entre 18 et 34 ans, très présente en
-          Côte d’Ivoire et dans la diaspora.
-        </p>
-        <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">Ce que nous faisons pour les marques :</strong> couverture d’événements,
-          publications sponsorisées transparentes, campagnes artistiques, interviews et partenariats récurrents — toujours
-          intégrés à notre ligne éditoriale, avec des livrables clairs et des métriques quand vous en avez besoin.
-        </p>
-        <p className="mb-8 text-sm leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">Vision :</strong> être le média de référence de la jeunesse africaine
-          francophone.
-          <br />
-          <strong className="text-foreground">Mission :</strong> donner une voix et une vitrine à l’Afrique avec des contenus
-          audiovisuels honnêtes, modernes et partageables.
-        </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <CtaButton href="/a-propos" variant="outline">
-            À propos & équipe
-          </CtaButton>
-          <CtaButton href="/tarifs" variant="outline">
-            Transparence tarifaire
-          </CtaButton>
+    <section className="border-b border-border bg-background py-16 md:py-24">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 md:px-12 lg:grid-cols-[0.42fr_0.58fr] lg:px-20">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">Notre position</p>
+          <h2 className="mt-3 text-3xl font-black leading-tight text-foreground md:text-5xl" style={{ fontFamily: 'var(--font-headline)' }}>
+            L&apos;Afrique au centre, la dignite comme boussole.
+          </h2>
+        </div>
+        <div className="space-y-5 text-sm leading-7 text-muted-foreground md:text-base">
+          <p>
+            Scoop Afrique est un media digital panafricain fonde a Abidjan. Notre travail part d&apos;une conviction simple:
+            les histoires qui construisent le continent doivent etre racontees par celles et ceux qui vivent ses urgences,
+            ses rues, ses ambitions et ses contradictions.
+          </p>
+          <p>
+            Pour les marques, cela change tout. Nous ne vendons pas seulement de l&apos;espace publicitaire: nous construisons
+            des campagnes qui respectent l&apos;audience, la culture et les enjeux d&apos;une generation qui veut participer a une
+            nation prospere, informee et fiere.
+          </p>
+          <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap">
+            <CtaButton href="/a-propos" variant="outline">
+              Lire notre manifeste
+            </CtaButton>
+            <CtaButton href="/services" variant="outline">
+              Voir les offres
+            </CtaButton>
+          </div>
         </div>
       </div>
     </section>

@@ -17,3 +17,13 @@ export type TiptapYoutubeAttrs = {
   width?: number
   height?: number
 }
+
+export type TiptapKeyTakeawayAttrs = {
+  title: string
+  items: {
+    icon: string
+    value: string
+    label: string
+    body: string
+  }[]
+}

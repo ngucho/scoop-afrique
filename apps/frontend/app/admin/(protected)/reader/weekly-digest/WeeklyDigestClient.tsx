@@ -10,10 +10,7 @@ import {
   IconSend,
   IconPlayerPlay,
   IconX,
-  IconGripVertical,
   IconEye,
-  IconArrowUp,
-  IconArrowDown,
   IconCheck,
 } from '@tabler/icons-react'
 import type { DigestArticlePickRow } from '@/lib/api/types'
@@ -107,10 +104,10 @@ export function WeeklyDigestClient() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-5">
 
       {/* ── Controls ── */}
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <div className="rounded-xl border border-border bg-background p-4 sm:p-5 space-y-4">
         <div className="flex items-start gap-3">
           <div className="flex-1">
             <h2 className="font-semibold">Digest hebdomadaire</h2>

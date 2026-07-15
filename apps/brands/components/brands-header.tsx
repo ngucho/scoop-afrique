@@ -13,23 +13,13 @@ const NAV = [
   { label: 'Lire le média', href: READER_HOME },
   { label: 'Offres', href: '/services' },
   { label: 'Programmes', href: '/programmes' },
-  { label: 'Tarifs', href: '/tarifs' },
   { label: 'Réalisations', href: '/realisations' },
   { label: 'À propos', href: '/a-propos' },
   { label: 'Contact', href: '/contact' },
 ]
 
-function getBackLink(pathname: string): { href: string; label: string } | null {
-  if (pathname === '/') return null
-  if (pathname.startsWith('/services/')) return { href: '/services', label: 'Retour aux offres' }
-  if (pathname.startsWith('/programmes/')) return { href: '/programmes', label: 'Retour aux programmes' }
-  if (pathname === '/strategie-editoriale') return { href: '/a-propos', label: "Retour à l'À propos" }
-  return { href: '/', label: "Retour à l'accueil" }
-}
-
 export function BrandsHeader() {
   const pathname = usePathname()
-  const backLink = getBackLink(pathname)
   const navItems = NAV.map((link) => ({
     ...link,
     active:
@@ -57,7 +47,7 @@ export function BrandsHeader() {
     <BrandsMarketingHeader
       Link={LinkWithExternal}
       logo={<BrandsLogo />}
-      backLink={backLink}
+      backLink={null}
       navItems={navItems}
       rightSlot={
         <>

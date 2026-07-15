@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { STATUS_LABELS } from '@/lib/admin/rbac'
 
@@ -32,18 +32,21 @@ export function ArticleFilters({
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      {/* Status filter */}
+    <div className="rounded-[1.25rem] border border-border bg-card p-3 shadow-[var(--shadow-sm)]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <p className="font-sans text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground lg:w-20">
+        Filtres
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {STATUSES.map((s) => (
           <button
             key={s.value}
             onClick={() => navigate(s.value, currentQuery)}
             disabled={isPending}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-full px-3 py-1.5 font-sans text-xs font-black uppercase tracking-[0.08em] transition-colors ${
               (currentStatus ?? '') === s.value
                 ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                : 'border border-border bg-background text-muted-foreground hover:border-primary hover:text-primary'
             }`}
           >
             {s.label}
@@ -51,7 +54,6 @@ export function ArticleFilters({
         ))}
       </div>
 
-      {/* Search */}
       <form
         className="flex-1"
         onSubmit={(e) => {
@@ -66,9 +68,10 @@ export function ArticleFilters({
           type="search"
           placeholder="Rechercher un article..."
           defaultValue={currentQuery}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          className="h-11 w-full rounded-full border border-border bg-background px-4 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10"
         />
       </form>
+      </div>
     </div>
   )
 }

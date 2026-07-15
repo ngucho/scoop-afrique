@@ -18,7 +18,6 @@ const pageLinks: NavLinkItem[] = [
   { label: 'Lire scoop-afrique.com', href: wwwPath('/'), external: true },
   { label: 'Offres & services', href: '/services' },
   { label: 'Programmes sponsoring', href: '/programmes' },
-  { label: 'Tarifs & grille 2026', href: '/tarifs' },
   { label: 'Réalisations', href: '/realisations' },
   { label: 'FAQ', href: '/faq' },
   { label: 'À propos', href: '/a-propos' },
@@ -65,7 +64,7 @@ export function Footer() {
       </div>
       <div className="relative z-10 mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 md:px-12 md:py-20 lg:px-20 lg:py-28">
         <div className="grid gap-10 sm:gap-12 md:grid-cols-2 md:gap-16 lg:grid-cols-4">
-          <div className="md:col-span-1">
+          <div className="min-w-0 md:col-span-1">
             <div className="mb-3 sm:mb-4">
               <div className="flex items-center gap-1">
                 <GlitchText text="SCOOP" as="h3" className="font-brasika text-xl font-black uppercase leading-none tracking-tight text-foreground sm:text-2xl md:text-3xl" scramble={false} />
@@ -73,22 +72,22 @@ export function Footer() {
                 <GlitchText text="AFRIQUE" as="h3" className="font-sans text-xl font-black uppercase leading-none tracking-tight text-primary sm:text-2xl md:text-3xl" scramble={false} />
               </div>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground sm:mt-4 sm:text-sm">
+            <p className="mt-3 break-words text-xs text-muted-foreground sm:mt-4 sm:text-sm">
               Partenariats marques &amp; institutions : contenus natifs, couvertures terrain, programmes récurrents — audience
               jeune afro-francophone.
             </p>
           </div>
           <NavLinksList title="Navigation" links={pageLinks} linkComponent={FooterNavLink} />
           <NavLinksList title="Suivez-nous" links={socialLinks} />
-          <div>
+          <div className="min-w-0">
             <span className="mb-3 block font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:text-xs">Contact</span>
             <div className="space-y-1.5 text-xs sm:space-y-2 sm:text-sm">
-              <a href="mailto:contact@scoop-afrique.com" className="block font-medium text-primary transition-colors hover:text-foreground" data-hover>
+              <a href="mailto:contact@scoop-afrique.com" className="block break-all font-medium text-primary transition-colors hover:text-foreground" data-hover>
                 contact@scoop-afrique.com
               </a>
               <a
                 href="https://wa.me/2250702907949"
-                className="block pt-1 font-medium text-primary transition-colors hover:text-foreground"
+                className="block break-words pt-1 font-medium text-primary transition-colors hover:text-foreground"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -100,10 +99,10 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-[var(--surface-border)] pt-6 text-center sm:mt-12 sm:gap-6 sm:pt-8 md:flex-row md:text-left">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground sm:text-xs">
+          <p className="break-words font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
             © {new Date().getFullYear()} SCOOP AFRIQUE SARL — Tous droits réservés
           </p>
-          <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
             <a
               href={wwwPath('/politique-de-confidentialite')}
               className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-primary sm:text-xs"

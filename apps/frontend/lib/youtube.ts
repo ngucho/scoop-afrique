@@ -41,6 +41,25 @@ export function toYoutubeEmbedUrl(url: string): string | null {
 }
 
 /**
+ * Extracts the canonical video id from any supported YouTube URL.
+ */
+export function getYoutubeVideoId(url: string | null | undefined): string | null {
+  if (url == null || typeof url !== 'string') return null
+  const raw = url.trim()
+  if (!raw) return null
+  const m = YOUTUBE_REGEX.exec(raw)
+  return m?.[5] ?? null
+}
+
+/**
+ * Returns the thumbnail used when a video acts as the article cover.
+ */
+export function getYoutubeThumbnailUrl(url: string | null | undefined): string | null {
+  const id = getYoutubeVideoId(url)
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
+}
+
+/**
  * Returns a stable embed URL for reader iframe. Use for any stored YouTube node attrs.src
  * (accepts full watch/youtu.be/embed URL; always returns embed URL or null).
  */

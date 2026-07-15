@@ -109,9 +109,9 @@ function DevisFormInner() {
 
   if (status === 'success') {
     return (
-      <main className="min-h-screen bg-background text-foreground">
-        <article className="mx-auto max-w-2xl px-6 py-20">
-          <Card className="border-primary/20 bg-primary/5 p-12 text-center">
+      <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
+        <article className="mx-auto max-w-2xl px-4 py-16 sm:px-8 sm:py-20">
+          <Card className="border-primary/20 bg-primary/5 p-6 text-center sm:p-12">
             <CheckCircle className="mx-auto mb-6 h-16 w-16 text-primary" />
             <Heading as="h1" level="h1" className="mb-4">
               Demande envoyée
@@ -130,20 +130,20 @@ function DevisFormInner() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <article className="mx-auto max-w-2xl px-6 py-16">
-        <div className="mb-4 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
+      <article className="mx-auto max-w-2xl px-4 py-14 sm:px-8 sm:py-16">
+        <div className="mb-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
           <Dot size="sm" className="text-primary" />
           Demande de devis
         </div>
-        <Heading as="h1" level="h1" className="mb-4">
+        <Heading as="h1" level="h1" className="mb-4 break-words">
           Demander un <span className="text-primary">devis</span>
         </Heading>
         <p className="mb-12 text-muted-foreground">
           Remplissez le formulaire ci-dessous. Nous vous répondrons sous 24 à 48 heures avec une proposition adaptée à votre projet.
         </p>
 
-        <Card className="border-border p-6 md:p-8">
+        <Card className="border-border p-4 sm:p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -288,7 +288,7 @@ function DevisFormInner() {
               </div>
             )}
 
-            <Button type="submit" disabled={status === 'submitting'} loading={status === 'submitting'}>
+            <Button type="submit" disabled={status === 'submitting'} loading={status === 'submitting'} className="w-full justify-center sm:w-auto">
               {status === 'submitting' ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />

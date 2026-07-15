@@ -95,6 +95,15 @@ app.post(
         400
       )
     }
+    if (!articleService.canCreateArticleWithStatus(user.role, parsed.data.status)) {
+      return c.json(
+        {
+          error: 'Only editors can create a published article',
+          code: 'FORBIDDEN_STATUS',
+        },
+        403,
+      )
+    }
     const article = await articleService.createArticle(parsed.data, user.id)
     return c.json({ data: article }, 201)
   }
