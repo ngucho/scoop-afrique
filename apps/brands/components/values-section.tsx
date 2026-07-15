@@ -1,42 +1,39 @@
-'use client'
-
-import { useState } from 'react'
-
 const values = [
-  { number: '01', title: 'Authenticité', description: 'Une information vraie, vérifiée, sans filtre ni compromis.' },
-  { number: '02', title: 'Accessibilité', description: 'Un contenu pensé pour tous, partout, sur tous les écrans.' },
-  { number: '03', title: 'Innovation', description: "Les codes du digital au service de l'information africaine." },
+  {
+    number: '01',
+    title: 'Souverainete narrative',
+    description: "Nous refusons que l'Afrique soit seulement un decor ou un marche. Elle est le sujet, la source et le centre du recit.",
+  },
+  {
+    number: '02',
+    title: 'Dignite publique',
+    description: 'Nos contenus doivent elever le debat, respecter les personnes et donner envie de construire une societe plus forte.',
+  },
+  {
+    number: '03',
+    title: 'Energie de la rue',
+    description: 'Nous gardons le rythme du terrain: direct, mobile, populaire, mais jamais paresseux ni meprisant.',
+  },
 ]
 
 export function ValuesSection() {
-  const [activeValue, setActiveValue] = useState(0)
-
   return (
-    <section className="border-b border-[var(--surface-border)] bg-[var(--surface)] py-16 md:py-20">
-      <div className="mx-auto max-w-7xl px-6 md:px-12 lg:px-20">
-        <h2 className="mb-10 font-sans text-lg font-semibold uppercase tracking-wider text-foreground">
-          Nos valeurs
-        </h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          {values.map((value, index) => (
-            <div
-              key={value.number}
-              className={`group cursor-pointer border-t border-[var(--surface-border)] pt-6 transition-all duration-300 hover:border-primary ${
-                activeValue === index ? 'border-primary' : ''
-              }`}
-              onMouseEnter={() => setActiveValue(index)}
-            >
-              <span
-                className={`mb-3 block font-mono text-6xl font-black transition-colors duration-300 ${
-                  activeValue === index ? 'text-primary' : 'text-muted-foreground/20 group-hover:text-muted-foreground/40'
-                }`}
-              >
+    <section className="border-b border-border bg-card py-16 md:py-24">
+      <div className="mx-auto max-w-7xl px-5 sm:px-8 md:px-12 lg:px-20">
+        <div className="mb-10 max-w-2xl">
+          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-primary">ADN editorial</p>
+          <h2 className="mt-3 text-3xl font-black text-foreground md:text-5xl" style={{ fontFamily: 'var(--font-headline)' }}>
+            Ce que nous protegeons dans chaque campagne.
+          </h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {values.map((value) => (
+            <div key={value.number} className="rounded-2xl border border-border bg-background p-5">
+              <span className="block text-5xl font-black text-primary/20" style={{ fontFamily: 'var(--font-headline)' }}>
                 {value.number}
               </span>
-              <h3 className="mb-2 font-sans text-base font-bold uppercase tracking-wider text-foreground">
-                {value.title}
-              </h3>
-              <p className="text-sm text-muted-foreground">{value.description}</p>
+              <h3 className="mt-5 text-sm font-black uppercase tracking-[0.14em] text-foreground">{value.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{value.description}</p>
             </div>
           ))}
         </div>

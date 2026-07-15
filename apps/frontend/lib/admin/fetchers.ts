@@ -350,6 +350,7 @@ export async function fetchSubscribers(params?: {
   source?: string
   q?: string
   page?: number
+  limit?: number
 }): Promise<{ data: NewsletterSubscriberRow[]; total: number }> {
   const token = await getToken()
   if (!token) return { data: [], total: 0 }
@@ -359,7 +360,7 @@ export async function fetchSubscribers(params?: {
   if (params?.source) sp.set('source', params.source)
   if (params?.q) sp.set('q', params.q)
   sp.set('page', String(params?.page ?? 1))
-  sp.set('limit', '50')
+  sp.set('limit', String(params?.limit ?? 50))
   try {
     return await apiGetAuth<ApiListResponse<NewsletterSubscriberRow>>(
       `/admin/reader/subscribers?${sp.toString()}`,

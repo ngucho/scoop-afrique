@@ -4,13 +4,11 @@ import { WhoWeAreSection } from '@/components/who-we-are-section'
 import { StatsSection } from '@/components/stats-section'
 import { ValuesSection } from '@/components/values-section'
 import { CarouselSection } from '@/components/carousel-section'
-import { OffersSection } from '@/components/offers-section'
 import { ProgramsTeaserSection } from '@/components/programs-teaser-section'
 import { ContactCtaSection } from '@/components/contact-cta-section'
 import { Footer } from '@/components/footer'
 import { CursorTracker } from 'scoop'
-
-const BASE_URL = 'https://brands.scoop-afrique.com'
+import { getBrandAudienceSummary } from '@/lib/brand-audience'
 
 export const metadata: Metadata = {
   openGraph: {
@@ -21,19 +19,19 @@ export const metadata: Metadata = {
   },
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const audience = await getBrandAudienceSummary()
   return (
     <>
       <div className="hidden lg:block">
         <CursorTracker />
       </div>
-      <main className="min-h-screen bg-background">
-        <HeroBrands />
+      <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background">
+        <HeroBrands audience={audience} />
         <WhoWeAreSection />
-        <StatsSection />
+        <StatsSection audience={audience} />
         <ValuesSection />
         <CarouselSection />
-        <OffersSection />
         <ProgramsTeaserSection />
         <ContactCtaSection />
         <Footer />

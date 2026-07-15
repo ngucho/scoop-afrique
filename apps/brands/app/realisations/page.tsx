@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Image from 'next/image'
 import { Footer } from '@/components/footer'
 import { Heading, Card, Dot } from 'scoop'
 import { CtaButton } from '@/components/cta-button'
@@ -8,114 +7,106 @@ import { wwwPath } from '@/lib/site-urls'
 const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
-  title: 'Réalisations & preuves',
+  title: 'Realisations & preuves',
   description:
-    'Réalisations Scoop Afrique : études de cas (NCI, Grand Bassam, FIMO 228…), chiffres audience 2026, types de productions.',
+    'Realisations Scoop Afrique : references CRM, entreprises accompagnees, projets associes et chiffres audience 2026.',
   alternates: { canonical: `${BASE_URL}/realisations` },
   openGraph: {
     type: 'website',
     url: `${BASE_URL}/realisations`,
-    title: 'Réalisations | Scoop Afrique',
-    description: 'Portfolio & retours clients — grille 2026.',
+    title: 'Realisations | Scoop Afrique',
+    description: 'Portfolio, references clients et projets associes.',
     siteName: 'Scoop Afrique',
-    images: [{ url: `${BASE_URL}/images/hero-brands.png`, width: 1200, height: 630, alt: 'Scoop Afrique Réalisations' }],
+    images: [{ url: `${BASE_URL}/images/hero-brands.png`, width: 1200, height: 630, alt: 'Scoop Afrique Realisations' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Réalisations | Scoop Afrique',
-    description: 'Preuves & formats produits.',
+    title: 'Realisations | Scoop Afrique',
+    description: 'Preuves & references clients.',
     images: ['/images/hero-brands.png'],
   },
 }
 
-/** Retours courts issus du media kit 2026. */
 const proofs = [
   {
-    client: 'NCI — Séries CASTÉ',
-    type: 'Brand content · TV / streaming',
-    amount: '150 000 FCFA',
-    quote:
-      'Couverture et production de contenus vidéo pour les séries NCI — livraison saluée par le client pour la qualité et le respect des délais.',
+    client: 'NCI',
+    type: 'Media - Coupe du Monde 2026',
+    quote: 'Collaboration avec le diffuseur officiel en Cote d Ivoire : contenus et relais autour de la Coupe du Monde 2026.',
     initials: 'NCI',
   },
   {
-    client: 'Grand Bassam',
-    type: 'Couverture événement',
-    amount: '180 000 FCFA',
-    quote: 'Terrain et multi-formats : visibilité locale forte et relais digital cohérent avec l’ampleur de l’événement.',
-    initials: 'GB',
+    client: 'Miss Natural Beauty CI',
+    type: 'Partenariat - Edition 2026',
+    quote:
+      'Dispositif mixte : publications sponsorisees mensuelles, couverture de finale, visibilite officielle et accreditations presse.',
+    initials: 'MN',
   },
   {
-    client: 'FIMO 228',
-    type: 'Partenariat',
-    amount: '85 000 FCFA',
-    quote: 'Trois publications sponsorisées dans le cadre d’un accord — reach notable et adéquation avec la ligne musique / culture.',
-    initials: 'FIMO',
+    client: 'Concerto',
+    type: 'Entertainment - The Voice / Fan zone',
+    quote: 'Annonces, presentation de coachs et activations evenementielles pour installer des rendez-vous culturels.',
+    initials: 'CO',
+  },
+  {
+    client: "Ministere de la Femme, de la Famille et de l'Enfant CI",
+    type: 'Institution - VBG',
+    quote: 'Relais autour de l engagement national contre les VBG, avec un angle de mobilisation citoyenne.',
+    initials: 'CI',
   },
 ]
 
-const realisations = [
+const crmProjects = [
   {
-    title: 'Couverture événementielle',
-    description: 'Concert, festival, lancement. Formules Classique à Étendu — posts, stories, récap vidéo, micro-trottoir.',
-    image: '/images/offre-couverture.jpg',
-    platforms: ['TikTok', 'Instagram', 'Facebook', 'YouTube'],
+    company: 'BIFA Institute',
+    project: "PM4NGOs Cote d'Ivoire",
+    detail: 'Campagne formation et visibilite professionnelle.',
   },
   {
-    title: 'Campagnes digitales',
-    description: 'Teasing, rappels, contenu jour J — pensé pour la billetterie et les lancements.',
-    image: '/images/offre-campagnes.jpg',
-    platforms: ['TikTok', 'Instagram', 'Facebook'],
+    company: 'Africa publicity',
+    project: 'Promo concert evenement',
+    detail: 'Activation courte pour pousser une date et son audience.',
   },
   {
-    title: 'Publication sponsorisée',
-    description: 'Message clair, créa adaptée, métriques J+7 sur demande.',
-    image: '/images/offre-publication.jpg',
-    platforms: ['TikTok', 'Instagram', 'Facebook'],
+    company: 'Chloe Ricci',
+    project: 'Promotion boxe anglaise a Abidjan',
+    detail: 'Mise en avant sportive autour d un combat au Parc des Expositions.',
   },
   {
-    title: 'Interview & reportage',
-    description: 'Standard 150 000 FCFA plein tarif — formats jusqu’à mini-reportage ou série (grille V2).',
-    image: '/images/offre-sponsorise.jpg',
-    platforms: ['TikTok', 'Instagram', 'Facebook', 'YouTube'],
-  },
-  {
-    title: 'Partenariat de marque',
-    description: 'Rythme mensuel, reporting, palettes Essentiel à Gold (min. 500 K à 2 M).',
-    image: '/images/offre-partenariat.jpg',
-    platforms: ['TikTok', 'Instagram', 'Facebook', 'YouTube', 'Threads'],
+    company: 'Amadou Lamarana Bah',
+    project: 'Interview reportage',
+    detail: 'Format editorial long pour donner du contexte et de la profondeur.',
   },
 ]
 
 const stats = [
-  { value: '+1,4 M', label: 'Abonnés cumulés' },
+  { value: '+1,4 M', label: 'Abonnes cumules' },
   { value: '910 K', label: 'TikTok' },
   { value: '12+', label: 'Pays' },
-  { value: '5+', label: 'Réseaux actifs' },
+  { value: '5+', label: 'Reseaux actifs' },
 ]
 
 export default function RealisationsPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <section className="relative overflow-hidden border-b border-border bg-card py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
-          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-background text-foreground">
+      <section className="relative overflow-hidden border-b border-border bg-card py-14 sm:py-20 md:py-28">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 md:px-12">
+          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-widest">
             <Dot size="sm" className="text-primary" />
-            Portfolio
+            Portfolio CRM
           </div>
-          <Heading as="h1" level="h1" className="mt-4 mb-6">
-            Nos <span className="text-primary">réalisations</span>
+          <Heading as="h1" level="h1" className="mt-4 mb-6 break-words">
+            Nos <span className="text-primary">realisations</span>
           </Heading>
           <p className="max-w-2xl text-lg text-muted-foreground">
-            Quelques preuves issues de notre media kit 2026, les mêmes chiffres audience que sur l’accueil partenaires, et la
-            diversité des formats que nous produisons au quotidien — visibles sur{' '}
+            Quelques preuves issues du CRM Scoop Afrique et du media kit 2026 : entreprises, institutions et projets de
+            reference, avec le media public visible sur{' '}
             <a href={wwwPath('/')} className="text-primary underline-offset-4 hover:underline" target="_blank" rel="noopener noreferrer">
               scoop-afrique.com
             </a>
             .
           </p>
-          <p className="mt-2 text-xs text-muted-foreground">Audience · mars 2026 · analytics internes plateformes.</p>
-          <div className="mt-10 grid grid-cols-2 gap-6 md:grid-cols-4">
+          <p className="mt-2 text-xs text-muted-foreground">Source : CRM Supabase + analytics internes plateformes.</p>
+          <div className="mt-10 grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
                 <div className="font-sans text-2xl font-black text-primary md:text-3xl">{stat.value}</div>
@@ -127,12 +118,12 @@ export default function RealisationsPage() {
       </section>
 
       <section className="border-b border-border bg-muted/20 py-16 md:py-20">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 md:px-12">
           <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">Ils nous ont fait confiance</h2>
-          <p className="mb-10 font-sans text-2xl font-black uppercase tracking-tight text-foreground md:text-3xl">
-            Preuves & <span className="text-primary">retours</span>
+          <p className="mb-10 break-words font-sans text-2xl font-black uppercase tracking-tight text-foreground md:text-3xl">
+            Entreprises & <span className="text-primary">projets verifies</span>
           </p>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2">
             {proofs.map((p) => (
               <Card key={p.client} className="flex flex-col border-border p-6">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-background font-brasika text-lg font-black text-primary">
@@ -141,7 +132,6 @@ export default function RealisationsPage() {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{p.type}</p>
                 <h3 className="mt-1 font-sans text-base font-bold text-foreground">{p.client}</h3>
                 <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">&ldquo;{p.quote}&rdquo;</p>
-                <p className="mt-4 font-sans text-sm font-bold text-primary">Budget indicatif : {p.amount}</p>
               </Card>
             ))}
           </div>
@@ -149,37 +139,21 @@ export default function RealisationsPage() {
       </section>
 
       <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6 md:px-12">
-          <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">Types de projets</h2>
-          <p className="mb-12 font-sans text-3xl font-black uppercase tracking-tight text-foreground md:text-4xl">
-            Ce que nous <span className="text-primary">produisons</span>
+        <div className="mx-auto max-w-6xl px-4 sm:px-8 md:px-12">
+          <h2 className="mb-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">Autres references CRM</h2>
+          <p className="mb-12 break-words font-sans text-3xl font-black uppercase tracking-tight text-foreground md:text-4xl">
+            Projets <span className="text-primary">associes</span>
           </p>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {realisations.map((r) => (
-              <Card key={r.title} className="overflow-hidden border-border transition-shadow hover:shadow-lg">
-                <div className="relative aspect-[16/10] w-full bg-muted">
-                  <Image
-                    src={r.image}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="mb-2 font-sans text-xl font-bold uppercase tracking-wider text-foreground">{r.title}</h3>
-                  <p className="mb-4 text-sm text-muted-foreground">{r.description}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {r.platforms.map((p) => (
-                      <span
-                        key={p}
-                        className="rounded border border-border bg-muted px-2 py-1 font-mono text-xs text-muted-foreground"
-                      >
-                        {p}
-                      </span>
-                    ))}
+          <div className="grid gap-5 md:grid-cols-2">
+            {crmProjects.map((r) => (
+              <Card key={`${r.company}-${r.project}`} className="border-border p-6 transition-shadow hover:shadow-lg">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-primary">{r.company}</p>
+                    <h3 className="mt-2 break-words font-sans text-lg font-bold uppercase tracking-wide text-foreground sm:text-xl sm:tracking-wider">{r.project}</h3>
                   </div>
                 </div>
+                <p className="text-sm leading-6 text-muted-foreground">{r.detail}</p>
               </Card>
             ))}
           </div>
@@ -187,21 +161,21 @@ export default function RealisationsPage() {
       </section>
 
       <section className="border-t border-border bg-card py-16">
-        <div className="mx-auto max-w-6xl px-6 text-center md:px-12">
+        <div className="mx-auto max-w-6xl px-4 text-center sm:px-8 md:px-12">
           <p className="mb-6 text-muted-foreground">
-            Suivez le fil éditorial en direct ou lancez un brief : même équipe, deux entrées selon votre besoin.
+            Suivez le fil editorial en direct ou lancez un brief : meme equipe, deux entrees selon votre besoin.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <CtaButton href={wwwPath('/')} variant="outline" external>
+            <CtaButton href={wwwPath('/')} variant="outline" external className="w-full justify-center sm:w-auto">
               Lire scoop-afrique.com
             </CtaButton>
-            <CtaButton href="/demander-devis" variant="fillHover">
+            <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
               Demander un devis
             </CtaButton>
-            <CtaButton href="https://www.tiktok.com/@Scoop.Afrique" variant="outline" external>
+            <CtaButton href="https://www.tiktok.com/@Scoop.Afrique" variant="outline" external className="w-full justify-center sm:w-auto">
               TikTok
             </CtaButton>
-            <CtaButton href="https://www.instagram.com/Scoop.Afrique" variant="outline" external>
+            <CtaButton href="https://www.instagram.com/Scoop.Afrique" variant="outline" external className="w-full justify-center sm:w-auto">
               Instagram
             </CtaButton>
           </div>

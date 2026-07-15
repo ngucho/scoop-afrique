@@ -9,6 +9,7 @@
     "prebuild": "pnpm --filter @scoop-afrique/api-logger run build",
     "build": "tsc && node scripts/copy-pdf-templates.js",
     "start": "node dist/index.js",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "lint": "eslint src --ext .ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

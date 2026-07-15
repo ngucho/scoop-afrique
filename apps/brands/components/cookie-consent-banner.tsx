@@ -33,10 +33,10 @@ export function CookieConsentBanner() {
     <div
       role="dialog"
       aria-label="Choix des cookies"
-      className="fixed bottom-0 left-0 right-0 z-[100] border-t border-[var(--glass-border)] bg-[var(--glass-bg)] px-6 py-4 shadow-[var(--shadow-xl)] backdrop-blur-[var(--glass-blur)] sm:px-8 md:px-10"
+      className="fixed bottom-0 left-0 right-0 z-[100] max-w-full overflow-x-hidden border-t border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-4 shadow-[var(--shadow-xl)] backdrop-blur-[var(--glass-blur)] sm:px-8 md:px-10"
     >
-      <div className="mx-auto flex max-w-4xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-foreground">
+      <div className="mx-auto flex max-w-4xl min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="min-w-0 break-words text-sm text-foreground">
           Nous utilisons des cookies pour le bon fonctionnement du site, la mémorisation de vos préférences et
           l&apos;analyse d&apos;audience. En cliquant sur &quot;Tout accepter&quot;, vous consentez à leur utilisation.{' '}
           <a
@@ -48,7 +48,7 @@ export function CookieConsentBanner() {
             Politique de confidentialité
           </a>
         </p>
-        <div className="flex shrink-0 flex-wrap gap-3">
+        <div className="flex min-w-0 flex-wrap gap-3">
           <Button variant="outline" size="default" onClick={() => save('rejected')}>
             Tout refuser
           </Button>

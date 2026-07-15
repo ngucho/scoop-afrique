@@ -12,6 +12,7 @@ import {
   previewNewsletterWeeklyDigestArticles,
   runNewsletterWeeklyDigest,
 } from '../../services/digest.service.js'
+import { resendPendingConfirmations } from '../../services/newsletter.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
@@ -540,6 +541,23 @@ app.get('/subscribers', requireRole('manager', 'admin'), async (c) => {
     limit,
   })
   return c.json({ data: data.map(reader.rowSubscriber), total })
+})
+
+app.post('/subscribers/relaunch-pending', requireRole('manager', 'admin'), async (c) => {
+  const dbErr = requireDatabase(c)
+  if (dbErr) return dbErr
+  const user = c.get('user')
+  const rawBody = (await c.req.json().catch(() => ({}))) as { limit?: number }
+  const limit = Math.min(Math.max(Number(rawBody.limit) || 100, 1), 500)
+  const result = await resendPendingConfirmations(limit)
+  await reader.appendAudit({
+    actorId: user.id,
+    entityType: 'newsletter_subscriber',
+    entityId: null,
+    action: 'pending_confirmation_relaunch',
+    metadata: result,
+  })
+  return c.json({ data: result })
 })
 
 app.patch('/subscribers/:id', requireRole('manager', 'admin'), async (c) => {

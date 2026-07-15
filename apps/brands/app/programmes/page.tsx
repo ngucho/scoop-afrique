@@ -1,105 +1,129 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Footer } from '@/components/footer'
 import { CtaButton } from '@/components/cta-button'
 import { AnimatedSection } from '@/components/animated-section'
 import { editorialPrograms } from '@/lib/programs-data'
-import { Card, Dot, Heading } from 'scoop'
+import { Dot } from 'scoop'
 
 const BASE_URL = 'https://brands.scoop-afrique.com'
 
 export const metadata: Metadata = {
-  title: 'Programmes éditoriaux & sponsoring',
+  title: 'Programmes editoriaux & sponsoring',
   description:
-    'Découvrez nos formats phares (Scoop Game, Canapé sans filtre, Get Ready, La rue répond, reportages, Bâtisseurs) et les opportunités de partenariat pour les marques.',
+    'Decouvrez nos formats phares (Scoop Game, Canape sans filtre, Get Ready, La rue repond, reportages, Batisseurs) et les opportunites de partenariat pour les marques.',
   alternates: { canonical: `${BASE_URL}/programmes` },
   openGraph: {
     type: 'website',
     url: `${BASE_URL}/programmes`,
-    title: 'Programmes éditoriaux | Scoop Afrique',
+    title: 'Programmes editoriaux | Scoop Afrique',
     description:
-      'Formats récurrents, audience jeune afro-francophone, intégrations natives — demandez un brief sponsoring.',
+      'Formats recurrents, audience jeune afro-francophone, integrations natives - demandez un brief sponsoring.',
     siteName: 'Scoop Afrique',
-    images: [{ url: `${BASE_URL}/images/hero-brands.png`, width: 1200, height: 630, alt: 'Scoop Afrique — Programmes' }],
+    images: [{ url: `${BASE_URL}/images/hero-brands.png`, width: 1200, height: 630, alt: 'Scoop Afrique - Programmes' }],
   },
 }
 
+const visuals = [
+  '/images/video-premium.jpg',
+  '/images/podcast-interview.jpg',
+  '/images/carousel-3.png',
+  '/images/carousel-1.jpg',
+  '/images/offre-campagnes.jpg',
+  '/images/video-gold.jpg',
+]
+
 export default function ProgrammesPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <article className="mx-auto max-w-6xl px-6 py-16 md:px-12 md:py-24">
-        <p className="mb-3 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          <Dot size="sm" className="text-primary" />
-          Espace annonceurs
-        </p>
-        <Heading as="h1" level="h1" className="mb-4 max-w-3xl">
-          Des programmes qui reviennent chaque semaine — et une place pour votre marque
-        </Heading>
-        <p className="mb-6 max-w-2xl text-base text-muted-foreground md:text-lg">
-          Voici les formats que nous produisons sur la durée : ils rassemblent déjà des centaines de milliers de personnes
-          sur TikTok, Instagram, Facebook et YouTube. Chaque programme peut accueillir un partenariat réfléchi : naming de
-          saison, intégration produit, rubrique co-construite — toujours avec validation éditoriale et transparence pour le
-          public.
-        </p>
-        <p className="mb-12 max-w-2xl text-sm text-muted-foreground">
-          Chiffres audience (mars 2026, analytics internes) :{' '}
-          <strong className="font-medium text-foreground">+1,4 M abonnés cumulés</strong>, dont{' '}
-          <strong className="font-medium text-foreground">910 K sur TikTok</strong> et{' '}
-          <strong className="font-medium text-foreground">410 K sur Facebook</strong> (compte monétisé). Pour voir le rendu
-          éditorial en contexte, rendez-vous sur{' '}
-          <a
-            href="https://www.scoop-afrique.com"
-            className="text-primary underline-offset-4 hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            scoop-afrique.com
-          </a>
-          .
-        </p>
-
-        <div className="grid gap-6 sm:grid-cols-2">
-          {editorialPrograms.map((p, i) => (
-            <AnimatedSection key={p.slug} animation="fade-in-up" delay={i * 0.06}>
-              <Link href={`/programmes/${p.slug}`} className="group block h-full">
-                <Card className="h-full border-border transition-all duration-300 hover:border-primary/40 hover:shadow-md">
-                  <div className="flex h-full flex-col p-6 md:p-8">
-                    <span className="mb-2 font-mono text-[10px] uppercase tracking-widest text-primary">{p.pillar}</span>
-                    <h2 className="mb-2 font-sans text-lg font-bold uppercase tracking-tight text-foreground md:text-xl">
-                      {p.title}
-                    </h2>
-                    <p className="mb-3 text-sm font-medium text-muted-foreground">{p.tagline}</p>
-                    <p className="mb-6 flex-1 text-sm leading-relaxed text-muted-foreground">{p.cardSummary}</p>
-                    <span className="font-mono text-xs uppercase tracking-widest text-primary group-hover:underline">
-                      Voir l’opportunité sponsoring →
-                    </span>
-                  </div>
-                </Card>
-              </Link>
-            </AnimatedSection>
-          ))}
-        </div>
-
-        <Card className="mt-16 border-primary/20 bg-primary/5 p-8 md:p-10">
-          <Heading as="h2" level="h2" className="mb-3">
-            Prochaine étape
-          </Heading>
-          <p className="mb-6 max-w-2xl text-sm text-muted-foreground md:text-base">
-            Indiquez-nous le programme qui vous intéresse, votre budget indicatif et la période souhaitée. Nous revenons vers
-            vous avec une proposition claire : emplacements, livrables, calendrier et mentions.
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <CtaButton href="/demander-devis" variant="fillHover">
-              Demander un devis
-            </CtaButton>
-            <CtaButton href="/tarifs" variant="outline">
-              Voir la grille tarifaire
-            </CtaButton>
-            <CtaButton href="mailto:contact@scoop-afrique.com" variant="outline" external>
-              contact@scoop-afrique.com
-            </CtaButton>
+    <main className="min-h-screen w-full max-w-full overflow-x-hidden bg-foreground text-background">
+      <article className="overflow-hidden">
+        <section className="relative border-b border-background/10 px-4 py-14 sm:px-8 sm:py-20 md:px-12 md:py-28 lg:px-20">
+          <div className="absolute inset-0 opacity-25 [background:radial-gradient(circle_at_20%_10%,rgba(239,35,60,0.75),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.12),transparent_45%)]" />
+          <div className="noise-overlay absolute inset-0 opacity-10" />
+          <div className="relative mx-auto max-w-7xl">
+            <p className="mb-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-primary sm:text-xs sm:tracking-widest">
+              <Dot size="sm" className="text-primary" />
+              Programmes sponsorisables
+            </p>
+            <h1 className="max-w-5xl break-words text-[clamp(2.4rem,12vw,5rem)] font-black uppercase leading-[0.98] text-background md:text-7xl" style={{ fontFamily: 'var(--font-headline)' }}>
+              Choisissez le programme que votre marque peut habiter.
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-7 text-background/70 md:text-lg">
+              Un catalogue de formats recurrents, pense comme une plateforme de rendez-vous : episodes, saisons, extraits,
+              integrations natives et pages detaillees pour cadrer le sponsoring.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.16em] text-background/65 sm:mt-10 sm:gap-3 sm:tracking-widest">
+              <span className="rounded-full border border-background/15 px-4 py-2">Saisons</span>
+              <span className="rounded-full border border-background/15 px-4 py-2">Episodes</span>
+              <span className="rounded-full border border-background/15 px-4 py-2">Clips courts</span>
+              <span className="rounded-full border border-background/15 px-4 py-2">Naming sponsor</span>
+            </div>
           </div>
-        </Card>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-8 sm:py-14 md:px-12 lg:px-20">
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between md:gap-6">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-widest text-primary">A l&apos;affiche</p>
+              <h2 className="mt-2 text-2xl font-black uppercase text-background md:text-3xl">Nos formats originaux</h2>
+            </div>
+            <p className="hidden max-w-md text-sm leading-6 text-background/58 md:block">
+              Comparez les formats, puis ouvrez le detail sponsoring du programme qui colle a votre marque.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {editorialPrograms.map((p, i) => (
+              <AnimatedSection key={p.slug} animation="fade-in-up" delay={i * 0.06}>
+                <Link href={`/programmes/${p.slug}`} className="group block h-full">
+                  <div className="relative flex min-h-[390px] overflow-hidden rounded-2xl border border-background/10 bg-background/8 shadow-2xl transition duration-500 hover:-translate-y-2 hover:border-primary/60 sm:min-h-[460px] md:min-h-[520px]">
+                    <Image
+                      src={visuals[i % visuals.length]}
+                      alt=""
+                      fill
+                      className="object-cover opacity-72 transition duration-700 group-hover:scale-105 group-hover:opacity-90"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent" />
+                    <div className="relative mt-auto p-6">
+                      <span className="mb-3 inline-flex rounded-full bg-primary px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground">
+                        {p.pillar}
+                      </span>
+                      <h3 className="break-words text-2xl font-black uppercase leading-none text-white sm:text-3xl md:text-4xl">{p.title}</h3>
+                      <p className="mt-3 min-h-[48px] text-sm font-medium leading-6 text-white/78">{p.tagline}</p>
+                      <p className="mt-5 line-clamp-3 text-sm leading-6 text-white/62">{p.cardSummary}</p>
+                      <span className="mt-6 inline-flex font-mono text-xs uppercase tracking-widest text-primary">
+                        Voir le detail sponsoring
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </AnimatedSection>
+            ))}
+          </div>
+        </section>
+
+        <section className="border-t border-background/10 px-4 py-14 sm:px-8 sm:py-16 md:px-12 lg:px-20">
+          <div className="mx-auto max-w-7xl rounded-2xl border border-background/10 bg-background p-5 text-foreground sm:p-8 md:p-10">
+            <h2 className="break-words text-2xl font-black uppercase sm:text-3xl md:text-4xl">Prochaine etape</h2>
+            <p className="mt-3 mb-6 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
+              Indiquez-nous le programme, votre budget indicatif et la periode souhaitee. Nous revenons avec une proposition
+              claire : emplacements, livrables, calendrier et mentions.
+            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
+                Demander un devis
+              </CtaButton>
+              <CtaButton href="/services" variant="outline" className="w-full justify-center sm:w-auto">
+                Voir les offres & prix
+              </CtaButton>
+              <CtaButton href="mailto:contact@scoop-afrique.com" variant="outline" external className="w-full justify-center sm:w-auto">
+                contact@scoop-afrique.com
+              </CtaButton>
+            </div>
+          </div>
+        </section>
       </article>
       <Footer />
     </main>

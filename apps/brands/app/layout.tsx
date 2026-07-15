@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     template: '%s | Scoop Afrique',
   },
   description:
-    "Scoop Afrique — média panafricain (Abidjan). +1,4 M abonnés cumulés. Grille tarifaire V2 (mars 2026) : publications dès 50 000 FCFA, couvertures, promos, interviews, brand deals. Devis en 24–48 h.",
+    "Scoop Afrique — média digital panafricain basé à Abidjan. +1,6M d'audience sociale, campagnes natives, couvertures terrain, interviews et partenariats de marque.",
   keywords: [
     'Scoop Afrique',
     'media africain',
@@ -69,14 +69,14 @@ export const metadata: Metadata = {
     siteName: 'Scoop Afrique',
     title: "Scoop Afrique — Partenariats, publicité & couverture médiatique",
     description:
-      "+1,4 M abonnés cumulés. Grille V2 mars 2026 — publications dès 50 K FCFA, couvertures, partenariats. Devis rapide.",
+      "+1,6M d'audience sociale. Campagnes natives, couvertures terrain, interviews et brand deals pour annonceurs.",
     images: [{ url: '/images/hero-brands.png', width: 1200, height: 630, alt: 'Scoop Afrique — Partenariats' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: "Scoop Afrique — Partenariats & publicité",
     description:
-      "+1,4 M abonnés cumulés. Offres annonceurs et programmes éditoriaux. Devis sous 24–48 h.",
+      "+1,6M d'audience sociale. Offres annonceurs, media kit et programmes éditoriaux.",
     images: ['/images/hero-brands.png'],
     creator: '@ScoopAfrique',
     site: '@ScoopAfrique',
@@ -165,7 +165,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${geistMono.variable} ${brasika.variable} font-sans antialiased`}>
+      <body className={`${geistMono.variable} ${brasika.variable} w-full max-w-full overflow-x-hidden font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <BrandsHeader />
           {children}

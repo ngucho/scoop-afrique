@@ -1,4 +1,18 @@
 {
   "buildCommand": "pnpm run build",
-  "framework": "hono"
+  "framework": "hono",
+  "crons": [
+    {
+      "path": "/api/v1/cron/newsletter-weekly-digest/friday-afternoon",
+      "schedule": "0 14 * * 5"
+    },
+    {
+      "path": "/api/v1/cron/newsletter-weekly-digest/saturday-morning",
+      "schedule": "0 8 * * 6"
+    },
+    {
+      "path": "/api/v1/cron/subscribers/pending-relaunch",
+      "schedule": "0 7 * * *"
+    }
+  ]
 }

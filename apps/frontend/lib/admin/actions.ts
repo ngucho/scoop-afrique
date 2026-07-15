@@ -48,7 +48,7 @@ export async function updateArticle(id: string, data: Record<string, unknown>): 
 
 export async function publishArticle(
   id: string,
-  payload?: { content?: unknown; title?: string; excerpt?: string | null },
+  payload?: Record<string, unknown>,
 ): Promise<Article> {
   const token = await getToken()
   const res = await apiPostAuth<ApiResponse<Article>>(
@@ -348,6 +348,25 @@ export async function updateSubscriberSegments(
   const token = await getToken()
   await apiPatchAuth(`/admin/reader/subscribers/${id}`, token, data)
   revReader()
+}
+
+export async function relaunchPendingSubscribers(limit = 100): Promise<{
+  attempted: number
+  sent: number
+  failed: number
+  skipped: number
+}> {
+  const token = await getToken()
+  const res = await apiPostAuth<{
+    data: {
+      attempted: number
+      sent: number
+      failed: number
+      skipped: number
+    }
+  }>('/admin/reader/subscribers/relaunch-pending', token, { limit })
+  revReader()
+  return res.data
 }
 
 export async function createNewsletterCampaign(data: Record<string, unknown>): Promise<void> {

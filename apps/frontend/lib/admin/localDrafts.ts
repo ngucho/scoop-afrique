@@ -17,6 +17,15 @@ export interface LocalDraft {
   title: string
   excerpt: string
   content: unknown
+  categoryId?: string
+  coverImageUrl?: string
+  coverImageCredit?: string
+  coverImageSource?: string
+  videoUrl?: string
+  coverVideoCredit?: string
+  tags?: string
+  metaTitle?: string
+  metaDescription?: string
   updatedAt: number // Date.now()
 }
 

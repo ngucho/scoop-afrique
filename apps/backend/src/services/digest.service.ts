@@ -288,7 +288,7 @@ export async function selectDigestArticles(
     .limit(250)
 
   // Get article IDs sent in last 3 digest runs to avoid repeats
-  let recentlySentIds = new Set<string>(excludeIds)
+  const recentlySentIds = new Set<string>(excludeIds)
   try {
     const recentRuns = await db
       .select({ articleIds: digestJobRuns.articleIds })

@@ -1,126 +1,101 @@
-'use client'
-
 import Image from 'next/image'
 import { CtaButton } from '@/components/cta-button'
+import type { BrandAudienceSummary } from '@/lib/brand-audience'
 
-const HERO_IMAGE = '/images/hero-brands.png'
+const MOBILE_IMAGE = '/images/hero-brands.png'
 
-export function HeroBrands() {
+const FLOATING_IMAGES = [
+  { src: '/images/offre-campagnes.jpg', label: 'Campagne sociale', className: 'left-[4%] top-[24%] hidden w-52 rotate-[-8deg] lg:block' },
+  { src: '/images/video-premium.jpg', label: 'Video premium', className: 'right-[6%] top-[22%] hidden w-56 rotate-[7deg] lg:block' },
+  { src: '/images/podcast-interview.jpg', label: 'Interview', className: 'bottom-[10%] left-[12%] hidden w-44 rotate-[6deg] xl:block' },
+  { src: '/images/offre-couverture.jpg', label: 'Terrain', className: 'bottom-[8%] right-[14%] hidden w-48 rotate-[-5deg] xl:block' },
+]
+
+export function HeroBrands({ audience }: { audience: BrandAudienceSummary }) {
+  const heroStats = [
+    audience.totalSocial,
+    audience.stats.find((s) => s.key === 'tiktok')!,
+    audience.stats.find((s) => s.key === 'facebook')!,
+  ]
+
   return (
-    <section className="relative min-h-screen overflow-hidden bg-background">
-      {/* Image de fond */}
-      <div className="absolute inset-0 z-0">
-        <Image
-          src={HERO_IMAGE}
-          alt=""
-          fill
-          className="object-cover object-center opacity-30 dark:opacity-20"
-          priority
-          sizes="100vw"
-          onError={(e) => {
-            const t = e.target as HTMLImageElement
-            t.style.display = 'none'
-          }}
-        />
-        {/* Gradient éditorial : bg clair en bas pour lisibilité */}
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-background via-background/85 to-background/60"
-          aria-hidden
-        />
+    <section className="relative overflow-hidden bg-background">
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_18%,rgba(239,35,60,0.16),transparent_32%),linear-gradient(180deg,var(--background)_0%,color-mix(in_srgb,var(--background)_86%,var(--primary))_100%)]" />
+      <div className="absolute inset-x-0 top-20 mx-auto h-[360px] max-w-[86vw] rounded-full border border-primary/10 opacity-60 md:h-[560px] md:max-w-5xl" />
+      <div className="absolute inset-x-6 bottom-0 h-44 rounded-t-[3rem] bg-foreground/5 blur-3xl" />
+
+      <div className="pointer-events-none absolute inset-0 z-0">
+        {FLOATING_IMAGES.map((image) => (
+          <div key={image.src} className={`absolute overflow-hidden rounded-[1.75rem] border border-border bg-card shadow-2xl ${image.className}`}>
+            <div className="relative aspect-[4/5]">
+              <Image src={image.src} alt="" fill className="object-cover" sizes="240px" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <span className="absolute bottom-4 left-4 right-4 font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+                {image.label}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Pattern africain décoratif */}
-      <div
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(45deg, var(--primary) 0, var(--primary) 1px, transparent 0, transparent 50%), repeating-linear-gradient(-45deg, var(--primary) 0, var(--primary) 1px, transparent 0, transparent 50%)',
-          backgroundSize: '48px 48px',
-        }}
-        aria-hidden
-      />
-
-      {/* Contenu */}
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col justify-center px-6 py-20 sm:px-8 md:px-12 md:py-24 lg:px-20">
-        <div className="max-w-3xl">
-          {/* Overline */}
-          <div className="mb-5 flex items-center gap-3">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100svh-1px)] max-w-7xl flex-col items-center justify-center px-4 pb-8 pt-24 text-center sm:px-8 sm:pt-28 md:px-12 lg:px-20">
+        <div className="max-w-5xl min-w-0">
+          <div className="mb-5 flex flex-wrap items-center justify-center gap-3">
             <span className="h-[3px] w-8 rounded-full bg-primary" aria-hidden />
-            <p className="font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-primary">
-              Média panafricain · Abidjan · fondé en 2025
+            <p className="max-w-full break-words font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-primary sm:text-[11px] sm:tracking-[0.28em]">
+              Media digital panafricain - Abidjan - Afrique au centre
             </p>
           </div>
 
-          {/* Headline principale — oversized Newsreader */}
           <h1
-            className="mb-6 text-[clamp(2.2rem,5.5vw,4.5rem)] font-bold leading-[1.05] tracking-tight text-foreground"
+            className="mx-auto max-w-5xl break-words text-[clamp(2.45rem,13vw,7.8rem)] font-black leading-[0.9] text-foreground sm:leading-[0.86]"
             style={{ fontFamily: 'var(--font-headline)' }}
           >
-            La voix de la{' '}
-            <span
-              className="relative inline-block"
-              style={{
-                backgroundImage: 'var(--gradient-primary)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
-            >
-              jeunesse africaine
-            </span>
-            {' '}— votre partenaire contenu
+            L&apos;audience africaine que les marques veulent vraiment toucher.
           </h1>
 
-          {/* Description */}
-          <p className="mb-10 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg sm:leading-relaxed">
-            Plus de{' '}
-            <strong className="font-semibold text-foreground">1,4 million d&apos;abonnés cumulés</strong>{' '}
-            (mars 2026) sur TikTok, Facebook, Instagram, YouTube et Threads. Formats mobiles,
-            réponse sous 48 h, tarifs publiés.
+          <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+            Des campagnes natives, des formats sociaux et des couvertures terrain concus pour une jeunesse mobile,
+            exigeante et habituee a ignorer les messages sans contexte.
           </p>
 
-          {/* CTAs */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
-            <CtaButton href="/demander-devis" variant="fillHover">
-              Demander un devis
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:mt-9 sm:flex-row sm:flex-wrap">
+            <CtaButton href="/demander-devis" variant="fillHover" className="w-full justify-center sm:w-auto">
+              Construire une campagne
             </CtaButton>
-            <CtaButton href="#offres" variant="outline">
+            <CtaButton href="/services" variant="outline" className="w-full justify-center sm:w-auto">
               Voir les offres
             </CtaButton>
           </div>
 
-          {/* Lien programmes */}
-          <p className="mt-7 font-sans text-xs text-muted-foreground">
-            <a
-              href="/programmes"
-              className="inline-flex items-center gap-1 text-primary underline-offset-4 transition-opacity hover:underline hover:opacity-80"
-            >
-              Programmes éditoriaux &amp; sponsoring
-              <span aria-hidden>→</span>
-            </a>
-            {' '}— Scoop Game, Canapé sans filtre, micro-trottoirs…
-          </p>
+          <div className="mx-auto mt-8 w-full max-w-3xl rounded-[1.5rem] border border-border bg-background/90 p-3 shadow-2xl backdrop-blur sm:mt-12 sm:rounded-[2rem] sm:p-4 md:p-5">
+            <div className="mb-4 flex flex-col gap-2 text-left sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:tracking-[0.24em]">{audience.sourceLabel}</p>
+              <span className="rounded-full bg-primary/10 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-primary">
+                Social proof
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {heroStats.map((stat) => (
+                <div key={stat.key} className="min-w-0 rounded-2xl border border-border bg-card p-4 text-left">
+                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <p className="mt-2 break-words text-2xl font-black text-primary sm:text-3xl" style={{ fontFamily: 'var(--font-headline)' }}>
+                    {stat.display}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Stats inline sous le titre */}
-        <div className="mt-16 flex flex-wrap gap-8 border-t border-border pt-10 sm:gap-12">
-          {[
-            { value: '+1,4 M', label: 'Abonnés cumulés' },
-            { value: '910 K', label: 'TikTok' },
-            { value: '12+', label: 'Pays touchés' },
-          ].map((s) => (
-            <div key={s.label} className="min-w-[80px]">
-              <p
-                className="font-sans text-2xl font-black text-primary sm:text-3xl"
-                style={{ fontFamily: 'var(--font-headline)' }}
-              >
-                {s.value}
-              </p>
-              <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                {s.label}
-              </p>
-            </div>
-          ))}
+        <div className="relative mt-8 w-full max-w-xl overflow-hidden rounded-[1.5rem] border border-border bg-card shadow-2xl sm:rounded-[2.25rem] lg:hidden">
+          <div className="relative aspect-[16/10]">
+            <Image src={MOBILE_IMAGE} alt="" fill className="object-cover" priority sizes="92vw" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/72 to-transparent" />
+            <p className="absolute bottom-5 left-5 right-5 text-left font-mono text-[10px] font-bold uppercase tracking-widest text-white">
+              Formats marques, terrain et social video
+            </p>
+          </div>
         </div>
       </div>
     </section>

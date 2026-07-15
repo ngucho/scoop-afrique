@@ -60,9 +60,19 @@ import {
   resolveEditorialComment,
   deleteEditorialComment,
 } from '@/lib/admin/actions'
-import { saveDraft, getDraft, deleteDraft } from '@/lib/admin/localDrafts'
+import { saveDraft, getDraft, deleteDraft, type LocalDraft } from '@/lib/admin/localDrafts'
 import { useAdminUser } from '@/lib/admin/UserContext'
 import { formatDate } from '@/lib/formatDate'
+import { getYoutubeThumbnailUrl, isValidYoutubeUrl } from '@/lib/youtube'
+import { buildArticleEditorChecklist, countArticleContentWords } from '@/lib/articleEditorReadiness'
+import { buildArticleEditorPayload } from '@/lib/articleEditorPayload'
+import {
+  ARTICLE_EDITOR_STEPS,
+  canAccessArticleEditorStep,
+  getNextArticleEditorStep,
+  getPreviousArticleEditorStep,
+  type ArticleEditorStep,
+} from '@/lib/articleEditorWizard'
 import type { Article, Category } from '@/lib/api/types'
 
 /** Extract display name from email (e.g. prenom.nom@xxx.com → prenom.nom). */
@@ -117,6 +127,7 @@ export function ArticleEditorForm({
   const [metaTitle, setMetaTitle] = useState(article?.meta_title ?? '')
   const [metaDescription, setMetaDescription] = useState(article?.meta_description ?? '')
   const [status, setStatus] = useState(article?.status ?? 'draft')
+  const [newArticleStep, setNewArticleStep] = useState<ArticleEditorStep>('write')
 
   // --- Lock state ---
   const [lockInfo, setLockInfo] = useState<{ lockerEmail: string } | null>(null)
@@ -133,12 +144,7 @@ export function ArticleEditorForm({
   )
 
   // --- Local draft ---
-  const [localDraft, setLocalDraft] = useState<{
-    title: string
-    excerpt: string
-    content: unknown
-    updatedAt: number
-  } | null>(null)
+  const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null)
 
   // --- Side panels ---
   const [sidePanel, setSidePanel] = useState<SidePanel>('none')
@@ -251,10 +257,33 @@ export function ArticleEditorForm({
         title,
         excerpt,
         content,
+        categoryId,
+        coverImageUrl,
+        coverImageCredit,
+        coverImageSource,
+        videoUrl,
+        coverVideoCredit,
+        tags,
+        metaTitle,
+        metaDescription,
         updatedAt: Date.now(),
       }).catch(() => {})
     }, 1000)
-  }, [articleId, title, excerpt, content])
+  }, [
+    articleId,
+    title,
+    excerpt,
+    content,
+    categoryId,
+    coverImageUrl,
+    coverImageCredit,
+    coverImageSource,
+    videoUrl,
+    coverVideoCredit,
+    tags,
+    metaTitle,
+    metaDescription,
+  ])
 
   useEffect(() => {
     saveLocalDraft()
@@ -267,6 +296,15 @@ export function ArticleEditorForm({
     setTitle(localDraft.title)
     setExcerpt(localDraft.excerpt)
     setContent(localDraft.content)
+    setCategoryId(localDraft.categoryId ?? '')
+    setCoverImageUrl(localDraft.coverImageUrl ?? '')
+    setCoverImageCredit(localDraft.coverImageCredit ?? '')
+    setCoverImageSource(localDraft.coverImageSource ?? '')
+    setVideoUrl(localDraft.videoUrl ?? '')
+    setCoverVideoCredit(localDraft.coverVideoCredit ?? '')
+    setTags(localDraft.tags ?? '')
+    setMetaTitle(localDraft.metaTitle ?? '')
+    setMetaDescription(localDraft.metaDescription ?? '')
     editorInstanceRef.current?.setContent(localDraft.content)
     setLocalDraft(null)
   }
@@ -286,26 +324,22 @@ export function ArticleEditorForm({
       ensureMediaAttrsInPayload(doc, pendingMediaRef.current)
       payloadContent = doc
     }
-    const base = {
+    const base = buildArticleEditorPayload({
+      isEditing,
+      authorName,
       title,
-      excerpt: excerpt || undefined,
+      excerpt,
       content: payloadContent,
-      category_id: categoryId || null,
-      cover_image_url: coverImageUrl || null,
-      cover_image_credit: coverImageCredit || null,
-      cover_image_source: coverImageSource || null,
-      video_url: videoUrl || null,
-      cover_video_credit: coverVideoCredit || null,
-      tags: tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-      meta_title: metaTitle || null,
-      meta_description: metaDescription || null,
-    }
-    if (!isEditing) {
-      return { ...base, author_display_name: authorName || undefined }
-    }
+      categoryId,
+      coverImageUrl,
+      coverImageCredit,
+      coverImageSource,
+      videoUrl,
+      coverVideoCredit,
+      tags,
+      metaTitle,
+      metaDescription,
+    })
     return base
   }
 
@@ -338,13 +372,6 @@ export function ArticleEditorForm({
   // --- Autosave to server ---
   function handleAutoSave(editorContent: unknown) {
     if (!isEditing || isLocked) return
-    if (typeof editorContent === 'object' && editorContent !== null) {
-      const doc = editorContent as { type?: string; content?: Array<{ type?: string; attrs?: Record<string, unknown> }> }
-      const media = (doc.content ?? []).filter((n) => n.type === 'image' || n.type === 'youtube')
-      // if (media.length > 0) {
-      //   console.log('[ArticleEditor] Autosave media nodes:', media.map((n) => ({ type: n.type, attrs: n.attrs })))
-      // }
-    }
     setSaveState('saving')
     startTransition(async () => {
       try {
@@ -365,16 +392,9 @@ export function ArticleEditorForm({
   function handlePublishConfirm() {
     if (!isEditing || !article) return
     setSaveState('saving')
-    let payloadContent =
-      editorInstanceRef.current?.getJSON() ?? editorContentRef.current ?? content
-    if (typeof payloadContent === 'object' && payloadContent !== null && !Array.isArray(payloadContent)) {
-      const doc = JSON.parse(JSON.stringify(payloadContent)) as { type?: string; content?: unknown[] }
-      ensureMediaAttrsInPayload(doc, pendingMediaRef.current)
-      payloadContent = doc
-    }
     startTransition(async () => {
       try {
-        const payload = { content: payloadContent, title, excerpt: excerpt || null }
+        const payload = buildPayload()
         await publishArticle(article.id, payload)
         setStatus('published')
         setSaveState('saved')
@@ -382,6 +402,17 @@ export function ArticleEditorForm({
         setSaveState('error')
       }
     })
+  }
+
+  function goToNextNewArticleStep() {
+    const next = getNextArticleEditorStep(newArticleStep)
+    if (next === 'prepare' && !canGoToPrepare) return
+    if (next === 'review' && !canGoToReview) return
+    setNewArticleStep(next)
+  }
+
+  function goToPreviousNewArticleStep() {
+    setNewArticleStep(getPreviousArticleEditorStep(newArticleStep))
   }
 
   // --- Delete ---
@@ -558,9 +589,39 @@ export function ArticleEditorForm({
     { value: '', label: '— Aucune catégorie —' },
     ...categories.map((c) => ({ value: c.id, label: c.name })),
   ]
+  const youtubeThumbnailUrl = getYoutubeThumbnailUrl(videoUrl)
+  const coverPreviewUrl = coverImageUrl.trim() || youtubeThumbnailUrl
+  const coverPreviewKind = coverImageUrl.trim() ? 'image' : youtubeThumbnailUrl ? 'video' : null
+  const invalidVideoUrl = videoUrl.trim().length > 0 && !isValidYoutubeUrl(videoUrl)
+  const canPersistArticle = title.trim().length > 0 && !invalidVideoUrl
+  const contentWordCount = countArticleContentWords(content)
+  const isNewArticleWizard = !isEditing
+  const hasPreparation = Boolean(categoryId || tags.trim() || coverPreviewUrl || metaTitle.trim() || metaDescription.trim())
+  const canGoToPrepare = canAccessArticleEditorStep('prepare', {
+    hasTitle: title.trim().length >= 10,
+    hasBody: contentWordCount > 0,
+  })
+  const canGoToReview = canAccessArticleEditorStep('review', {
+    hasTitle: title.trim().length >= 10,
+    hasBody: contentWordCount > 0,
+    hasPreparation,
+  })
+  const showWritingSection = !isNewArticleWizard || newArticleStep === 'write'
+  const showPreparationSection = !isNewArticleWizard || newArticleStep === 'prepare'
+  const showReviewSection = isNewArticleWizard && newArticleStep === 'review'
+  const editorChecklist = buildArticleEditorChecklist({
+    title,
+    excerpt,
+    categoryId,
+    contentWordCount,
+    hasCoverVisual: Boolean(coverPreviewUrl),
+    hasInvalidVideoUrl: invalidVideoUrl,
+    metaTitle,
+    metaDescription,
+  })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24 sm:pb-0">
       {/* Lock banner */}
       {isLocked && lockInfo && (
         <LockBanner lockerEmail={lockInfo.lockerEmail} />
@@ -633,31 +694,33 @@ export function ArticleEditorForm({
             </>
           )}
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <div className="mx-1 hidden h-5 w-px bg-border sm:block" />
 
           <button
             type="button"
             onClick={() => handleSave()}
-            disabled={isPending || !title.trim() || isLocked}
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+            disabled={isPending || !canPersistArticle || isLocked}
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50 sm:px-4"
+            aria-label="Sauvegarder"
           >
             {isPending ? (
               <IconLoader2 className="h-4 w-4 animate-spin" />
             ) : (
               <IconDeviceFloppy className="h-4 w-4" />
             )}
-            Sauvegarder
+            <span className="hidden sm:inline">Sauvegarder</span>
           </button>
 
-          {status === 'draft' && (
+          {status === 'draft' && (!isNewArticleWizard || newArticleStep === 'review') && (
             <button
               type="button"
               onClick={() => handleSave('review')}
-              disabled={isPending || !title.trim() || isLocked}
-              className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+              disabled={isPending || !canPersistArticle || isLocked}
+              className="inline-flex items-center gap-2 rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background hover:bg-foreground/90 disabled:opacity-50 sm:px-4"
+              aria-label="Soumettre en relecture"
             >
               <IconSend className="h-4 w-4" />
-              Soumettre
+              <span className="hidden sm:inline">Soumettre</span>
             </button>
           )}
 
@@ -665,21 +728,90 @@ export function ArticleEditorForm({
             <button
               type="button"
               onClick={userRole !== 'journalist' ? handlePublishClick : undefined}
-              disabled={isPending || isLocked || userRole === 'journalist'}
+              disabled={isPending || !canPersistArticle || isLocked || userRole === 'journalist'}
               title={userRole === 'journalist' ? 'Réservé aux éditeurs' : undefined}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+              aria-label="Publier"
             >
               <IconEye className="h-4 w-4" />
-              Publier
+              <span className="hidden sm:inline">Publier</span>
             </button>
           )}
         </div>
       </div>
 
+      {isNewArticleWizard ? (
+        <Card>
+          <CardContent className="space-y-4 p-4">
+            <div className="grid gap-2 sm:grid-cols-3">
+              {ARTICLE_EDITOR_STEPS.map((step, index) => {
+                const active = step.id === newArticleStep
+                const accessible = canAccessArticleEditorStep(step.id, {
+                  hasTitle: title.trim().length >= 10,
+                  hasBody: contentWordCount > 0,
+                  hasPreparation,
+                })
+                return (
+                  <button
+                    key={step.id}
+                    type="button"
+                    onClick={() => accessible && setNewArticleStep(step.id)}
+                    disabled={!accessible}
+                    className={[
+                      'rounded-lg border px-3 py-3 text-left transition',
+                      active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                      !accessible ? 'cursor-not-allowed opacity-55' : '',
+                    ].join(' ')}
+                  >
+                    <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-primary">
+                      Etape {index + 1}
+                    </span>
+                    <span className="mt-1 block text-sm font-semibold">{step.label}</span>
+                    <span className="mt-0.5 block text-xs">{step.hint}</span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                {newArticleStep === 'write'
+                  ? 'Concentrez-vous sur le titre, le resume et le fond. Les metadonnees viennent apres.'
+                  : newArticleStep === 'prepare'
+                    ? 'Ajoutez la rubrique, les tags, la couverture et le SEO avant validation.'
+                    : 'Relisez le recapitulatif avant de creer, soumettre ou publier.'}
+              </p>
+              <div className="flex gap-2">
+                {newArticleStep !== 'write' ? (
+                  <button
+                    type="button"
+                    onClick={goToPreviousNewArticleStep}
+                    className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted"
+                  >
+                    Retour
+                  </button>
+                ) : null}
+                {newArticleStep !== 'review' ? (
+                  <button
+                    type="button"
+                    onClick={goToNextNewArticleStep}
+                    disabled={newArticleStep === 'write' ? !canGoToPrepare : !canGoToReview}
+                    className="rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-background disabled:opacity-50"
+                  >
+                    {newArticleStep === 'write' ? 'Continuer' : 'Voir le recap'}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
       {/* Editor + Sidebar layout */}
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main editor area */}
-        <div className="space-y-4">
+        <div className={showWritingSection ? 'space-y-4' : 'hidden'}>
           {/* Title */}
           <input
             type="text"
@@ -687,7 +819,7 @@ export function ArticleEditorForm({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Titre de l'article"
             disabled={isLocked}
-            className="w-full border-0 bg-transparent text-3xl font-bold placeholder:text-muted-foreground/50 focus:outline-none disabled:opacity-60"
+            className="w-full border-0 bg-transparent text-2xl font-bold placeholder:text-muted-foreground/50 focus:outline-none disabled:opacity-60 sm:text-3xl"
           />
 
           {/* Excerpt */}
@@ -839,6 +971,124 @@ export function ArticleEditorForm({
             </Card>
           )}
 
+          {showReviewSection ? (
+            <Card>
+              <CardContent className="space-y-4 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">Recapitulatif</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Derniere verification avant creation.
+                    </p>
+                  </div>
+                  <StatusBadge status={status} />
+                </div>
+                <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Titre</p>
+                    <p className="mt-1 text-sm font-semibold text-foreground">{title || 'Sans titre'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Resume</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                      {excerpt || 'Aucun resume renseigne.'}
+                    </p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Rubrique</p>
+                      <p className="mt-1 text-sm text-foreground">
+                        {categories.find((category) => category.id === categoryId)?.name ?? 'Non renseignee'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Mots</p>
+                      <p className="mt-1 text-sm text-foreground">{contentWordCount}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Tags</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{tags || 'Aucun tag'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Visuel</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {coverPreviewKind === 'image'
+                        ? 'Image de couverture'
+                        : coverPreviewKind === 'video'
+                          ? 'Miniature YouTube'
+                          : 'Aucun visuel'}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSave('draft')}
+                    disabled={isPending || !canPersistArticle}
+                    className="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+                  >
+                    Creer brouillon
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSave('review')}
+                    disabled={isPending || !canPersistArticle}
+                    className="rounded-lg bg-foreground px-3 py-2 text-sm font-semibold text-background disabled:opacity-50"
+                  >
+                    Soumettre
+                  </button>
+                  {userRole !== 'journalist' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSave('published')}
+                      disabled={isPending || !canPersistArticle}
+                      className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50 sm:col-span-2"
+                    >
+                      Creer et publier
+                    </button>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {/* Readiness card */}
+          <Card>
+            <CardContent className="space-y-4 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">Pret pour publication</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {contentWordCount} mots dans le corps de l&apos;article.
+                  </p>
+                </div>
+                <div className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-bold text-foreground">
+                  {editorChecklist.readyCount}/{editorChecklist.items.length}
+                </div>
+              </div>
+              <div className="space-y-2">
+                {editorChecklist.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-2"
+                  >
+                    <span
+                      className={`mt-1 h-2 w-2 shrink-0 rounded-full ${item.done ? 'bg-primary' : 'bg-muted-foreground/35'}`}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground">{item.label}</p>
+                      <p className="text-[11px] leading-relaxed text-muted-foreground">{item.hint}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {showPreparationSection ? (
+            <>
           {/* Metadata card */}
           <Card>
             <CardContent className="space-y-4 p-4">
@@ -889,22 +1139,34 @@ export function ArticleEditorForm({
                 </label>
 
                 {/* Preview + remove */}
-                {coverImageUrl ? (
-                  <div className="relative">
+                {coverPreviewUrl ? (
+                  <div className="relative overflow-hidden rounded-lg border border-border bg-muted">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={coverImageUrl}
-                      alt="Couverture"
-                      className="h-28 w-full rounded-lg object-cover"
+                      src={coverPreviewUrl}
+                      alt={coverPreviewKind === 'video' ? 'Miniature YouTube utilisee en couverture' : 'Couverture'}
+                      className="aspect-video w-full object-cover"
                     />
-                    <button
-                      type="button"
-                      onClick={() => { setCoverImageUrl(''); setCoverImageCredit(''); setCoverImageSource('') }}
-                      disabled={isLocked}
-                      className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
-                      title="Supprimer l'image"
-                    >
-                      <IconX className="h-3 w-3" />
-                    </button>
+                    <div className="absolute left-2 top-2 rounded-full border border-border bg-background/90 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-foreground shadow-sm">
+                      {coverPreviewKind === 'video' ? 'Miniature video' : 'Image'}
+                    </div>
+                    {coverPreviewKind === 'image' ? (
+                      <button
+                        type="button"
+                        onClick={() => { setCoverImageUrl(''); setCoverImageCredit(''); setCoverImageSource('') }}
+                        disabled={isLocked}
+                        className="absolute right-2 top-2 rounded-full border border-border bg-background/90 p-1.5 text-foreground shadow-sm hover:bg-muted"
+                        title={"Supprimer l'image"}
+                        aria-label={"Supprimer l'image de couverture"}
+                      >
+                        <IconX className="h-3 w-3" />
+                      </button>
+                    ) : null}
+                    {coverPreviewKind === 'video' ? (
+                      <div className="border-t border-border bg-background/95 px-3 py-2 text-xs text-muted-foreground">
+                        Aucune image n&apos;est definie. Cette miniature YouTube sera utilisee dans les cartes article.
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 
@@ -996,6 +1258,16 @@ export function ArticleEditorForm({
                   placeholder="https://youtube.com/watch?v=..."
                   disabled={isLocked}
                 />
+                {invalidVideoUrl ? (
+                  <p className="text-xs font-medium text-primary">
+                    Lien YouTube invalide. Utilisez youtube.com/watch, youtu.be, embed ou shorts.
+                  </p>
+                ) : null}
+                {youtubeThumbnailUrl && !coverImageUrl.trim() ? (
+                  <p className="text-xs text-muted-foreground">
+                    La miniature YouTube apparaitra automatiquement comme visuel de carte si l&apos;image reste vide.
+                  </p>
+                ) : null}
                 <div>
                   <label className="mb-1 block text-xs font-medium text-muted-foreground">
                     Crédit vidéo <span className="font-normal text-muted-foreground/70">(optionnel)</span>
@@ -1045,6 +1317,9 @@ export function ArticleEditorForm({
             </CardContent>
           </Card>
 
+            </>
+          ) : null}
+
           {/* Danger zone */}
           {isEditing && !isLocked && (
             <Card>
@@ -1065,6 +1340,61 @@ export function ArticleEditorForm({
           )}
         </div>
       </div>
+
+      {!isLocked && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 p-3 shadow-lg backdrop-blur sm:hidden">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleSave()}
+              disabled={isPending || !canPersistArticle}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-3 text-sm font-semibold text-foreground disabled:opacity-50"
+            >
+              {isPending ? (
+                <IconLoader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <IconDeviceFloppy className="h-4 w-4" />
+              )}
+              Sauver
+            </button>
+            {isNewArticleWizard && newArticleStep !== 'review' ? (
+              <button
+                type="button"
+                onClick={goToNextNewArticleStep}
+                disabled={newArticleStep === 'write' ? !canGoToPrepare : !canGoToReview}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-3 text-sm font-semibold text-background disabled:opacity-50"
+              >
+                <IconChevronRight className="h-4 w-4" />
+                {newArticleStep === 'write' ? 'Continuer' : 'Recap'}
+              </button>
+            ) : status === 'draft' ? (
+              <button
+                type="button"
+                onClick={() => handleSave('review')}
+                disabled={isPending || !canPersistArticle}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-foreground px-3 py-3 text-sm font-semibold text-background disabled:opacity-50"
+              >
+                <IconSend className="h-4 w-4" />
+                Relecture
+              </button>
+            ) : isEditing && status !== 'published' ? (
+              <button
+                type="button"
+                onClick={userRole !== 'journalist' ? handlePublishClick : undefined}
+                disabled={isPending || !canPersistArticle || userRole === 'journalist'}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                <IconEye className="h-4 w-4" />
+                Publier
+              </button>
+            ) : (
+              <div className="rounded-lg border border-border bg-muted px-3 py-3 text-center text-sm font-semibold text-muted-foreground">
+                {status}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirm dialogs (replace window.confirm) */}
       {confirmDialog === 'publish' && (
