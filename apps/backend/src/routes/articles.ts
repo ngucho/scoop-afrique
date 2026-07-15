@@ -12,7 +12,7 @@ import * as likeService from '../services/like.service.js'
 import { getAuthUser } from '../lib/auth.js'
 import { config } from '../config/env.js'
 import { normalizePublicSearchQuery } from '../lib/search-query.js'
-import { isNotModified, setConditionalCacheHeaders, weakEtag } from '../lib/http-cache.js'
+import { honoRequestHeaders, isNotModified, setConditionalCacheHeaders, weakEtag } from '../lib/http-cache.js'
 
 const app = new Hono()
 
@@ -83,7 +83,7 @@ app.get('/:id', async (c) => {
     cacheControl: 'public, max-age=60, stale-while-revalidate=600',
   }
   setConditionalCacheHeaders(c, cacheMetadata)
-  if (isNotModified(c.req.raw.headers, cacheMetadata)) return c.body(null, 304)
+  if (isNotModified(honoRequestHeaders(c), cacheMetadata)) return c.body(null, 304)
   return c.json({ data: articleService.presentArticleForPublicApi(article) })
 })
 
