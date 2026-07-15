@@ -7,7 +7,7 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import * as offlineService from '../services/offline.service.js'
-import { isNotModified, setConditionalCacheHeaders, weakEtag } from '../lib/http-cache.js'
+import { honoRequestHeaders, isNotModified, setConditionalCacheHeaders, weakEtag } from '../lib/http-cache.js'
 
 const app = new Hono()
 
@@ -30,7 +30,7 @@ app.get('/manifest', async (c) => {
     cacheControl: 'public, max-age=60, stale-while-revalidate=600',
   }
   setConditionalCacheHeaders(c, cacheMetadata)
-  if (isNotModified(c.req.raw.headers, cacheMetadata)) return c.body(null, 304)
+  if (isNotModified(honoRequestHeaders(c), cacheMetadata)) return c.body(null, 304)
   return c.json({ data: manifest })
 })
 
