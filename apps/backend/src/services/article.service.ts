@@ -111,6 +111,16 @@ export function canCreateArticleWithStatus(
   return role === 'editor' || role === 'manager' || role === 'admin'
 }
 
+export class ArticleReadinessError extends Error {
+  readonly code = 'ARTICLE_READINESS_MISSING'
+  readonly missing: string[]
+
+  constructor(missing: string[]) {
+    super(`Article incomplet: ${missing.join(', ')}`)
+    this.missing = missing
+  }
+}
+
 /* ---------- Helpers ---------- */
 
 function displayNameFromEmail(email: string | null | undefined): string | null {
@@ -193,6 +203,43 @@ function computeWordCount(content: unknown): number {
 
 function computeReadingTime(wordCount: number): number {
   return Math.max(1, Math.ceil(wordCount / 200))
+}
+
+function hasUsableText(value: string | null | undefined, minLength: number): boolean {
+  return (value ?? '').trim().length >= minLength
+}
+
+function isValidYoutubeUrl(value: string | null | undefined): boolean {
+  const url = (value ?? '').trim()
+  if (!url) return true
+  return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/.test(url)
+}
+
+function getArticleReadinessMissing(input: {
+  title: string | null | undefined
+  excerpt: string | null | undefined
+  categoryId: string | null | undefined
+  content: unknown
+  coverImageUrl: string | null | undefined
+  videoUrl: string | null | undefined
+  metaTitle: string | null | undefined
+  metaDescription: string | null | undefined
+}): string[] {
+  const wordCount = computeWordCount(input.content)
+  const missing: string[] = []
+  if (!hasUsableText(input.title, 10)) missing.push('titre d’au moins 10 caractères')
+  if (!hasUsableText(input.excerpt, 20)) missing.push('chapeau d’au moins 20 caractères')
+  if (!input.categoryId) missing.push('rubrique')
+  if (wordCount < 200) missing.push('corps d’article d’au moins 200 mots')
+  if (!input.coverImageUrl && !input.videoUrl) missing.push('image de couverture ou vidéo YouTube')
+  if (!isValidYoutubeUrl(input.videoUrl)) missing.push('lien vidéo YouTube valide')
+  if (!input.metaTitle && !input.metaDescription) missing.push('meta titre ou meta description')
+  return missing
+}
+
+function assertArticleReadyForSubmission(input: Parameters<typeof getArticleReadinessMissing>[0]) {
+  const missing = getArticleReadinessMissing(input)
+  if (missing.length > 0) throw new ArticleReadinessError(missing)
 }
 
 function slugify(title: string): string {
@@ -849,6 +896,18 @@ export async function createArticle(
   const slug = await ensureUniqueSlug(db, baseSlug)
 
   const contentData = body.content ?? []
+  if (body.status === 'review' || body.status === 'published') {
+    assertArticleReadyForSubmission({
+      title: body.title,
+      excerpt: body.excerpt ?? null,
+      categoryId: body.category_id ?? null,
+      content: contentData,
+      coverImageUrl: body.cover_image_url ?? null,
+      videoUrl: body.video_url ?? null,
+      metaTitle: body.meta_title ?? null,
+      metaDescription: body.meta_description ?? null,
+    })
+  }
   const wordCount = computeWordCount(contentData)
 
   const [row] = await db
@@ -912,6 +971,10 @@ export async function updateArticle(
       content: articles.content,
       version: articles.version,
       coverImageUrl: articles.coverImageUrl,
+      videoUrl: articles.videoUrl,
+      categoryId: articles.categoryId,
+      metaTitle: articles.metaTitle,
+      metaDescription: articles.metaDescription,
     })
     .from(articles)
     .where(eq(articles.id, id))
@@ -944,6 +1007,21 @@ export async function updateArticle(
 
   if (body.status === 'published' && existing.status !== 'published') {
     update.publishedAt = new Date()
+  }
+
+  if (body.status === 'review' || body.status === 'published') {
+    assertArticleReadyForSubmission({
+      title: (update.title ?? existing.title) as string,
+      excerpt: update.excerpt !== undefined ? update.excerpt : existing.excerpt,
+      categoryId: update.categoryId !== undefined ? update.categoryId : existing.categoryId,
+      content: update.content !== undefined ? update.content : existing.content,
+      coverImageUrl:
+        update.coverImageUrl !== undefined ? update.coverImageUrl : existing.coverImageUrl,
+      videoUrl: update.videoUrl !== undefined ? update.videoUrl : existing.videoUrl,
+      metaTitle: update.metaTitle !== undefined ? update.metaTitle : existing.metaTitle,
+      metaDescription:
+        update.metaDescription !== undefined ? update.metaDescription : existing.metaDescription,
+    })
   }
 
   if (body.content !== undefined) {
