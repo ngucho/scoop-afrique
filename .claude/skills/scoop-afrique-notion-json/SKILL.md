@@ -20,6 +20,7 @@ Produire une veille editoriale Scoop Afrique, rediger les articles valides, teni
 4. Produire un JSON conforme a `references/import-json-schema.md`.
 5. Mettre a jour Notion si le connecteur Notion est disponible. Sinon produire un bloc "Notion a creer" avec les memes champs.
 6. Ne pas utiliser Node ni l'API Writer pour ce workflow. La livraison cible est un fichier JSON charge manuellement dans le backoffice.
+7. Ne jamais fournir de liens image, video ou autre media dans le JSON. Le choix, la verification et l'ajout des illustrations appartiennent au journaliste apres lecture et fact-checking.
 
 ## Workflow
 
@@ -57,7 +58,8 @@ Chaque article doit contenir :
 - `rubrique` ou `category_slug` : rubrique proposee. Si incertaine, garder le libelle propose et signaler la correction Notion.
 - `tags` : 3 a 8 tags.
 - `meta_title` ou `meta_description` : SEO obligatoire pour pouvoir soumettre plus tard.
-- `cover_image_url` ou `video_url` seulement si une ressource fiable est disponible. Sinon laisser vide pour que le journaliste ajoute le media.
+
+Ne pas renseigner `cover_image_url`, `video_url`, `cover_image_credit`, `cover_image_source` ni `cover_video_credit`. Laisser ces champs absents du JSON final. Dans Notion, marquer l'article comme `Media a ajouter`.
 
 Ne pas ajouter de prose hors CMS dans `body`.
 
@@ -78,6 +80,8 @@ Inclure uniquement les champs acceptes par l'import backoffice. Mettre les notes
 - [ ] JSON valide, parsable, sans commentaires.
 - [ ] Chaque entree a `title`, `excerpt`, `body`, `tags`, `rubrique` ou `category_slug`.
 - [ ] Les rubriques non certaines sont listees dans les notes et dans Notion.
+- [ ] Aucun lien image, video ou media n'est fourni par l'agent IA.
+- [ ] `Media a ajouter` est signale pour chaque article dans Notion ou dans les notes.
 - [ ] Chaque article a au moins 3 sources verifiees dans le travail de redaction.
 - [ ] Les articles sont en brouillon uniquement apres import.
 - [ ] Aucune publication directe, aucun envoi API, aucun script Node.
