@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Heading } from 'scoop'
-import { IconChevronLeft, IconChevronRight, IconEdit, IconEye, IconPlus, IconSearch } from '@tabler/icons-react'
+import { IconChevronLeft, IconChevronRight, IconEdit, IconEye, IconFileUpload, IconPlus, IconSearch } from '@tabler/icons-react'
 import { fetchAdminArticles } from '@/lib/admin/fetchers'
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/admin/rbac'
 import { formatDateShort } from '@/lib/formatDate'
@@ -56,13 +56,22 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
               Pilote les brouillons, validations, publications et performances sans quitter la liste.
             </p>
           </div>
-          <Link
-            href="/admin/articles/new"
-            className="press-effect inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 font-sans text-xs font-black uppercase tracking-[0.1em] text-primary-foreground hover:bg-primary/90"
-          >
-            <IconPlus className="h-4 w-4" />
-            Nouvel article
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/admin/articles/import"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-border bg-background px-5 font-sans text-xs font-black uppercase tracking-[0.1em] text-foreground hover:border-primary hover:text-primary"
+            >
+              <IconFileUpload className="h-4 w-4" />
+              Import JSON
+            </Link>
+            <Link
+              href="/admin/articles/new"
+              className="press-effect inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 font-sans text-xs font-black uppercase tracking-[0.1em] text-primary-foreground hover:bg-primary/90"
+            >
+              <IconPlus className="h-4 w-4" />
+              Nouvel article
+            </Link>
+          </div>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">

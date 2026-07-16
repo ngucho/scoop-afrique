@@ -114,6 +114,16 @@ export interface MediaRecord {
   created_at: string
 }
 
+export interface ArticleImportResult {
+  created: { id: string; title: string; category_id: string | null }[]
+  created_count: number
+  needs_category_review: {
+    index: number
+    title: string
+    requested_category: string | null
+  }[]
+}
+
 // API response wrappers
 export interface ApiResponse<T> {
   data: T

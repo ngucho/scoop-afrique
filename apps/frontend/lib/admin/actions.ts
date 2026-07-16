@@ -9,6 +9,7 @@ import { getAccessToken } from '@/lib/auth0'
 import { apiGetAuth, apiPostAuth, apiPatchAuth, apiDeleteAuth } from '@/lib/api/adminClient'
 import type {
   Article,
+  ArticleImportResult,
   Comment,
   Category,
   MediaRecord,
@@ -32,6 +33,13 @@ async function getToken(): Promise<string> {
 export async function createArticle(data: Record<string, unknown>): Promise<Article> {
   const token = await getToken()
   const res = await apiPostAuth<ApiResponse<Article>>('/admin/articles', token, data)
+  revalidatePath('/admin/articles')
+  return res.data
+}
+
+export async function importArticlesFromJson(data: unknown): Promise<ArticleImportResult> {
+  const token = await getToken()
+  const res = await apiPostAuth<ApiResponse<ArticleImportResult>>('/admin/articles/import', token, data)
   revalidatePath('/admin/articles')
   return res.data
 }
