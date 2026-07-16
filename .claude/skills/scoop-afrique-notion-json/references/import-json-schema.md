@@ -14,12 +14,7 @@ Le backoffice accepte :
       "body": "Corps de l'article en paragraphes separes par une ligne vide.",
       "tags": ["Cote d'Ivoire", "Politique", "Scoop Afrique"],
       "meta_title": "Titre SEO | Scoop Afrique",
-      "meta_description": "Description SEO concise.",
-      "cover_image_url": "https://example.com/image.jpg",
-      "cover_image_credit": "Source photo",
-      "cover_image_source": "Agence ou media",
-      "video_url": "https://www.youtube.com/watch?v=...",
-      "cover_video_credit": "Source video"
+      "meta_description": "Description SEO concise."
     }
   ]
 }
@@ -46,7 +41,17 @@ Si la rubrique proposee n'est pas certaine :
 
 ## Media
 
-L'import cree des brouillons. Les images et videos peuvent rester vides si elles doivent etre ajoutees par le journaliste.
+L'import cree des brouillons. L'agent IA ne doit pas renseigner les champs media.
+
+Ne pas inclure dans le JSON final :
+
+- `cover_image_url`
+- `cover_image_credit`
+- `cover_image_source`
+- `video_url`
+- `cover_video_credit`
+
+Le journaliste doit lire l'article, fact-checker, choisir les illustrations adaptees, puis ajouter les images ou videos depuis le backoffice.
 
 Pour soumission ou publication ulterieure, l'article devra respecter les 7 conditions du backoffice :
 
@@ -63,4 +68,5 @@ Pour soumission ou publication ulterieure, l'article devra respecter les 7 condi
 - Ne pas mettre de commentaires dans le JSON.
 - Ne pas ajouter de champs internes dans le JSON final si le fichier est destine a l'import.
 - Ne pas inclure les sources de controle dans `body` sous forme de notes internes.
+- Ne pas fournir de liens image, video ou media : c'est une responsabilite editoriale du journaliste.
 - Ne pas publier ni soumettre depuis ce workflow.

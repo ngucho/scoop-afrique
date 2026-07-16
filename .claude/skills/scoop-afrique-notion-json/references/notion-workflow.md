@@ -26,7 +26,7 @@ Si Notion n'est pas disponible, produire une table Markdown "Notion a creer" et 
 | `Pilier` | Select | Politique, Societe, Economie, Sport, Culture, Tech, Sante |
 | `Rubrique proposee` | Text | Rubrique envoyee dans le JSON |
 | `Rubrique a corriger` | Checkbox | Oui si la rubrique n'est pas reconnue |
-| `Media a ajouter` | Checkbox | Oui si pas de cover ou video |
+| `Media a ajouter` | Checkbox | Toujours oui apres redaction IA ; le journaliste choisit les illustrations |
 | `Sources` | URL/Text | Sources principales, une par ligne si possible |
 | `Score` | Number | Score veille |
 | `Cluster ID` | Text | Identifiant anti-doublon |
@@ -58,7 +58,7 @@ Apres redaction JSON :
 
 - passer les articles en `Pret import` ;
 - cocher `Rubrique a corriger` si la rubrique n'est pas dans la liste backoffice ;
-- cocher `Media a ajouter` si `cover_image_url` et `video_url` sont vides ;
+- cocher `Media a ajouter` pour chaque article ;
 - ajouter le chemin du fichier JSON dans une propriete texte ou dans le commentaire de page.
 
 Apres import manuel :
@@ -71,4 +71,5 @@ Apres import manuel :
 - Ne pas supprimer de pages Notion.
 - Ne pas ecraser un article existant sans correspondance claire par titre, date et topic ID.
 - Ne pas stocker de secrets, tokens API ou credentials dans Notion.
+- Ne pas stocker de liens image ou video proposes par l'IA ; garder seulement les sources journalistiques et l'alerte media a completer.
 - Toujours signaler les actions Notion realisees et celles qui restent manuelles.
