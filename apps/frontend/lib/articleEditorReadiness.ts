@@ -82,16 +82,13 @@ export function buildArticleEditorChecklist(input: ArticleEditorChecklistInput):
       hint: 'Corrigez le lien YouTube si renseigne',
       done: !input.hasInvalidVideoUrl,
     },
-  ]
-
-  if (hasSeoText) {
-    items.push({
+    {
       id: 'seo',
       label: 'SEO precise',
       hint: 'Meta titre ou description personnalise',
-      done: true,
-    })
-  }
+      done: hasSeoText,
+    },
+  ]
 
   return {
     items,

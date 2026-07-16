@@ -344,7 +344,21 @@ export function ArticleEditorForm({
   }
 
   // --- Save ---
+  function getMissingReadinessLabels() {
+    return editorChecklist.items.filter((item) => !item.done).map((item) => item.label)
+  }
+
+  function ensureReadyForSubmission() {
+    const missing = getMissingReadinessLabels()
+    if (missing.length === 0) return true
+    setAlertDialog({
+      message: `Avant de soumettre ou publier, completez les 7 conditions. Il manque : ${missing.join(', ')}.`,
+    })
+    return false
+  }
+
   function handleSave(newStatus?: string) {
+    if ((newStatus === 'review' || newStatus === 'published') && !ensureReadyForSubmission()) return
     setSaveState('saving')
     startTransition(async () => {
       try {
@@ -365,6 +379,7 @@ export function ArticleEditorForm({
       } catch (err) {
         console.error(err)
         setSaveState('error')
+        setAlertDialog({ message: err instanceof Error ? err.message : 'Erreur lors de la sauvegarde.' })
       }
     })
   }
@@ -386,11 +401,13 @@ export function ArticleEditorForm({
   // --- Publish (send current content/title/excerpt so they are persisted) ---
   function handlePublishClick() {
     if (!isEditing) return
+    if (!ensureReadyForSubmission()) return
     setConfirmDialog('publish')
   }
 
   function handlePublishConfirm() {
     if (!isEditing || !article) return
+    if (!ensureReadyForSubmission()) return
     setSaveState('saving')
     startTransition(async () => {
       try {
@@ -398,8 +415,9 @@ export function ArticleEditorForm({
         await publishArticle(article.id, payload)
         setStatus('published')
         setSaveState('saved')
-      } catch {
+      } catch (err) {
         setSaveState('error')
+        setAlertDialog({ message: err instanceof Error ? err.message : 'Erreur lors de la publication.' })
       }
     })
   }
@@ -845,7 +863,7 @@ export function ArticleEditorForm({
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {/* Side panels */}
           {sidePanel === 'history' && (
             <Card>
@@ -1060,7 +1078,7 @@ export function ArticleEditorForm({
                 <div>
                   <h3 className="text-sm font-semibold">Pret pour publication</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {contentWordCount} mots dans le corps de l&apos;article.
+                    {contentWordCount} mots dans le corps de l&apos;article. Les 7 points sont obligatoires avant soumission ou publication.
                   </p>
                 </div>
                 <div className="rounded-full border border-border bg-background px-2.5 py-1 text-xs font-bold text-foreground">
@@ -1322,7 +1340,7 @@ export function ArticleEditorForm({
 
           {/* Danger zone */}
           {isEditing && !isLocked && (
-            <Card>
+            <Card className="order-last">
               <CardContent className="p-4">
                 <h3 className="mb-2 text-sm font-semibold text-red-600 dark:text-red-400">
                   Zone dangereuse
