@@ -64,5 +64,31 @@ export const updateArticleBodySchema = createArticleBodySchema
   .partial()
   .extend({ status: articleStatusSchema.optional() })
 
+const importArticleItemSchema = createArticleBodySchema
+  .omit({ status: true, category_id: true })
+  .partial({
+    excerpt: true,
+    content: true,
+  })
+  .extend({
+    title: z.string().min(1, 'Le titre est requis').max(500),
+    body: z.string().optional(),
+    category_id: z.string().uuid().optional().nullable(),
+    category: z.string().max(200).optional().nullable(),
+    category_slug: z.string().max(200).optional().nullable(),
+    rubrique: z.string().max(200).optional().nullable(),
+  })
+
+export const importArticlesBodySchema = z.preprocess(
+  (value) => {
+    if (Array.isArray(value)) return { articles: value }
+    return value
+  },
+  z.object({
+    articles: z.array(importArticleItemSchema).min(1).max(100),
+  })
+)
+
 export type CreateArticleBody = z.infer<typeof createArticleBodySchema>
 export type UpdateArticleBody = z.infer<typeof updateArticleBodySchema>
+export type ImportArticlesBody = z.infer<typeof importArticlesBodySchema>
