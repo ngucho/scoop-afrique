@@ -27,6 +27,56 @@ app.get('/most-read', async (c) => {
   return c.json({ data: presented })
 })
 
+/* --- Public author profile + publications --- */
+app.get('/authors/:authorId', async (c) => {
+  if (!config.database) return c.json({ error: 'Database not configured' }, 503)
+  const author = await articleService.getPublicAuthorProfile(c.req.param('authorId'))
+  if (!author) return c.json({ error: 'Not found' }, 404)
+  c.header('Cache-Control', 'public, max-age=120, stale-while-revalidate=600')
+  return c.json({ data: author })
+})
+
+app.get('/authors/:authorId/articles', async (c) => {
+  if (!config.database) return c.json({ data: [], total: 0 })
+  const page = Number(c.req.query('page')) || 1
+  const limit = Math.min(Number(c.req.query('limit')) || 20, 100)
+  const { data, total } = await articleService.listPublicArticleCards({
+    authorId: c.req.param('authorId'),
+    page,
+    limit,
+  })
+  const presented = data.map((a) => articleService.presentArticleCardForPublicApi(a))
+  c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=300')
+  return c.json({ data: presented, total, page, limit })
+})
+
+/* --- Reader recommendation (uses current article + optional local history ids) --- */
+app.get('/recommendations/:id', async (c) => {
+  if (!config.database) return c.json({ data: null })
+  const user = await getAuthUser(c)
+  const localHistory = (c.req.query('history') ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .slice(0, 30)
+  const accountHistory = user ? await articleService.listReaderArticleHistoryIds(user.id, 30) : []
+  const history = Array.from(new Set([...accountHistory, ...localHistory])).slice(0, 40)
+  const article = await articleService.getRecommendedArticleForReader(c.req.param('id'), history)
+  c.header('Cache-Control', 'private, max-age=60')
+  return c.json({ data: article })
+})
+
+app.post('/history', async (c) => {
+  if (!config.database) return c.json({ error: 'Database not configured' }, 503)
+  const user = await getAuthUser(c)
+  if (!user) return c.json({ error: 'Unauthorized' }, 401)
+  const body = await c.req.json().catch(() => ({}))
+  const articleId = typeof body?.article_id === 'string' ? body.article_id : ''
+  if (!articleId) return c.json({ error: 'article_id required' }, 400)
+  await articleService.recordReaderArticleHistory(user.id, articleId)
+  return c.json({ data: { ok: true } })
+})
+
 /* --- List published articles --- */
 app.get('/', async (c) => {
   if (!config.database) return c.json({ data: [], total: 0 })

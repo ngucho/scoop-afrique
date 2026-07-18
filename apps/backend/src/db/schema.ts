@@ -34,6 +34,13 @@ export const articleStatusEnum = pgEnum('article_status', [
   'scheduled',
   'published',
 ])
+export const articleAudioJobStatusEnum = pgEnum('article_audio_job_status', [
+  'queued',
+  'processing',
+  'done',
+  'failed',
+  'skipped',
+])
 export const commentStatusEnum = pgEnum('comment_status', [
   'pending',
   'approved',
@@ -242,6 +249,12 @@ export const articles = pgTable('articles', {
   metaTitle: text('meta_title'),
   metaDescription: text('meta_description'),
   ogImageUrl: text('og_image_url'),
+  audioUrl: text('audio_url'),
+  audioStoragePath: text('audio_storage_path'),
+  audioDurationSec: integer('audio_duration_sec'),
+  audioGeneratedAt: timestamp('audio_generated_at', { withTimezone: true }),
+  audioVoice: text('audio_voice'),
+  audioTextHash: text('audio_text_hash'),
   tags: text('tags').array().notNull().default([]),
   viewCount: integer('view_count').notNull().default(0),
   wordCount: integer('word_count').notNull().default(0),
@@ -253,6 +266,29 @@ export const articles = pgTable('articles', {
 })
 
 /** One row per article page view — used for « most read » windows (e.g. last 7 days). */
+export const articleAudioJobs = pgTable(
+  'article_audio_jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => articles.id, { onDelete: 'cascade' }),
+    status: articleAudioJobStatusEnum('status').notNull().default('queued'),
+    reason: text('reason').notNull().default('published'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('article_audio_jobs_article_unique_idx').on(t.articleId),
+    index('article_audio_jobs_status_created_idx').on(t.status, t.createdAt),
+  ],
+)
+
 export const articleViewEvents = pgTable(
   'article_view_events',
   {
@@ -265,6 +301,24 @@ export const articleViewEvents = pgTable(
   (t) => [
     index('article_view_events_article_created_idx').on(t.articleId, t.createdAt),
     index('article_view_events_created_idx').on(t.createdAt),
+  ],
+)
+
+export const readerArticleHistory = pgTable(
+  'reader_article_history',
+  {
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    articleId: uuid('article_id')
+      .notNull()
+      .references(() => articles.id, { onDelete: 'cascade' }),
+    viewedAt: timestamp('viewed_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.profileId, t.articleId], name: 'reader_article_history_pk' }),
+    index('reader_article_history_profile_viewed_idx').on(t.profileId, t.viewedAt),
+    index('reader_article_history_article_viewed_idx').on(t.articleId, t.viewedAt),
   ],
 )
 

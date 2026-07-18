@@ -22,6 +22,12 @@ export interface Article {
   meta_title: string | null
   meta_description: string | null
   og_image_url: string | null
+  audio_url?: string | null
+  audio_storage_path?: string | null
+  audio_duration_sec?: number | null
+  audio_generated_at?: string | null
+  audio_voice?: string | null
+  audio_text_hash?: string | null
   created_at: string
   updated_at: string
   author?: { email: string | null } | null
@@ -40,6 +46,14 @@ export interface Category {
   description: string | null
   sort_order: number
   created_at: string
+}
+
+export interface PublicAuthorProfile {
+  id: string
+  display_name: string
+  bio: string | null
+  avatar_url: string | null
+  article_count: number
 }
 
 export interface Comment {

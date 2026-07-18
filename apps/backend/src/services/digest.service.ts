@@ -1,7 +1,7 @@
 /**
  * Email digest: select highlights, send via Resend, record job runs.
  */
-import { and, desc, eq, isNull, lte, or } from 'drizzle-orm'
+import { and, desc, eq, isNull, lte, or, sql } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import {
   articles,
@@ -232,11 +232,12 @@ function unsubLabelLine(unsubUrl: string): string {
   return `Préférences / désabonnement : ${unsubUrl}`
 }
 
-/** Score for ranking: recency + popularity + editorial tag overlap + image quality bonus. */
+/** Score for ranking: weekly performance first, then editorial quality and freshness tie-breakers. */
 function scoreArticle(
   a: {
     publishedAt: Date | null
     viewCount: number
+    weeklyViewCount?: number
     tags: string[] | null
     hasCover?: boolean
     hasExcerpt?: boolean
@@ -245,15 +246,15 @@ function scoreArticle(
 ): number {
   const pub = a.publishedAt?.getTime() ?? 0
   const ageDays = Math.max(0.1, (now - pub) / 86400000)
-  // Smoother recency decay: strong for first 7 days, tapering over 30
-  const recency = ageDays <= 7 ? 80 / ageDays : 80 / 7 * (7 / ageDays) * 0.5
-  const pop = Math.log10(10 + (a.viewCount ?? 0)) * 4
+  const recency = ageDays <= 7 ? 10 / ageDays : 2 / Math.sqrt(ageDays)
+  const weeklyPop = Math.log10(10 + (a.weeklyViewCount ?? 0)) * 42
+  const pop = Math.log10(10 + (a.viewCount ?? 0)) * 3
   const editorialBonus = (a.tags ?? []).some((t) =>
     EDITORIAL_TAGS.some((e) => t.toLowerCase().includes(e)),
   ) ? 20 : 0
   const coverBonus = a.hasCover ? 8 : 0
   const excerptBonus = a.hasExcerpt ? 5 : 0
-  return recency + pop + editorialBonus + coverBonus + excerptBonus
+  return weeklyPop + recency + pop + editorialBonus + coverBonus + excerptBonus
 }
 
 export async function selectDigestArticles(
@@ -264,8 +265,7 @@ export async function selectDigestArticles(
   const db = getDb()
   const now = Date.now()
 
-  // Wider pool: last 6 months, 250 articles
-  const sixMonthsAgo = new Date(now - 183 * 86400000)
+  const sevenDaysAgo = new Date(now - 7 * 86400000)
 
   const rows = await db
     .select({
@@ -276,6 +276,12 @@ export async function selectDigestArticles(
       coverImageUrl: articles.coverImageUrl,
       publishedAt: articles.publishedAt,
       viewCount: articles.viewCount,
+      weeklyViewCount: sql<number>`(
+        SELECT count(*)::int
+        FROM article_view_events e
+        WHERE e.article_id = ${articles.id}
+          AND e.created_at >= ${sevenDaysAgo}
+      )`,
       tags: articles.tags,
       categorySlug: categories.slug,
     })
@@ -300,7 +306,7 @@ export async function selectDigestArticles(
     }
   } catch { /* best-effort */ }
 
-  // Score all eligible articles
+  // Score all eligible articles: weekly performance first, freshness only as a tie-breaker.
   const scored = rows
     .filter((r) => !recentlySentIds.has(r.id))
     .map((r) => ({
@@ -308,6 +314,7 @@ export async function selectDigestArticles(
       _score: scoreArticle({
         publishedAt: r.publishedAt,
         viewCount: r.viewCount,
+        weeklyViewCount: r.weeklyViewCount,
         tags: r.tags ?? [],
         hasCover: Boolean(r.coverImageUrl),
         hasExcerpt: Boolean(r.excerpt && r.excerpt.length > 80),
