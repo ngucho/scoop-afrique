@@ -77,6 +77,16 @@ app.post('/history', async (c) => {
   return c.json({ data: { ok: true } })
 })
 
+app.post('/:id/audio-access', async (c) => {
+  if (!config.database) return c.json({ data: { available: false, audio_url: null } })
+  const id = c.req.param('id')
+  const article = await articleService.getArticleByIdOrSlug(id, true)
+  if (!article) return c.json({ error: 'Not found' }, 404)
+  const result = await articleService.markArticleAudioAccess(article.id)
+  c.header('Cache-Control', 'no-store')
+  return c.json({ data: result })
+})
+
 /* --- List published articles --- */
 app.get('/', async (c) => {
   if (!config.database) return c.json({ data: [], total: 0 })
@@ -125,6 +135,9 @@ app.get('/:id', async (c) => {
   const track = trackRaw !== '0' && trackRaw !== 'false'
   if (track && article.status === 'published') {
     articleService.incrementViewCount(article.id).catch(() => {})
+  }
+  if (article.status === 'published' && !articleService.isArticleAudioFresh(article)) {
+    articleService.enqueueArticleAudioJob(article.id, article.audio_url ? 'manual' : 'published').catch(() => {})
   }
 
   const cacheMetadata = {

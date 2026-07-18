@@ -26,6 +26,8 @@ export interface Article {
   audio_storage_path?: string | null
   audio_duration_sec?: number | null
   audio_generated_at?: string | null
+  audio_last_accessed_at?: string | null
+  audio_expires_at?: string | null
   audio_voice?: string | null
   audio_text_hash?: string | null
   created_at: string

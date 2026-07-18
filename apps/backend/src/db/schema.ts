@@ -253,6 +253,8 @@ export const articles = pgTable('articles', {
   audioStoragePath: text('audio_storage_path'),
   audioDurationSec: integer('audio_duration_sec'),
   audioGeneratedAt: timestamp('audio_generated_at', { withTimezone: true }),
+  audioLastAccessedAt: timestamp('audio_last_accessed_at', { withTimezone: true }),
+  audioExpiresAt: timestamp('audio_expires_at', { withTimezone: true }),
   audioVoice: text('audio_voice'),
   audioTextHash: text('audio_text_hash'),
   tags: text('tags').array().notNull().default([]),
