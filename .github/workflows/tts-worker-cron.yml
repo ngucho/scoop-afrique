@@ -1,0 +1,23 @@
+name: TTS worker cron
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  process-one:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger one Piper job
+        env:
+          TTS_WORKER_URL: ${{ secrets.TTS_WORKER_URL }}
+          TTS_WORKER_SECRET: ${{ secrets.TTS_WORKER_SECRET }}
+        run: |
+          if [ -z "$TTS_WORKER_URL" ] || [ -z "$TTS_WORKER_SECRET" ]; then
+            echo "TTS worker secrets are not configured yet; skipping."
+            exit 0
+          fi
+
+          curl -fsS -X POST "$TTS_WORKER_URL" \
+            -H "Authorization: Bearer $TTS_WORKER_SECRET"

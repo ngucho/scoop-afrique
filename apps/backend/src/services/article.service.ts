@@ -10,7 +10,7 @@
  */
 import { eq, and, desc, sql, or, ilike, isNotNull, inArray } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
-import { articles, articleViewEvents, categories, profiles, readerPublicProfiles } from '../db/schema.js'
+import { articles, articleAudioJobs, articleViewEvents, categories, profiles, readerArticleHistory, readerPublicProfiles } from '../db/schema.js'
 import { config } from '../config/env.js'
 import type { CreateArticleBody, UpdateArticleBody } from '../schemas/article.js'
 import type { AppRole } from './profile.service.js'
@@ -44,6 +44,12 @@ export interface Article {
   meta_title: string | null
   meta_description: string | null
   og_image_url: string | null
+  audio_url?: string | null
+  audio_storage_path?: string | null
+  audio_duration_sec?: number | null
+  audio_generated_at?: string | null
+  audio_voice?: string | null
+  audio_text_hash?: string | null
   view_count: number
   word_count: number
   reading_time_min: number
@@ -62,6 +68,14 @@ export interface ArticleWithAuthor extends Article {
 }
 
 export type PublicArticleCard = Omit<ArticleWithAuthor, 'content' | 'last_saved_by'>
+
+export interface PublicAuthorProfile {
+  id: string
+  display_name: string
+  bio: string | null
+  avatar_url: string | null
+  article_count: number
+}
 
 /** Published rows for sitemap (minimal fields, no drafts). */
 export interface SitemapArticleEntry {
@@ -294,6 +308,12 @@ function toArticle(row: Record<string, unknown>): Article {
     meta_title: r.metaTitle,
     meta_description: r.metaDescription,
     og_image_url: r.ogImageUrl,
+    audio_url: r.audioUrl ?? null,
+    audio_storage_path: r.audioStoragePath ?? null,
+    audio_duration_sec: r.audioDurationSec ?? null,
+    audio_generated_at: r.audioGeneratedAt?.toISOString() ?? null,
+    audio_voice: r.audioVoice ?? null,
+    audio_text_hash: r.audioTextHash ?? null,
     view_count: r.viewCount ?? 0,
     word_count: r.wordCount ?? 0,
     reading_time_min: r.readingTimeMin ?? 1,
@@ -415,6 +435,12 @@ export async function listArticles(
       metaTitle: articles.metaTitle,
       metaDescription: articles.metaDescription,
       ogImageUrl: articles.ogImageUrl,
+      audioUrl: articles.audioUrl,
+      audioStoragePath: articles.audioStoragePath,
+      audioDurationSec: articles.audioDurationSec,
+      audioGeneratedAt: articles.audioGeneratedAt,
+      audioVoice: articles.audioVoice,
+      audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
       wordCount: articles.wordCount,
       readingTimeMin: articles.readingTimeMin,
@@ -449,7 +475,7 @@ export async function listArticles(
 }
 
 export async function listPublicArticleCards(
-  options: Pick<ListOptions, 'category' | 'q' | 'page' | 'limit' | 'tag'>
+  options: Pick<ListOptions, 'category' | 'q' | 'page' | 'limit' | 'tag' | 'authorId'>
 ): Promise<{ data: PublicArticleCard[]; total: number }> {
   if (!config.database) return { data: [], total: 0 }
   const db = getDb()
@@ -466,6 +492,10 @@ export async function listPublicArticleCards(
 
   if (options.tag) {
     conditions.push(sql`${options.tag} = ANY(${articles.tags})`)
+  }
+
+  if (options.authorId) {
+    conditions.push(eq(articles.authorId, options.authorId))
   }
 
   const whereClause = and(...conditions)
@@ -493,6 +523,12 @@ export async function listPublicArticleCards(
         metaTitle: articles.metaTitle,
         metaDescription: articles.metaDescription,
         ogImageUrl: articles.ogImageUrl,
+        audioUrl: articles.audioUrl,
+        audioStoragePath: articles.audioStoragePath,
+        audioDurationSec: articles.audioDurationSec,
+        audioGeneratedAt: articles.audioGeneratedAt,
+        audioVoice: articles.audioVoice,
+        audioTextHash: articles.audioTextHash,
         viewCount: articles.viewCount,
         wordCount: articles.wordCount,
         readingTimeMin: articles.readingTimeMin,
@@ -562,6 +598,12 @@ export async function listPublicArticleCards(
         metaTitle: articles.metaTitle,
         metaDescription: articles.metaDescription,
         ogImageUrl: articles.ogImageUrl,
+        audioUrl: articles.audioUrl,
+        audioStoragePath: articles.audioStoragePath,
+        audioDurationSec: articles.audioDurationSec,
+        audioGeneratedAt: articles.audioGeneratedAt,
+        audioVoice: articles.audioVoice,
+        audioTextHash: articles.audioTextHash,
         viewCount: articles.viewCount,
         wordCount: articles.wordCount,
         readingTimeMin: articles.readingTimeMin,
@@ -594,6 +636,180 @@ export async function listPublicArticleCards(
     })
   )
   return { data, total: countRow[0]?.count ?? 0 }
+}
+
+export async function getPublicAuthorProfile(authorId: string): Promise<PublicAuthorProfile | null> {
+  if (!config.database) return null
+  const db = getDb()
+
+  const [row] = await db
+    .select({
+      id: profiles.id,
+      email: profiles.email,
+      journalistPublicBio: profiles.journalistPublicBio,
+      journalistPublicAvatarUrl: profiles.journalistPublicAvatarUrl,
+      readerPublicDisplayName: readerPublicProfiles.displayName,
+      readerPublicBio: readerPublicProfiles.bio,
+      readerPublicAvatarUrl: readerPublicProfiles.avatarUrl,
+      articleCount: sql<number>`count(${articles.id})::int`,
+    })
+    .from(profiles)
+    .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
+    .leftJoin(
+      articles,
+      and(
+        eq(articles.authorId, profiles.id),
+        eq(articles.status, 'published'),
+        isNotNull(articles.publishedAt),
+      ),
+    )
+    .where(eq(profiles.id, authorId))
+    .groupBy(
+      profiles.id,
+      profiles.email,
+      profiles.journalistPublicBio,
+      profiles.journalistPublicAvatarUrl,
+      readerPublicProfiles.displayName,
+      readerPublicProfiles.bio,
+      readerPublicProfiles.avatarUrl,
+    )
+    .limit(1)
+
+  if (!row) return null
+  const displayName = row.readerPublicDisplayName?.trim() || displayNameFromEmail(row.email) || 'Journaliste Scoop'
+  const bio = row.journalistPublicBio?.trim() || row.readerPublicBio?.trim() || null
+  const avatarUrl = row.journalistPublicAvatarUrl?.trim() || row.readerPublicAvatarUrl?.trim() || null
+  return {
+    id: row.id,
+    display_name: displayName,
+    bio,
+    avatar_url: avatarUrl,
+    article_count: row.articleCount ?? 0,
+  }
+}
+
+function tokenizeForRecommendation(value: string | null | undefined): Set<string> {
+  const stop = new Set(['avec', 'dans', 'des', 'les', 'une', 'pour', 'sur', 'aux', 'qui', 'que', 'par', 'est', 'sont'])
+  return new Set(
+    (value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 3 && !stop.has(w)),
+  )
+}
+
+function overlapScore(a: Set<string>, b: Set<string>, weight: number, max: number): number {
+  if (a.size === 0 || b.size === 0) return 0
+  let hits = 0
+  for (const token of a) {
+    if (b.has(token)) hits += 1
+  }
+  return Math.min(max, hits * weight)
+}
+
+export async function getRecommendedArticleForReader(
+  currentIdOrSlug: string,
+  historyIds: string[] = [],
+): Promise<PublicArticleCard | null> {
+  if (!config.database) return null
+  const current = await getArticleByIdOrSlug(currentIdOrSlug, true)
+  if (!current) return null
+
+  const [{ data: candidates }, historyCards] = await Promise.all([
+    listPublicArticleCards({ page: 1, limit: 120 }),
+    listPublishedArticleCardsByIds(historyIds.slice(0, 25)),
+  ])
+
+  const currentTokens = tokenizeForRecommendation(
+    [current.title, current.excerpt, extractText(current.content), current.tags.join(' ')].filter(Boolean).join(' '),
+  )
+  const currentTags = new Set((current.tags ?? []).map((t) => t.toLowerCase()))
+  const historyCategoryIds = new Set(historyCards.map((a) => a.category_id).filter(Boolean))
+  const historyTags = new Set(historyCards.flatMap((a) => a.tags ?? []).map((t) => t.toLowerCase()))
+  const readIds = new Set(historyIds)
+
+  const scored = candidates
+    .filter((candidate) => candidate.id !== current.id)
+    .map((candidate) => {
+      const candidateTokens = tokenizeForRecommendation(
+        [candidate.title, candidate.excerpt, candidate.tags.join(' ')].filter(Boolean).join(' '),
+      )
+      const candidateTags = new Set((candidate.tags ?? []).map((t) => t.toLowerCase()))
+      let score = 0
+      if (candidate.category_id && candidate.category_id === current.category_id) score += 36
+      if (candidate.author_id === current.author_id) score += 8
+      score += overlapScore(currentTags, candidateTags, 12, 36)
+      score += overlapScore(currentTokens, candidateTokens, 3, 24)
+      if (candidate.category_id && historyCategoryIds.has(candidate.category_id)) score += 10
+      score += overlapScore(historyTags, candidateTags, 5, 20)
+      score += Math.min(12, Math.log10(10 + (candidate.view_count ?? 0)) * 5)
+      if (readIds.has(candidate.id)) score -= 35
+      return { candidate, score }
+    })
+    .sort((a, b) => b.score - a.score)
+
+  return scored[0]?.candidate ? presentArticleCardForPublicApi(scored[0].candidate) : null
+}
+
+export async function recordReaderArticleHistory(profileId: string, articleId: string): Promise<void> {
+  if (!config.database) return
+  const db = getDb()
+  await db
+    .insert(readerArticleHistory)
+    .values({ profileId, articleId, viewedAt: new Date() })
+    .onConflictDoUpdate({
+      target: [readerArticleHistory.profileId, readerArticleHistory.articleId],
+      set: { viewedAt: new Date() },
+    })
+}
+
+export async function listReaderArticleHistoryIds(profileId: string, limit = 30): Promise<string[]> {
+  if (!config.database) return []
+  const db = getDb()
+  const rows = await db
+    .select({ articleId: readerArticleHistory.articleId })
+    .from(readerArticleHistory)
+    .where(eq(readerArticleHistory.profileId, profileId))
+    .orderBy(desc(readerArticleHistory.viewedAt))
+    .limit(Math.min(Math.max(limit, 1), 100))
+  return rows.map((row) => row.articleId)
+}
+
+export async function enqueueArticleAudioJob(
+  articleId: string,
+  reason: 'published' | 'content_updated' | 'manual' = 'published',
+): Promise<void> {
+  if (!config.database) return
+  const db = getDb()
+  await db
+    .insert(articleAudioJobs)
+    .values({
+      articleId,
+      reason,
+      status: 'queued',
+      attempts: 0,
+      lastError: null,
+      lockedAt: null,
+      startedAt: null,
+      finishedAt: null,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: articleAudioJobs.articleId,
+      set: {
+        reason,
+        status: 'queued',
+        attempts: 0,
+        lastError: null,
+        lockedAt: null,
+        startedAt: null,
+        finishedAt: null,
+        updatedAt: new Date(),
+      },
+    })
 }
 
 export async function listPublicArticleCardsCursor(options: {
@@ -649,6 +865,12 @@ export async function listPublicArticleCardsCursor(options: {
       metaTitle: articles.metaTitle,
       metaDescription: articles.metaDescription,
       ogImageUrl: articles.ogImageUrl,
+      audioUrl: articles.audioUrl,
+      audioStoragePath: articles.audioStoragePath,
+      audioDurationSec: articles.audioDurationSec,
+      audioGeneratedAt: articles.audioGeneratedAt,
+      audioVoice: articles.audioVoice,
+      audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
       wordCount: articles.wordCount,
       readingTimeMin: articles.readingTimeMin,
@@ -726,6 +948,12 @@ export async function getArticleByIdOrSlug(
       metaTitle: articles.metaTitle,
       metaDescription: articles.metaDescription,
       ogImageUrl: articles.ogImageUrl,
+      audioUrl: articles.audioUrl,
+      audioStoragePath: articles.audioStoragePath,
+      audioDurationSec: articles.audioDurationSec,
+      audioGeneratedAt: articles.audioGeneratedAt,
+      audioVoice: articles.audioVoice,
+      audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
       wordCount: articles.wordCount,
       readingTimeMin: articles.readingTimeMin,
@@ -852,6 +1080,12 @@ export async function listPublishedArticleCardsByIds(ids: string[]): Promise<Pub
       metaTitle: articles.metaTitle,
       metaDescription: articles.metaDescription,
       ogImageUrl: articles.ogImageUrl,
+      audioUrl: articles.audioUrl,
+      audioStoragePath: articles.audioStoragePath,
+      audioDurationSec: articles.audioDurationSec,
+      audioGeneratedAt: articles.audioGeneratedAt,
+      audioVoice: articles.audioVoice,
+      audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
       wordCount: articles.wordCount,
       readingTimeMin: articles.readingTimeMin,
@@ -940,6 +1174,9 @@ export async function createArticle(
     .returning()
 
   if (!row) throw new Error('Failed to create article')
+  if (row.status === 'published') {
+    enqueueArticleAudioJob(row.id, 'published').catch(() => {})
+  }
   return toArticle(row)
 }
 
@@ -1029,6 +1266,19 @@ export async function updateArticle(
     update.readingTimeMin = computeReadingTime(update.wordCount)
   }
 
+  const articleTextChanged =
+    body.title !== undefined ||
+    body.excerpt !== undefined ||
+    body.content !== undefined
+  const publishedTextChanged = existing.status === 'published' && articleTextChanged
+  if (publishedTextChanged) {
+    update.audioUrl = null
+    update.audioStoragePath = null
+    update.audioDurationSec = null
+    update.audioGeneratedAt = null
+    update.audioTextHash = null
+  }
+
   update.lastSavedBy = userId
 
   const shouldRevision =
@@ -1052,6 +1302,9 @@ export async function updateArticle(
     .set(update as Record<string, unknown>)
     .where(eq(articles.id, id))
     .returning()
+  if (row?.status === 'published' && (body.status === 'published' || publishedTextChanged)) {
+    enqueueArticleAudioJob(row.id, publishedTextChanged ? 'content_updated' : 'published').catch(() => {})
+  }
   return row ? toArticle(row) : null
 }
 
