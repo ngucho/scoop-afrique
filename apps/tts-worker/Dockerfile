@@ -22,7 +22,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 ARG PIPER_VERSION=2023.11.14-2
-ARG PIPER_ARCH=amd64
+ARG PIPER_ARCH=x86_64
 RUN mkdir -p /opt/piper /opt/piper/voices \
   && curl -L "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_${PIPER_ARCH}.tar.gz" \
     | tar -xz -C /opt/piper --strip-components=1

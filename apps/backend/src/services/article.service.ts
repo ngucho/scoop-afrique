@@ -48,6 +48,8 @@ export interface Article {
   audio_storage_path?: string | null
   audio_duration_sec?: number | null
   audio_generated_at?: string | null
+  audio_last_accessed_at?: string | null
+  audio_expires_at?: string | null
   audio_voice?: string | null
   audio_text_hash?: string | null
   view_count: number
@@ -156,8 +158,11 @@ export function presentArticleForPublicApi(article: ArticleWithAuthor): ArticleW
     displayNameFromEmail(article.author?.email ?? null)
   const videoThumbnailUrl = getYoutubeThumbnailUrl(article.video_url)
   const { reader_public_display_name: _r, ...rest } = article
+  const hasFreshAudio = isArticleAudioFresh(article)
   return {
     ...rest,
+    audio_url: hasFreshAudio ? article.audio_url ?? null : null,
+    audio_storage_path: hasFreshAudio ? article.audio_storage_path ?? null : null,
     og_image_url: article.og_image_url ?? article.cover_image_url ?? videoThumbnailUrl,
     author_display_name: mergedName?.trim() || null,
   }
@@ -170,12 +175,21 @@ export function presentArticleCardForPublicApi(article: PublicArticleCard): Publ
     displayNameFromEmail(article.author?.email ?? null)
   const videoThumbnailUrl = getYoutubeThumbnailUrl(article.video_url)
   const { reader_public_display_name: _r, ...rest } = article
+  const hasFreshAudio = isArticleAudioFresh(article)
   return {
     ...rest,
+    audio_url: hasFreshAudio ? article.audio_url ?? null : null,
+    audio_storage_path: hasFreshAudio ? article.audio_storage_path ?? null : null,
     cover_image_url: article.cover_image_url ?? videoThumbnailUrl,
     og_image_url: article.og_image_url ?? article.cover_image_url ?? videoThumbnailUrl,
     author_display_name: mergedName?.trim() || null,
   }
+}
+
+export function isArticleAudioFresh(article: Pick<Article, 'audio_url' | 'audio_expires_at'>): boolean {
+  if (!article.audio_url) return false
+  if (!article.audio_expires_at) return true
+  return Date.parse(article.audio_expires_at) > Date.now()
 }
 
 /** Default byline when Writer API omits author_display_name. */
@@ -312,6 +326,8 @@ function toArticle(row: Record<string, unknown>): Article {
     audio_storage_path: r.audioStoragePath ?? null,
     audio_duration_sec: r.audioDurationSec ?? null,
     audio_generated_at: r.audioGeneratedAt?.toISOString() ?? null,
+    audio_last_accessed_at: r.audioLastAccessedAt?.toISOString() ?? null,
+    audio_expires_at: r.audioExpiresAt?.toISOString() ?? null,
     audio_voice: r.audioVoice ?? null,
     audio_text_hash: r.audioTextHash ?? null,
     view_count: r.viewCount ?? 0,
@@ -439,6 +455,8 @@ export async function listArticles(
       audioStoragePath: articles.audioStoragePath,
       audioDurationSec: articles.audioDurationSec,
       audioGeneratedAt: articles.audioGeneratedAt,
+      audioLastAccessedAt: articles.audioLastAccessedAt,
+      audioExpiresAt: articles.audioExpiresAt,
       audioVoice: articles.audioVoice,
       audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
@@ -527,6 +545,8 @@ export async function listPublicArticleCards(
         audioStoragePath: articles.audioStoragePath,
         audioDurationSec: articles.audioDurationSec,
         audioGeneratedAt: articles.audioGeneratedAt,
+        audioLastAccessedAt: articles.audioLastAccessedAt,
+        audioExpiresAt: articles.audioExpiresAt,
         audioVoice: articles.audioVoice,
         audioTextHash: articles.audioTextHash,
         viewCount: articles.viewCount,
@@ -602,6 +622,8 @@ export async function listPublicArticleCards(
         audioStoragePath: articles.audioStoragePath,
         audioDurationSec: articles.audioDurationSec,
         audioGeneratedAt: articles.audioGeneratedAt,
+        audioLastAccessedAt: articles.audioLastAccessedAt,
+        audioExpiresAt: articles.audioExpiresAt,
         audioVoice: articles.audioVoice,
         audioTextHash: articles.audioTextHash,
         viewCount: articles.viewCount,
@@ -812,6 +834,48 @@ export async function enqueueArticleAudioJob(
     })
 }
 
+export async function markArticleAudioAccess(
+  articleId: string,
+): Promise<{ available: boolean; audio_url: string | null }> {
+  if (!config.database) return { available: false, audio_url: null }
+  const db = getDb()
+  const [article] = await db
+    .select({
+      id: articles.id,
+      audioUrl: articles.audioUrl,
+      audioExpiresAt: articles.audioExpiresAt,
+      status: articles.status,
+      publishedAt: articles.publishedAt,
+    })
+    .from(articles)
+    .where(eq(articles.id, articleId))
+    .limit(1)
+
+  if (!article || article.status !== 'published' || !article.publishedAt) {
+    return { available: false, audio_url: null }
+  }
+
+  const fresh =
+    Boolean(article.audioUrl) &&
+    (!article.audioExpiresAt || article.audioExpiresAt.getTime() > Date.now())
+
+  if (!fresh) {
+    await enqueueArticleAudioJob(article.id, 'manual')
+    return { available: false, audio_url: null }
+  }
+
+  const expiresAt = new Date(Date.now() + 5 * 86400000)
+  await db
+    .update(articles)
+    .set({
+      audioLastAccessedAt: new Date(),
+      audioExpiresAt: expiresAt,
+    })
+    .where(eq(articles.id, article.id))
+
+  return { available: true, audio_url: article.audioUrl }
+}
+
 export async function listPublicArticleCardsCursor(options: {
   category?: string
   q?: string
@@ -869,6 +933,8 @@ export async function listPublicArticleCardsCursor(options: {
       audioStoragePath: articles.audioStoragePath,
       audioDurationSec: articles.audioDurationSec,
       audioGeneratedAt: articles.audioGeneratedAt,
+      audioLastAccessedAt: articles.audioLastAccessedAt,
+      audioExpiresAt: articles.audioExpiresAt,
       audioVoice: articles.audioVoice,
       audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
@@ -952,6 +1018,8 @@ export async function getArticleByIdOrSlug(
       audioStoragePath: articles.audioStoragePath,
       audioDurationSec: articles.audioDurationSec,
       audioGeneratedAt: articles.audioGeneratedAt,
+      audioLastAccessedAt: articles.audioLastAccessedAt,
+      audioExpiresAt: articles.audioExpiresAt,
       audioVoice: articles.audioVoice,
       audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
@@ -1084,6 +1152,8 @@ export async function listPublishedArticleCardsByIds(ids: string[]): Promise<Pub
       audioStoragePath: articles.audioStoragePath,
       audioDurationSec: articles.audioDurationSec,
       audioGeneratedAt: articles.audioGeneratedAt,
+      audioLastAccessedAt: articles.audioLastAccessedAt,
+      audioExpiresAt: articles.audioExpiresAt,
       audioVoice: articles.audioVoice,
       audioTextHash: articles.audioTextHash,
       viewCount: articles.viewCount,
@@ -1276,6 +1346,8 @@ export async function updateArticle(
     update.audioStoragePath = null
     update.audioDurationSec = null
     update.audioGeneratedAt = null
+    update.audioLastAccessedAt = null
+    update.audioExpiresAt = null
     update.audioTextHash = null
   }
 

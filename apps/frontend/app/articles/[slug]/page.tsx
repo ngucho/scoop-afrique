@@ -283,7 +283,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   </Link>
                 ) : null}
               </div>
-              <ArticleAudioPlayer text={audioText} audioUrl={article.audio_url} variant="hero" className="mt-6 max-w-[440px]" />
+              <ArticleAudioPlayer articleId={article.id} text={audioText} audioUrl={article.audio_url} variant="hero" className="mt-6 max-w-[440px]" />
             </div>
           </div>
         </section>
@@ -308,7 +308,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <LikeButton articleId={article.id} initialCount={likes.count} initialLiked={likes.liked} />
               </div>
 
-              <ArticleAudioPlayer text={audioText} audioUrl={article.audio_url} className="mb-8 lg:hidden" />
+              <ArticleAudioPlayer articleId={article.id} text={audioText} audioUrl={article.audio_url} className="mb-8 lg:hidden" />
 
               <ArticleContentBlocks
                 content={article.content}
