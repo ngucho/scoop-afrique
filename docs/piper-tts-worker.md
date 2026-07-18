@@ -130,6 +130,8 @@ PIPER_VOICE_NAME=fr_FR-siwis-medium
 FFMPEG_PATH=ffmpeg
 ```
 
+The Dockerfile downloads `piper_linux_x86_64.tar.gz`, which is the Linux asset name published by Piper.
+
 ### 3. Trigger processing
 
 Render Free web services sleep after inactivity, so use an external free cron/ping service to call:
@@ -174,28 +176,7 @@ Add repository secrets:
 - `TTS_WORKER_URL`: `https://<your-render-service>.onrender.com/process-one`
 - `TTS_WORKER_SECRET`: the same value as Render.
 
-Create `.github/workflows/tts-worker-cron.yml`:
-
-```yaml
-name: TTS worker cron
-
-on:
-  schedule:
-    - cron: "*/15 * * * *"
-  workflow_dispatch:
-
-jobs:
-  process-one:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger one Piper job
-        run: |
-          curl -fsS -X POST "$TTS_WORKER_URL" \
-            -H "Authorization: Bearer $TTS_WORKER_SECRET"
-        env:
-          TTS_WORKER_URL: ${{ secrets.TTS_WORKER_URL }}
-          TTS_WORKER_SECRET: ${{ secrets.TTS_WORKER_SECRET }}
-```
+The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render every 15 minutes. It safely skips execution until both secrets exist.
 
 ## Production Notes
 
@@ -203,5 +184,7 @@ jobs:
 - Start with `TTS_AUDIO_FORMAT=mp3` if ffmpeg is available; it reduces bandwidth and improves Africa mobile performance.
 - Keep `TTS_WORKER_MAX_CHARS` conservative. Very long articles can be summarized or split later.
 - Use a public Supabase Storage bucket named `article-audio`.
+- Generated audio expires 5 days after the last playback. Each playback calls the backend and extends the expiration by 5 days.
+- The worker deletes expired Supabase audio files before processing new jobs. If a reader opens the article later, the backend requeues audio generation and the page uses browser speech until Piper finishes again.
 - If Piper fails, the article remains readable and the frontend falls back to browser speech.
 - Render Free is acceptable for low volume, but not production-grade. If audio volume grows, move the same Docker service to Render paid worker, Railway Hobby, or a small VPS.

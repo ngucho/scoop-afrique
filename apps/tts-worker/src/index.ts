@@ -26,6 +26,11 @@ interface ArticleRow {
   audio_text_hash: string | null
 }
 
+interface ExpiredAudioRow {
+  id: string
+  audio_storage_path: string
+}
+
 const config = {
   databaseUrl: required('DATABASE_URL'),
   supabaseUrl: required('SUPABASE_URL'),
@@ -38,6 +43,7 @@ const config = {
   pollMs: Number(process.env.TTS_WORKER_POLL_MS ?? 5000),
   maxAttempts: Number(process.env.TTS_WORKER_MAX_ATTEMPTS ?? 3),
   maxChars: Number(process.env.TTS_WORKER_MAX_CHARS ?? 12000),
+  cleanupLimit: Number(process.env.TTS_WORKER_CLEANUP_LIMIT ?? 10),
   outputFormat: (process.env.TTS_AUDIO_FORMAT ?? 'wav').toLowerCase() === 'mp3' ? 'mp3' : 'wav',
   ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
   port: Number(process.env.PORT ?? 10000),
@@ -120,6 +126,40 @@ async function claimJob(): Promise<ClaimedJob | null> {
     RETURNING id, article_id, attempts
   `
   return rows[0] ?? null
+}
+
+async function cleanupExpiredAudio(): Promise<number> {
+  const rows = await sql<ExpiredAudioRow[]>`
+    SELECT id, audio_storage_path
+    FROM articles
+    WHERE audio_storage_path IS NOT NULL
+      AND audio_expires_at IS NOT NULL
+      AND audio_expires_at < now()
+    ORDER BY audio_expires_at ASC
+    LIMIT ${config.cleanupLimit}
+  `
+
+  for (const row of rows) {
+    await supabase.storage.from(config.bucket).remove([row.audio_storage_path]).catch((error) => {
+      console.warn(`[tts-worker] failed to remove expired audio ${row.audio_storage_path}`, error)
+    })
+    await sql`
+      UPDATE articles
+      SET audio_url = NULL,
+          audio_storage_path = NULL,
+          audio_duration_sec = NULL,
+          audio_generated_at = NULL,
+          audio_last_accessed_at = NULL,
+          audio_expires_at = NULL,
+          audio_voice = NULL,
+          audio_text_hash = NULL,
+          updated_at = updated_at
+      WHERE id = ${row.id}
+    `
+  }
+
+  if (rows.length > 0) console.log(`[tts-worker] cleaned expired audio files=${rows.length}`)
+  return rows.length
 }
 
 async function getArticle(articleId: string): Promise<ArticleRow | null> {
@@ -214,6 +254,8 @@ async function processJob(job: ClaimedJob): Promise<void> {
       SET audio_url = ${uploaded.url},
           audio_storage_path = ${uploaded.storagePath},
           audio_generated_at = now(),
+          audio_last_accessed_at = now(),
+          audio_expires_at = now() + interval '5 days',
           audio_voice = ${config.piperVoiceName},
           audio_text_hash = ${textHash},
           updated_at = updated_at
@@ -226,6 +268,7 @@ async function processJob(job: ClaimedJob): Promise<void> {
 }
 
 async function processOneJob(): Promise<{ processed: boolean; jobId?: string; articleId?: string; status: JobStatus | 'none'; error?: string }> {
+  await cleanupExpiredAudio()
   const job = await claimJob()
   if (!job) return { processed: false, status: 'none' }
   try {
