@@ -245,14 +245,26 @@ function ArticlePoster({ article, priority = false }: { article: Article; priori
 
 function StoryRail({ title, href, articles }: { title: string; href?: string; articles: Article[] }) {
   if (!articles.length) return null
+  const shouldAnimate = articles.length > 2
+  const railItems = shouldAnimate ? [...articles, ...articles] : articles
 
   return (
     <section className="py-8">
       <RailHeader title={title} href={href} />
-      <div className="flex gap-4 overflow-x-auto px-5 pb-3 sm:px-8 lg:px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {articles.map((article, index) => (
-          <ArticlePoster key={article.id} article={article} priority={index < 2} />
-        ))}
+      <div className="overflow-hidden px-5 pb-3 sm:px-8 lg:px-10">
+        <div
+          className={
+            shouldAnimate
+              ? 'reader-story-rail flex w-max gap-4'
+              : 'flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          }
+        >
+          {railItems.map((article, index) => (
+            <div key={`${article.id}-${index}`}>
+              <ArticlePoster article={article} priority={index < 2} />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -266,7 +278,7 @@ function QueueList({ articles }: { articles: Article[] }) {
       <div>
         <p className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 font-sans text-[10px] font-black uppercase tracking-[0.14em] text-foreground">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          File de lecture
+          Fil de lecture
         </p>
         <h2
           className="mt-4 max-w-md text-4xl font-black leading-none text-foreground sm:text-5xl"

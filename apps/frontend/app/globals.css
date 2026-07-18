@@ -63,12 +63,38 @@
   animation: scoop-ad-fallback-fade 3.6s ease-in-out infinite 0.35s;
 }
 
+@keyframes reader-story-rail-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-50% - 0.5rem)); }
+}
+
+@keyframes reader-sound-wave {
+  0%, 100% { transform: scaleY(0.45); opacity: 0.55; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+.reader-story-rail {
+  animation: reader-story-rail-scroll 42s linear infinite;
+}
+
+.reader-sound-wave {
+  transform-origin: bottom;
+  animation: reader-sound-wave 0.9s ease-in-out infinite;
+}
+
+.reader-story-rail:hover,
+.reader-story-rail:focus-within {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scoop-ad-fallback-gradient,
   .scoop-ad-fallback-logo,
   .scoop-ad-fallback-title,
   .scoop-ad-fallback-sub,
-  .scoop-ad-fallback-cta {
+  .scoop-ad-fallback-cta,
+  .reader-story-rail,
+  .reader-sound-wave {
     animation: none !important;
   }
 }
