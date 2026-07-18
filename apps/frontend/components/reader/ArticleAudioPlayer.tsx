@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Gauge, Pause, Play, Settings2, Square, Volume2 } from 'lucide-react'
+import { config } from '@/lib/config'
 
 const VOICE_KEY = 'scoop_audio_voice_uri'
 const RATE_KEY = 'scoop_audio_rate'
@@ -44,11 +45,13 @@ function rankVoice(voice: SpeechSynthesisVoice, savedVoiceUri: string | null): n
 }
 
 export function ArticleAudioPlayer({
+  articleId,
   text,
   audioUrl,
   className = '',
   variant = 'inline',
 }: {
+  articleId: string
   text: string
   audioUrl?: string | null
   className?: string
@@ -62,6 +65,7 @@ export function ArticleAudioPlayer({
   const [chunkIndex, setChunkIndex] = useState(0)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const accessMarkedRef = useRef(false)
   const chunks = useMemo(() => splitForSpeech(text), [text])
   const chunkRef = useRef(0)
 
@@ -133,7 +137,16 @@ export function ArticleAudioPlayer({
   )
 
   const play = () => {
-    if (state === 'unsupported' || chunks.length === 0) return
+    if (!audioUrl && (state === 'unsupported' || chunks.length === 0)) return
+    if (!accessMarkedRef.current) {
+      accessMarkedRef.current = true
+      fetch(`${config.apiBaseUrl}/api/v1/articles/${encodeURIComponent(articleId)}/audio-access`, {
+        method: 'POST',
+        keepalive: true,
+      }).catch(() => {
+        accessMarkedRef.current = false
+      })
+    }
     if (audioUrl && audioRef.current) {
       audioRef.current.play().then(() => setState('playing')).catch(() => setState('idle'))
       return
