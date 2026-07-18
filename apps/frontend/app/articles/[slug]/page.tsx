@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
 import type { Metadata } from 'next'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
@@ -13,13 +14,18 @@ import { ArticleContextRail } from '@/components/reader/ArticleContextRail'
 import { ArticleCommentsSection } from '@/components/reader/ArticleCommentsSection'
 import { ArticleAuthorCard } from '@/components/reader/ArticleAuthorCard'
 import { ReaderCoverImage } from '@/components/reader/ReaderCoverImage'
+import { ArticleHistoryTracker } from '@/components/reader/ArticleHistoryTracker'
+import { RecommendedNextArticle } from '@/components/reader/RecommendedNextArticle'
+import { ArticleAudioPlayer } from '@/components/reader/ArticleAudioPlayer'
 import { apiGet } from '@/lib/api/client'
-import type { ArticleResponse, LikesResponse } from '@/lib/api/types'
+import type { Article, ArticleResponse, LikesResponse } from '@/lib/api/types'
 import { config } from '@/lib/config'
 import { toYoutubeEmbedUrl } from '@/lib/youtube'
 import { fetchAdPlacements, pickCreativeForSlot, AD_SLOT_KEYS } from '@/lib/readerAds'
 import { fetchAnnouncements, inlineAnnouncements } from '@/lib/readerAnnouncements'
 import { getContextSidebarArticles } from '@/lib/articleContext'
+import { getReaderAccessToken } from '@/lib/reader-auth0'
+import { buildArticleAudioText } from '@/lib/articleAudioText'
 
 export const revalidate = 60
 
@@ -42,6 +48,22 @@ async function getLikes(articleId: string) {
     return res.data
   } catch {
     return { count: 0, liked: false }
+  }
+}
+
+async function getRecommendedArticle(articleId: string, historyIds: string[], accessToken?: string) {
+  try {
+    const params = new URLSearchParams()
+    if (historyIds.length > 0) params.set('history', historyIds.join(','))
+    const suffix = params.toString() ? `?${params.toString()}` : ''
+    const res = await apiGet<{ data: Article | null }>(`/articles/recommendations/${articleId}${suffix}`, {
+      ...(accessToken
+        ? { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' as const }
+        : { revalidate: 60 }),
+    })
+    return res.data
+  } catch {
+    return null
   }
 }
 
@@ -127,12 +149,20 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   const { slug } = await params
   const article = await getArticle(slug)
   if (!article) notFound()
+  const historyCookie = (await cookies()).get('scoop_reader_history')?.value ?? ''
+  const historyIds = decodeURIComponent(historyCookie)
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .slice(0, 30)
+  const tokenResult = await getReaderAccessToken().catch(() => null)
 
-  const [likes, placements, announcements, contextArticles] = await Promise.all([
+  const [likes, placements, announcements, contextArticles, recommendedArticle] = await Promise.all([
     getLikes(article.id),
     fetchAdPlacements(),
     fetchAnnouncements(),
     getContextSidebarArticles(article.slug, article.category?.slug ?? null, 4),
+    getRecommendedArticle(article.id, historyIds, tokenResult?.accessToken),
   ])
 
   const shareUrl = `${config.siteUrl}/articles/${article.slug}`
@@ -149,10 +179,26 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   const showCoverVideo = !coverImageUrl && !!videoEmbedUrl
   const showVideoAfterBody = !!coverImageUrl && !!videoEmbedUrl
   const railTitle = article.category?.name ? `Encore en ${article.category.name}` : 'A lire ensuite'
+  const audioText = buildArticleAudioText({
+    title: article.title,
+    excerpt: article.excerpt,
+    content: article.content,
+  })
 
   return (
     <ReaderLayout>
       <ArticleJsonLd article={article} shareUrl={shareUrl} />
+      <ArticleHistoryTracker
+        article={{
+          id: article.id,
+          slug: article.slug,
+          title: article.title,
+          category_id: article.category_id,
+          category_slug: article.category?.slug ?? null,
+          author_id: article.author_id,
+          tags: article.tags ?? [],
+        }}
+      />
       <main className="bg-background text-foreground">
         <section className="mx-auto max-w-[1460px] px-5 py-7 sm:px-8 lg:px-10 lg:py-12">
           <div className="mb-6 lg:hidden">
@@ -175,9 +221,9 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             <div className="mt-7 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span className="rounded-full bg-card px-4 py-2 font-sans font-bold">{readingTime(article as unknown as Record<string, unknown>)} de lecture</span>
               {article.author_display_name ?? article.author?.email ? (
-                <span className="rounded-full bg-card px-4 py-2 font-sans font-bold">
+                <Link href={`/authors/${article.author_id}`} className="rounded-full bg-card px-4 py-2 font-sans font-bold transition hover:text-primary">
                   Par {article.author_display_name ?? article.author?.email}
-                </span>
+                </Link>
               ) : null}
             </div>
           </div>
@@ -232,11 +278,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-background/80">
                 <span className="rounded-full bg-background/12 px-4 py-2 font-sans font-bold backdrop-blur-md">{readingTime(article as unknown as Record<string, unknown>)} de lecture</span>
                 {article.author_display_name ?? article.author?.email ? (
-                  <span className="rounded-full bg-background/12 px-4 py-2 font-sans font-bold backdrop-blur-md">
+                  <Link href={`/authors/${article.author_id}`} className="rounded-full bg-background/12 px-4 py-2 font-sans font-bold backdrop-blur-md transition hover:bg-background/20 hover:text-background">
                     Par {article.author_display_name ?? article.author?.email}
-                  </span>
+                  </Link>
                 ) : null}
               </div>
+              <ArticleAudioPlayer text={audioText} audioUrl={article.audio_url} variant="hero" className="mt-6 max-w-[440px]" />
             </div>
           </div>
         </section>
@@ -260,6 +307,8 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 />
                 <LikeButton articleId={article.id} initialCount={likes.count} initialLiked={likes.liked} />
               </div>
+
+              <ArticleAudioPlayer text={audioText} audioUrl={article.audio_url} className="mb-8 lg:hidden" />
 
               <ArticleContentBlocks
                 content={article.content}
@@ -285,6 +334,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <ArticleAuthorCard
                   displayName={article.author_display_name ?? article.author?.email?.split('@')[0] ?? 'Redaction'}
                   authorPublic={article.author_public}
+                  href={`/authors/${article.author_id}`}
                 />
               </div>
             </article>
@@ -320,7 +370,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             <ArticleCommentsSection articleId={article.id} />
           </div>
 
-          <RelatedArticles excludeSlug={article.slug} className="mt-10" />
+          {recommendedArticle ? (
+            <RecommendedNextArticle article={recommendedArticle} className="mt-10" />
+          ) : (
+            <RelatedArticles excludeSlug={article.slug} className="mt-10" />
+          )}
 
           {relatedBelow ? (
             <div className="mt-10">

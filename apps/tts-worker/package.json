@@ -1,0 +1,24 @@
+{
+  "name": "@scoop-afrique/tts-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:loop": "tsx watch src/index.ts --loop",
+    "start": "node dist/index.js",
+    "start:loop": "node dist/index.js --loop",
+    "build": "tsc",
+    "once": "tsx src/index.ts --once"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.0",
+    "dotenv": "^16.4.5",
+    "postgres": "^3.4.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2"
+  }
+}

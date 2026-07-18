@@ -1,11 +1,14 @@
+import Link from 'next/link'
 import { Avatar, Heading, Text } from 'scoop'
 
 export function ArticleAuthorCard({
   displayName,
   authorPublic,
+  href,
 }: {
   displayName: string
   authorPublic?: { bio: string | null; avatar_url: string | null } | null
+  href?: string
 }) {
   const avatar = authorPublic?.avatar_url ?? null
   const bio = authorPublic?.bio?.trim() ?? ''
@@ -23,9 +26,17 @@ export function ArticleAuthorCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Journaliste</p>
-          <Heading as="h2" id="article-author-heading" level="h3" className="mt-1 text-xl font-bold tracking-tight">
-            {displayName}
-          </Heading>
+          {href ? (
+            <Link href={href} className="inline-flex rounded-sm transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Heading as="h2" id="article-author-heading" level="h3" className="mt-1 text-xl font-bold tracking-tight">
+                {displayName}
+              </Heading>
+            </Link>
+          ) : (
+            <Heading as="h2" id="article-author-heading" level="h3" className="mt-1 text-xl font-bold tracking-tight">
+              {displayName}
+            </Heading>
+          )}
           {bio ? (
             <Text variant="muted" className="mt-3 text-[15px] leading-relaxed">
               {bio}
