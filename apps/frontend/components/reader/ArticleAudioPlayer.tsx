@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Loader2, Pause, Play, Radio, Square, Volume2 } from 'lucide-react'
+import { getReaderAmbientAudio } from '@/lib/readerAmbientAudio'
 import { readerAudioAtmosphereForCategory } from '@/lib/readerAudioAtmospheres'
 
 type PlaybackState = 'idle' | 'playing' | 'paused' | 'preparing' | 'queued' | 'error'
@@ -38,6 +40,7 @@ export function ArticleAudioPlayer({
   const [ambienceEnabled, setAmbienceEnabled] = useState(true)
   const [nextAudioQueued, setNextAudioQueued] = useState(Boolean(nextArticle?.audio_url))
   const [prepareAttempt, setPrepareAttempt] = useState(0)
+  const router = useRouter()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const transitionAudioRef = useRef<HTMLAudioElement | null>(null)
   const bedAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -80,6 +83,7 @@ export function ArticleAudioPlayer({
     const bed = bedAudioRef.current
     transition?.pause()
     bed?.pause()
+    getReaderAmbientAudio()?.stop()
   }
 
   const startTransitionAmbience = () => {
@@ -92,6 +96,7 @@ export function ArticleAudioPlayer({
     transition.loop = true
     if (transition.paused) transition.currentTime = 0
     void transition.play().catch(() => {})
+    getReaderAmbientAudio()?.start('transition')
   }
 
   const startBedAmbience = () => {
@@ -103,6 +108,7 @@ export function ArticleAudioPlayer({
     bed.volume = 0.07
     bed.loop = true
     void bed.play().catch(() => {})
+    getReaderAmbientAudio()?.start('bed')
   }
 
   useEffect(() => {
@@ -230,8 +236,10 @@ export function ArticleAudioPlayer({
       setState('idle')
       return
     }
+    startTransitionAmbience()
+    setState('preparing')
     window.sessionStorage.setItem(CONTINUOUS_AUDIO_KEY, nextArticle.id)
-    window.location.href = `/articles/${nextArticle.slug}?autoplayAudio=1`
+    router.push(`/articles/${nextArticle.slug}?autoplayAudio=1`)
   }
 
   const handleTimeUpdate = () => {
