@@ -34,6 +34,7 @@ PIPER_VOICE_NAME=fr_FR-siwis-medium
 TTS_AUDIO_BUCKET=article-audio
 TTS_AUDIO_FORMAT=wav
 TTS_WORKER_MAX_CHARS=12000
+TTS_WORKER_MAX_CHUNK_CHARS=900
 TTS_WORKER_POLL_MS=5000
 ```
 
@@ -117,6 +118,7 @@ TTS_WORKER_SECRET=<generate-a-long-random-secret>
 TTS_AUDIO_BUCKET=article-audio
 TTS_AUDIO_FORMAT=mp3
 TTS_WORKER_MAX_CHARS=12000
+TTS_WORKER_MAX_CHUNK_CHARS=900
 TTS_WORKER_MAX_ATTEMPTS=3
 ```
 
@@ -193,8 +195,9 @@ The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render ev
 
 - Run only one worker at first. The DB claim query uses `FOR UPDATE SKIP LOCKED`, so more workers can be added later.
 - Start with `TTS_AUDIO_FORMAT=mp3` if ffmpeg is available; it reduces bandwidth and improves Africa mobile performance.
-- Keep `TTS_WORKER_MAX_CHARS` conservative. Very long articles can be summarized or split later.
+- Keep `TTS_WORKER_MAX_CHARS` conservative. The worker splits that text into Piper chunks with `TTS_WORKER_MAX_CHUNK_CHARS` to avoid long one-shot synthesis on small Render instances.
 - Use a public Supabase Storage bucket named `article-audio`.
+- Worker logs include text length, chunk count, each Piper chunk, concat, upload start, and upload completion. If a log stops before upload, the failure is in synthesis/concat rather than Supabase Storage.
 - Generated audio expires 5 days after the last playback. Each playback calls the backend and extends the expiration by 5 days.
 - The worker deletes expired Supabase audio files before processing new jobs. If a reader opens the article later, the backend requeues audio generation and the player waits for Piper.
 - If Piper fails, the article remains readable and the player shows a calm retry message.
