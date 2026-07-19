@@ -18,8 +18,8 @@ This keeps CPU-heavy synthesis away from request/response traffic.
 
 Recommended first voice:
 
-- `fr_FR-siwis-medium.onnx`
-- `fr_FR-siwis-medium.onnx.json`
+- `fr_FR-upmc-medium.onnx`
+- `fr_FR-upmc-medium.onnx.json`
 
 3. Set environment variables for `apps/tts-worker`.
 
@@ -28,9 +28,9 @@ DATABASE_URL=postgresql://...
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 PIPER_BINARY_PATH=C:\tools\piper\piper.exe
-PIPER_VOICE_MODEL=C:\tools\piper\voices\fr_FR-siwis-medium.onnx
-PIPER_VOICE_CONFIG=C:\tools\piper\voices\fr_FR-siwis-medium.onnx.json
-PIPER_VOICE_NAME=fr_FR-siwis-medium
+PIPER_VOICE_MODEL=C:\tools\piper\voices\fr_FR-upmc-medium.onnx
+PIPER_VOICE_CONFIG=C:\tools\piper\voices\fr_FR-upmc-medium.onnx.json
+PIPER_VOICE_NAME=fr_FR-upmc-medium
 TTS_AUDIO_BUCKET=article-audio
 TTS_AUDIO_FORMAT=wav
 TTS_WORKER_MAX_CHARS=12000
@@ -126,9 +126,9 @@ The Docker image already sets:
 
 ```env
 PIPER_BINARY_PATH=/opt/piper/piper
-PIPER_VOICE_MODEL=/opt/piper/voices/fr_FR-siwis-medium.onnx
-PIPER_VOICE_CONFIG=/opt/piper/voices/fr_FR-siwis-medium.onnx.json
-PIPER_VOICE_NAME=fr_FR-siwis-medium
+PIPER_VOICE_MODEL=/opt/piper/voices/fr_FR-upmc-medium.onnx
+PIPER_VOICE_CONFIG=/opt/piper/voices/fr_FR-upmc-medium.onnx.json
+PIPER_VOICE_NAME=fr_FR-upmc-medium
 FFMPEG_PATH=ffmpeg
 ```
 
