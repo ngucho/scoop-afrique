@@ -57,6 +57,7 @@ const sql = postgres(config.databaseUrl, { max: 2, prepare: false })
 const supabase = createClient(config.supabaseUrl, config.supabaseServiceRoleKey, {
   auth: { persistSession: false },
 })
+let backgroundJob: Promise<void> | null = null
 
 function required(name: string): string {
   const value = process.env[name]?.trim()
@@ -365,6 +366,22 @@ async function tick(): Promise<boolean> {
   return (await processOneJob()).processed
 }
 
+function kickBackgroundJob(): { started: boolean } {
+  if (backgroundJob) return { started: false }
+  backgroundJob = processOneJob()
+    .then((result) => {
+      console.log(`[tts-worker] background result=${JSON.stringify(result)}`)
+    })
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[tts-worker] background fatal ${message}`)
+    })
+    .finally(() => {
+      backgroundJob = null
+    })
+  return { started: true }
+}
+
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
   res.end(JSON.stringify(body))
@@ -388,12 +405,8 @@ function startHttpServer(): void {
         sendJson(res, 401, { ok: false, error: 'Unauthorized' })
         return
       }
-      processOneJob()
-        .then((result) => sendJson(res, 200, { ok: true, ...result }))
-        .catch((error) => {
-          const message = error instanceof Error ? error.message : String(error)
-          sendJson(res, 500, { ok: false, error: message })
-        })
+      const result = kickBackgroundJob()
+      sendJson(res, 202, { ok: true, mode: 'background', ...result })
       return
     }
 
