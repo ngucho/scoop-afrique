@@ -1,94 +1,52 @@
 type AmbientMode = 'transition' | 'bed'
 
+const VOLUMES: Record<AmbientMode, number> = {
+  transition: 0.25,
+  bed: 0.2,
+}
+
 class ReaderAmbientAudio {
-  private context: AudioContext | null = null
-  private nodes: AudioNode[] = []
-  private interval: number | null = null
+  private audio: HTMLAudioElement | null = null
   private mode: AmbientMode | null = null
+  private url: string | null = null
 
-  start(mode: AmbientMode) {
+  start(mode: AmbientMode, url: string) {
     if (typeof window === 'undefined') return
-    const context = this.getContext()
-    if (!context) return
-    void context.resume().catch(() => {})
-    if (this.mode === mode && this.nodes.length > 0) return
+    const audio = this.getAudio()
+    if (!audio) return
 
-    this.stop()
-    this.mode = mode
-    const master = context.createGain()
-    master.gain.value = mode === 'transition' ? 0.24 : 0.2
-    master.connect(context.destination)
-    this.nodes.push(master)
-
-    if (mode === 'bed') {
-      this.addDrone(context, master)
+    const nextUrl = new URL(url, window.location.origin).toString()
+    if (this.mode !== mode || this.url !== nextUrl) {
+      audio.pause()
+      audio.src = nextUrl
+      audio.currentTime = 0
+      this.mode = mode
+      this.url = nextUrl
     }
 
-    const playPluck = () => this.playPluck(context, master, mode)
-    playPluck()
-    this.interval = window.setInterval(playPluck, mode === 'transition' ? 850 : 1700)
+    audio.loop = true
+    audio.volume = VOLUMES[mode]
+    void audio.play().catch(() => {})
   }
 
   stop() {
-    if (typeof window !== 'undefined' && this.interval) {
-      window.clearInterval(this.interval)
-      this.interval = null
-    }
+    const audio = this.audio
+    if (!audio) return
+    audio.pause()
     this.mode = null
-    for (const node of this.nodes) {
-      try {
-        node.disconnect()
-      } catch {
-        // Already disconnected.
-      }
-    }
-    this.nodes = []
   }
 
-  private getContext() {
-    if (this.context) return this.context
+  private getAudio() {
+    if (this.audio) return this.audio
     if (typeof window === 'undefined') return null
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext
-    if (!AudioContextClass) return null
-    this.context = new AudioContextClass()
-    return this.context
-  }
-
-  private addDrone(context: AudioContext, destination: AudioNode) {
-    for (const frequency of [98, 147]) {
-      const oscillator = context.createOscillator()
-      const gain = context.createGain()
-      oscillator.type = 'sine'
-      oscillator.frequency.value = frequency
-      gain.gain.value = 0.18
-      oscillator.connect(gain)
-      gain.connect(destination)
-      oscillator.start()
-      this.nodes.push(oscillator, gain)
-    }
-  }
-
-  private playPluck(context: AudioContext, destination: AudioNode, mode: AmbientMode) {
-    const scale = [196, 220, 247, 294, 330, 392]
-    const frequency = scale[Math.floor(Math.random() * scale.length)]
-    const now = context.currentTime
-    const oscillator = context.createOscillator()
-    const gain = context.createGain()
-    oscillator.type = 'sine'
-    oscillator.frequency.setValueAtTime(frequency, now)
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(mode === 'transition' ? 0.48 : 0.28, now + 0.025)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + (mode === 'transition' ? 0.42 : 0.72))
-    oscillator.connect(gain)
-    gain.connect(destination)
-    oscillator.start(now)
-    oscillator.stop(now + 0.8)
+    this.audio = new Audio()
+    this.audio.preload = 'auto'
+    return this.audio
   }
 }
 
 declare global {
   interface Window {
-    webkitAudioContext?: typeof AudioContext
     __scoopReaderAmbientAudio?: ReaderAmbientAudio
   }
 }
