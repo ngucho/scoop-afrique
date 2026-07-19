@@ -1,0 +1,83 @@
+name: Generate article audio
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      article_id:
+        description: "Optional article UUID to process first"
+        required: false
+        type: string
+      batch_size:
+        description: "Number of queued articles to process when article_id is empty"
+        required: false
+        default: "4"
+        type: string
+
+concurrency:
+  group: article-audio-generation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  IMAGE_NAME: ghcr.io/ngucho/scoop-afrique-tts:main
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check required secrets
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          missing=0
+          for name in DATABASE_URL SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is required for article audio generation"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull TTS image
+        run: docker pull "$IMAGE_NAME"
+
+      - name: Generate audio from queue
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ARTICLE_ID: ${{ inputs.article_id }}
+          BATCH_SIZE: ${{ inputs.batch_size || '4' }}
+        run: |
+          args=(node dist/index.js --once)
+          if [ -n "$ARTICLE_ID" ]; then
+            args+=(--article-id "$ARTICLE_ID")
+          fi
+
+          docker run --rm \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e SUPABASE_URL="$SUPABASE_URL" \
+            -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+            -e TTS_AUDIO_BUCKET="article-audio" \
+            -e TTS_AUDIO_FORMAT="mp3" \
+            -e TTS_WORKER_MAX_CHARS="12000" \
+            -e TTS_WORKER_MAX_CHUNK_CHARS="900" \
+            -e TTS_WORKER_MAX_ATTEMPTS="3" \
+            -e TTS_WORKER_ONCE_BATCH_SIZE="$BATCH_SIZE" \
+            "$IMAGE_NAME" \
+            "${args[@]}"

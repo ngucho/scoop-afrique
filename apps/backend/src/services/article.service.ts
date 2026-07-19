@@ -853,6 +853,38 @@ export async function enqueueArticleAudioJob(
 }
 
 async function triggerArticleAudioWorker(articleId?: string): Promise<void> {
+  if (config.githubTtsDispatch) {
+    const gh = config.githubTtsDispatch
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${gh.owner}/${gh.repo}/actions/workflows/${encodeURIComponent(gh.workflow)}/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/vnd.github+json',
+            Authorization: `Bearer ${gh.token}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'scoop-afrique-backend',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          body: JSON.stringify({
+            ref: gh.ref,
+            inputs: articleId ? { article_id: articleId } : {},
+          }),
+          signal: AbortSignal.timeout(15000),
+        },
+      ) as unknown as { ok: boolean; status: number }
+      console.info(`[article-audio] github workflow dispatch article=${articleId ?? 'none'} status=${response.status}`)
+      if (!response.ok) {
+        console.warn(`[article-audio] github workflow dispatch failed status=${response.status}`)
+      }
+      return
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(`[article-audio] github workflow dispatch failed article=${articleId ?? 'none'}: ${message}`)
+    }
+  }
+
   if (!config.ttsWorker) {
     console.warn(`[article-audio] worker trigger skipped article=${articleId ?? 'none'} reason=missing_tts_worker_config`)
     return
