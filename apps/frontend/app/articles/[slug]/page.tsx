@@ -187,6 +187,15 @@ export default async function ArticleDetailPage({ params }: PageProps) {
     excerpt: article.excerpt,
     content: article.content,
   })
+  const continuousNextArticle = recommendedArticle
+    ? {
+        id: recommendedArticle.id,
+        slug: recommendedArticle.slug,
+        title: recommendedArticle.title,
+        audio_url: recommendedArticle.audio_url ?? null,
+        category_slug: recommendedArticle.category?.slug ?? null,
+      }
+    : null
 
   return (
     <ReaderLayout>
@@ -301,7 +310,15 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   {dateLine}
                 </p>
               ) : null}
-              <ArticleAudioPlayer articleId={article.id} text={audioText} audioUrl={article.audio_url} variant="hero" className="mt-6 max-w-[440px]" />
+              <ArticleAudioPlayer
+                articleId={article.id}
+                text={audioText}
+                audioUrl={article.audio_url}
+                categorySlug={article.category?.slug ?? null}
+                nextArticle={continuousNextArticle}
+                variant="hero"
+                className="mt-6 max-w-[440px]"
+              />
             </div>
           </div>
         </section>
@@ -326,7 +343,14 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <LikeButton articleId={article.id} initialCount={likes.count} initialLiked={likes.liked} />
               </div>
 
-              <ArticleAudioPlayer articleId={article.id} text={audioText} audioUrl={article.audio_url} className="mb-8 lg:hidden" />
+              <ArticleAudioPlayer
+                articleId={article.id}
+                text={audioText}
+                audioUrl={article.audio_url}
+                categorySlug={article.category?.slug ?? null}
+                nextArticle={continuousNextArticle}
+                className="mb-8 lg:hidden"
+              />
 
               <ArticleContentBlocks
                 content={article.content}
