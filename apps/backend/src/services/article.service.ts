@@ -861,7 +861,7 @@ async function triggerArticleAudioWorker(): Promise<void> {
         ? { Authorization: `Bearer ${config.ttsWorker.secret}` }
         : undefined,
       signal: AbortSignal.timeout(15000),
-    })
+    }) as unknown as { ok: boolean; status: number }
     if (!response.ok) {
       console.warn(`[article-audio] worker trigger failed status=${response.status}`)
     }
