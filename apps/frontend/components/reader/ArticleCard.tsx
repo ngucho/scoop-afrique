@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { ArrowRight, Play } from 'lucide-react'
-import { MetaBar } from 'scoop'
 import type { Article } from '@/lib/api/types'
 import { ReaderCoverImage } from '@/components/reader/ReaderCoverImage'
+import { articleDateLine, mediaCreditLine } from '@/lib/articleDisplayMeta'
 
 interface ArticleCardProps {
   article: Article
@@ -23,6 +23,8 @@ export function ArticleCard({
 }: ArticleCardProps) {
   const href = `/articles/${article.slug}`
   const showPlay = emphasizeVideo && !!article.video_url
+  const dateLine = articleDateLine(article)
+  const creditLine = mediaCreditLine(article)
 
   if (variant === 'row') {
     return (
@@ -54,7 +56,11 @@ export function ArticleCard({
             {article.excerpt ? (
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{article.excerpt}</p>
             ) : null}
-            <MetaBar className="mt-3 text-muted-foreground" dateTime={article.published_at ?? undefined} />
+            {dateLine ? (
+              <p className="mt-3 line-clamp-1 font-sans text-[11px] font-semibold text-muted-foreground/82">
+                {dateLine}
+              </p>
+            ) : null}
           </div>
         </Link>
       </article>
@@ -95,6 +101,11 @@ export function ArticleCard({
             >
               {article.title}
             </h3>
+            {dateLine ? (
+              <p className="mt-2 line-clamp-1 font-sans text-[11px] font-semibold text-muted-foreground">
+                {dateLine}
+              </p>
+            ) : null}
           </div>
         </article>
       </Link>
@@ -129,11 +140,20 @@ export function ArticleCard({
             {article.title}
           </h3>
           <div className="relative mt-4 flex items-center justify-between gap-3">
-            <MetaBar className="text-background/64" dateTime={article.published_at ?? undefined} />
+            {dateLine ? (
+              <p className="line-clamp-1 font-sans text-[11px] font-semibold text-background/64">
+                {dateLine}
+              </p>
+            ) : null}
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition group-hover:bg-card group-hover:text-foreground">
               <ArrowRight className="h-4 w-4" aria-hidden />
             </span>
           </div>
+          {creditLine ? (
+            <p className="relative mt-2 line-clamp-1 font-sans text-[10px] font-semibold text-background/48">
+              {creditLine}
+            </p>
+          ) : null}
         </div>
       </article>
     </Link>
