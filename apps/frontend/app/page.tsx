@@ -4,10 +4,12 @@ import type { Metadata } from 'next'
 import { ArrowRight, Flame, Search, Sparkles } from 'lucide-react'
 import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { HomeNewsletterCta } from '@/components/reader/HomeNewsletterCta'
+import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { absoluteReaderImageUrl } from '@/lib/readerImageSrc'
 import { config } from '@/lib/config'
-import { buildHomeSections } from '@/lib/homeSections'
-import { buildEditorialHomeModel, articlesFromHomeBlocks } from '@/lib/editorialHomeModel'
+import { buildHomeSections, type HomePageBlock } from '@/lib/homeSections'
+import { articlesFromHomeBlocks } from '@/lib/editorialHomeModel'
+import { fetchAdPlacements, pickCreativeForSlot } from '@/lib/readerAds'
 import type { Article } from '@/lib/api/types'
 import { articleDateLine, mediaCreditLine } from '@/lib/articleDisplayMeta'
 
@@ -221,11 +223,19 @@ function RailHeader({ title, href }: { title: string; href?: string }) {
   )
 }
 
-function ArticlePoster({ article, priority = false }: { article: Article; priority?: boolean }) {
+function ArticlePoster({
+  article,
+  priority = false,
+  mode = 'rail',
+}: {
+  article: Article
+  priority?: boolean
+  mode?: 'rail' | 'grid'
+}) {
   const image = articleImage(article)
 
   return (
-    <article className="group w-[78vw] shrink-0 sm:w-[360px]">
+    <article className={mode === 'grid' ? 'group min-w-0' : 'group w-[78vw] shrink-0 sm:w-[360px]'}>
       <Link href={articleHref(article)} className="block">
         <div className="relative aspect-[4/5] overflow-hidden rounded-[1.4rem] bg-foreground">
           {image ? (
@@ -286,7 +296,7 @@ function StoryRail({ title, href, articles }: { title: string; href?: string; ar
   )
 }
 
-function QueueList({ articles }: { articles: Article[] }) {
+function QueueList({ title, articles }: { title: string; articles: Article[] }) {
   if (!articles.length) return null
 
   return (
@@ -294,7 +304,7 @@ function QueueList({ articles }: { articles: Article[] }) {
       <div>
         <p className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5 font-sans text-[10px] font-black uppercase tracking-[0.14em] text-foreground">
           <Sparkles className="h-3.5 w-3.5" aria-hidden />
-          Fil de lecture
+          {title}
         </p>
         <h2
           className="mt-4 max-w-md text-4xl font-black leading-none text-foreground sm:text-5xl"
@@ -328,13 +338,99 @@ function QueueList({ articles }: { articles: Article[] }) {
   )
 }
 
+function PosterGrid({ title, href, articles }: { title: string; href?: string; articles: Article[] }) {
+  if (!articles.length) return null
+
+  return (
+    <section className="mx-auto max-w-[1460px] px-5 py-8 sm:px-8 lg:px-10">
+      <RailHeader title={title} href={href} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {articles.map((article, index) => (
+          <ArticlePoster key={article.id} article={article} priority={index < 2} mode="grid" />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function RubriqueStrips({ block }: { block: Extract<HomePageBlock, { type: 'rubriques' }> }) {
+  if (!block.strips.length) return null
+
+  return (
+    <section className="py-8">
+      <RailHeader title={block.title} href="/articles" />
+      <div className="space-y-8">
+        {block.strips.map((strip) => (
+          <div key={strip.slug}>
+            <RailHeader title={strip.label} href={`/category/${strip.slug}`} />
+            {block.layout === 'list' ? (
+              <QueueList title={strip.label} articles={strip.articles} />
+            ) : block.layout === 'featured_grid' ? (
+              <PosterGrid title={strip.label} href={`/category/${strip.slug}`} articles={strip.articles} />
+            ) : (
+              <StoryRail title={strip.label} href={`/category/${strip.slug}`} articles={strip.articles} />
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ArticlesBlock({ block }: { block: Extract<HomePageBlock, { type: 'articles' }> }) {
+  const href = block.sectionKey === 'video' ? '/video' : '/articles'
+  if (block.layout === 'list') return <QueueList title={block.title} articles={block.articles} />
+  if (block.layout === 'featured_grid') return <PosterGrid title={block.title} href={href} articles={block.articles} />
+  return <StoryRail title={block.title} href={href} articles={block.articles} />
+}
+
+function HomeAdBlock({
+  block,
+  placements,
+}: {
+  block: Extract<HomePageBlock, { type: 'inline_ad' }>
+  placements: Awaited<ReturnType<typeof fetchAdPlacements>>
+}) {
+  const picked = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, block.adSlotKey)
+  return (
+    <section className="mx-auto max-w-[1460px] px-5 py-8 sm:px-8 lg:px-10">
+      <AdSlotSection
+        slotKey={block.adSlotKey}
+        creative={picked?.creative ?? null}
+        label={block.title}
+        className="mx-auto w-full max-w-4xl"
+      />
+    </section>
+  )
+}
+
+function renderHomeBlock(
+  block: HomePageBlock,
+  placements: Awaited<ReturnType<typeof fetchAdPlacements>>,
+  nextArticle?: Article,
+) {
+  switch (block.type) {
+    case 'hero':
+      return <HeroRead key={block.cmsKey} article={block.article} nextArticle={nextArticle} />
+    case 'articles':
+      return <ArticlesBlock key={block.cmsKey} block={block} />
+    case 'rubriques':
+      return <RubriqueStrips key={block.cmsKey} block={block} />
+    case 'inline_ad':
+      return <HomeAdBlock key={block.cmsKey} block={block} placements={placements} />
+    default:
+      return null
+  }
+}
+
 export default async function HomePage() {
-  const { blocks, articles } = await buildHomeSections()
-  const model = buildEditorialHomeModel(blocks, articles)
+  const [{ blocks, articles }, placements] = await Promise.all([buildHomeSections(), fetchAdPlacements()])
   const allArticles = articlesFromHomeBlocks(blocks, articles)
   const categories = uniqueCategories(allArticles)
+  const heroBlock = blocks.find((block): block is Extract<HomePageBlock, { type: 'hero' }> => block.type === 'hero')
+  const nextArticle = allArticles.find((article) => article.id !== heroBlock?.article.id)
 
-  const jsonLdList = [model.hero, ...model.lead, ...model.selection, ...model.videos, ...model.briefs]
+  const jsonLdList = allArticles
     .filter((article): article is Article => Boolean(article))
     .slice(0, 12)
 
@@ -360,15 +456,15 @@ export default async function HomePage() {
       ) : null}
 
       <main className="bg-background text-foreground">
-        {model.hero ? <HeroRead article={model.hero} nextArticle={model.lead[0]} /> : null}
-        <SearchDock categories={categories} />
-
-        <div className="mx-auto max-w-[1460px]">
-          <StoryRail title="Continue avec ca" href="/articles" articles={model.lead} />
-          <StoryRail title="Selection qui accroche" href="/articles" articles={model.selection} />
-          <QueueList articles={[...model.briefs, ...model.categoryStrip]} />
-          <StoryRail title="A regarder ou ecouter" href="/video" articles={model.videos.length ? model.videos : model.categoryStrip.slice(0, 4)} />
-          <div className="px-5 sm:px-8 lg:px-10">
+        <div>
+          {!heroBlock ? <SearchDock categories={categories} /> : null}
+          {blocks.map((block) => (
+            <div key={block.cmsKey}>
+              {renderHomeBlock(block, placements, nextArticle)}
+              {block.type === 'hero' ? <SearchDock categories={categories} /> : null}
+            </div>
+          ))}
+          <div className="mx-auto max-w-[1460px] px-5 sm:px-8 lg:px-10">
             <HomeNewsletterCta />
           </div>
         </div>

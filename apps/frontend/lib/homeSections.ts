@@ -132,8 +132,9 @@ async function resolveHeroArticle(
     }
   }
 
+  const mostReadHours = numConfig(cfg, 'timeframe_hours', 48)
   try {
-    const res = await apiGet<{ data: Article[] }>(`/articles/most-read?days=7&limit=12`, { revalidate: 60 })
+    const res = await apiGet<{ data: Article[] }>(`/articles/most-read?hours=${mostReadHours}&limit=12`, { revalidate: 60 })
     for (const a of res.data ?? []) {
       if (a?.id && a.status === 'published' && !used.has(a.id)) {
         used.add(a.id)
