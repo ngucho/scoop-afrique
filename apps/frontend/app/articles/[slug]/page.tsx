@@ -26,6 +26,7 @@ import { fetchAnnouncements, inlineAnnouncements } from '@/lib/readerAnnouncemen
 import { getContextSidebarArticles } from '@/lib/articleContext'
 import { getReaderAccessToken } from '@/lib/reader-auth0'
 import { buildArticleAudioText } from '@/lib/articleAudioText'
+import { articleDateLine, mediaCreditLine } from '@/lib/articleDisplayMeta'
 
 export const revalidate = 60
 
@@ -179,6 +180,8 @@ export default async function ArticleDetailPage({ params }: PageProps) {
   const showCoverVideo = !coverImageUrl && !!videoEmbedUrl
   const showVideoAfterBody = !!coverImageUrl && !!videoEmbedUrl
   const railTitle = article.category?.name ? `Encore en ${article.category.name}` : 'A lire ensuite'
+  const dateLine = articleDateLine(article)
+  const creditLine = mediaCreditLine(article)
   const audioText = buildArticleAudioText({
     title: article.title,
     excerpt: article.excerpt,
@@ -226,6 +229,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 </Link>
               ) : null}
             </div>
+            {dateLine ? (
+              <p className="mt-3 font-sans text-xs font-semibold leading-5 text-muted-foreground">
+                {dateLine}
+              </p>
+            ) : null}
           </div>
 
           <div className="relative overflow-hidden rounded-[2rem] bg-foreground shadow-[var(--shadow-xl)] lg:min-h-[420px]">
@@ -241,6 +249,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   imgClassName="object-center"
                 />
                 <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-1/2 bg-gradient-to-r from-foreground/95 via-foreground/62 to-transparent lg:block" />
+                {creditLine ? (
+                  <figcaption className="absolute bottom-3 right-3 z-20 max-w-[calc(100%-1.5rem)] rounded-full bg-foreground/72 px-3 py-1.5 font-sans text-[10px] font-semibold leading-4 text-background/80 backdrop-blur-md sm:max-w-sm">
+                    {creditLine}
+                  </figcaption>
+                ) : null}
               </figure>
             ) : showCoverVideo && videoEmbedUrl ? (
               <div className="aspect-video bg-foreground lg:absolute lg:inset-0 lg:aspect-auto lg:h-full">
@@ -283,6 +296,11 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   </Link>
                 ) : null}
               </div>
+              {dateLine ? (
+                <p className="mt-3 max-w-xl font-sans text-xs font-semibold leading-5 text-background/72">
+                  {dateLine}
+                </p>
+              ) : null}
               <ArticleAudioPlayer articleId={article.id} text={audioText} audioUrl={article.audio_url} variant="hero" className="mt-6 max-w-[440px]" />
             </div>
           </div>
@@ -318,16 +336,23 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               />
 
               {showVideoAfterBody && videoEmbedUrl ? (
-                <div className="my-10 aspect-video overflow-hidden rounded-[1.25rem] bg-foreground">
-                  <iframe
-                    src={videoEmbedUrl}
-                    className="h-full w-full"
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    title="Video"
-                    loading="lazy"
-                  />
-                </div>
+                <figure className="my-10">
+                  <div className="aspect-video overflow-hidden rounded-[1.25rem] bg-foreground">
+                    <iframe
+                      src={videoEmbedUrl}
+                      className="h-full w-full"
+                      allowFullScreen
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      title="Video"
+                      loading="lazy"
+                    />
+                  </div>
+                  {article.cover_video_credit ? (
+                    <figcaption className="mt-2 font-sans text-[11px] font-semibold text-muted-foreground">
+                      Credit video: {article.cover_video_credit}
+                    </figcaption>
+                  ) : null}
+                </figure>
               ) : null}
 
               <div className="mt-8 border-t border-border pt-6">
