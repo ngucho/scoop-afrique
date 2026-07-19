@@ -71,6 +71,12 @@ const envSchema = z.object({
   /** Piper TTS worker HTTP trigger (Render service). */
   TTS_WORKER_URL: z.string().url().optional(),
   TTS_WORKER_SECRET: z.string().min(1).optional(),
+  /** Optional GitHub Actions dispatch for article audio generation. */
+  GITHUB_TTS_DISPATCH_TOKEN: z.string().min(1).optional(),
+  GITHUB_TTS_OWNER: z.string().min(1).default('ngucho'),
+  GITHUB_TTS_REPO: z.string().min(1).default('scoop-afrique'),
+  GITHUB_TTS_WORKFLOW: z.string().min(1).default('tts-worker-generate.yml'),
+  GITHUB_TTS_REF: z.string().min(1).default('main'),
 
   // Twilio (WhatsApp + SMS for notifications)
   TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
@@ -162,6 +168,16 @@ export const config = {
     ? {
         url: env.TTS_WORKER_URL.replace(/\/+$/, ''),
         secret: env.TTS_WORKER_SECRET?.trim() || null,
+      }
+    : null,
+
+  githubTtsDispatch: env.GITHUB_TTS_DISPATCH_TOKEN
+    ? {
+        token: env.GITHUB_TTS_DISPATCH_TOKEN.trim(),
+        owner: env.GITHUB_TTS_OWNER,
+        repo: env.GITHUB_TTS_REPO,
+        workflow: env.GITHUB_TTS_WORKFLOW,
+        ref: env.GITHUB_TTS_REF,
       }
     : null,
 
