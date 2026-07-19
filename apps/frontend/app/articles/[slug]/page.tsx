@@ -343,15 +343,6 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 <LikeButton articleId={article.id} initialCount={likes.count} initialLiked={likes.liked} />
               </div>
 
-              <ArticleAudioPlayer
-                articleId={article.id}
-                text={audioText}
-                audioUrl={article.audio_url}
-                categorySlug={article.category?.slug ?? null}
-                nextArticle={continuousNextArticle}
-                className="mb-8 lg:hidden"
-              />
-
               <ArticleContentBlocks
                 content={article.content}
                 articleId={article.id}
