@@ -19,9 +19,13 @@ const app = new Hono()
 /* --- Most-read (hero fallback; no view increment) — must be before /:id --- */
 app.get('/most-read', async (c) => {
   if (!config.database) return c.json({ data: [] })
+  const hoursParam = Number(c.req.query('hours'))
+  const hours = Number.isFinite(hoursParam) ? Math.min(Math.max(hoursParam, 1), 2160) : null
   const days = Math.min(Math.max(Number(c.req.query('days')) || 7, 1), 90)
   const limit = Math.min(Math.max(Number(c.req.query('limit')) || 8, 1), 15)
-  const list = await articleService.getPublishedArticlesMostReadForHero(days, limit)
+  const list = hours
+    ? await articleService.getPublishedArticlesMostReadForHeroHours(hours, limit)
+    : await articleService.getPublishedArticlesMostReadForHero(days, limit)
   const presented = list.map((a) => articleService.presentArticleCardForPublicApi(a))
   c.header('Cache-Control', 'public, max-age=60, stale-while-revalidate=120')
   return c.json({ data: presented })

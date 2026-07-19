@@ -16,12 +16,12 @@ import {
 } from 'scoop'
 import type { HomepageSection } from '@/lib/api/types'
 import { updateHomepageSection } from '@/lib/admin/actions'
-import { Info, Loader2, Pencil } from 'lucide-react'
+import { Clock3, Eye, EyeOff, GripVertical, Info, LayoutGrid, Loader2, Pencil, Settings2 } from 'lucide-react'
 import { useFormDraftState } from '@/hooks/useFormDraft'
 
 const SECTION_HELP: Record<string, string> = {
   top_stories:
-    'Bloc « à la une » : image en 16:9 fixe côté lecteur. Sans article manuel (ou hors fenêtre de dates), le hero affiche l’article le plus lu sur 7 jours (puis repli sur le classement toutes vues).',
+    'Bloc « à la une » : par défaut, le site choisit l’article publié le plus lu sur les dernières 48 heures. Un article manuel peut servir d’override temporaire si une urgence éditoriale l’exige.',
   latest: 'Grille des derniers articles. `max_items` limite le nombre de cartes.',
   trending: 'Articles triés par vues (`sort: views` dans le JSON avancé).',
   video: 'Section carrousel ; utilisez le JSON pour un filtre par tag (ex. `"tag":"video"`).',
@@ -63,6 +63,7 @@ type SectionDraft = {
   featuredArticleId: string
   featuredStarts: string
   featuredEnds: string
+  timeframeHours: string
   configJson: string
 }
 
@@ -93,8 +94,37 @@ function buildDefaults(section: HomepageSection): SectionDraft {
     featuredEnds: isoToDatetimeLocalValue(
       typeof cfg.featured_ends_at === 'string' ? cfg.featured_ends_at : undefined,
     ),
+    timeframeHours:
+      typeof cfg.timeframe_hours === 'number'
+        ? String(cfg.timeframe_hours)
+        : typeof cfg.timeframe_hours === 'string'
+          ? cfg.timeframe_hours
+          : section.key === 'top_stories'
+            ? '48'
+            : '',
     configJson: JSON.stringify(section.config ?? {}, null, 2),
   }
+}
+
+function sectionRoleLabel(key: string): string {
+  if (key === 'top_stories') return 'Hero'
+  if (key === 'home_ad_mid' || key === 'home_ad_bottom') return 'Publicité'
+  if (key === 'rubriques') return 'Navigation'
+  if (key === 'partnership_strip') return 'Partenariat'
+  return 'Articles'
+}
+
+function configSummary(section: HomepageSection, form: SectionDraft): string {
+  if (section.key === 'top_stories') {
+    return form.featuredArticleId.trim()
+      ? `Override manuel actif${form.featuredEnds ? ` jusqu’au ${new Date(form.featuredEnds).toLocaleDateString('fr-FR')}` : ''}`
+      : `Auto: plus lus ${form.timeframeHours || '48'}h`
+  }
+  if (section.key === 'rubriques') return `${form.maxPerStrip || '2'} article(s) par rubrique`
+  if (section.key === 'video') return `Tag: ${form.tagFilter || 'video'} · ${form.maxItems || '8'} item(s)`
+  if (section.key === 'home_ad_mid' || section.key === 'home_ad_bottom') return 'Emplacement publicitaire'
+  if (section.key === 'partnership_strip') return 'Bandeau global lecteur'
+  return `${form.maxItems || 'auto'} item(s)`
 }
 
 export function HomepageSectionEditor({
@@ -140,6 +170,9 @@ export function HomepageSectionEditor({
     else delete merged.tag
 
     if (section.key === 'top_stories') {
+      const hours = numOrEmpty(form.timeframeHours)
+      if (hours !== undefined) merged.timeframe_hours = Math.max(1, Math.min(168, hours))
+      else merged.timeframe_hours = 48
       if (form.featuredArticleId.trim()) merged.featured_article_id = form.featuredArticleId.trim()
       else delete merged.featured_article_id
       if (form.featuredStarts.trim()) {
@@ -174,24 +207,45 @@ export function HomepageSectionEditor({
 
   const help = SECTION_HELP[section.key] ?? 'Paramètres d’affichage pour cette zone de la page d’accueil publique.'
   const layoutLabel = layoutLabels[form.layout] ?? form.layout
+  const roleLabel = sectionRoleLabel(section.key)
+  const summary = configSummary(section, form)
 
   return (
     <>
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 space-y-1">
-            <p className="font-mono text-xs text-muted-foreground">{section.key}</p>
-            <p className="truncate font-medium text-foreground">{form.title || section.title}</p>
-            <p className="text-xs text-muted-foreground">
-              {layoutLabel} · ordre {form.sortOrder ?? section.sort_order}
-              {' · '}
-              <span className={form.visible ? 'text-emerald-600 dark:text-emerald-400' : ''}>
+      <Card className={form.visible ? 'border-border' : 'border-dashed opacity-75'}>
+        <CardContent className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
+                <GripVertical className="h-3 w-3" aria-hidden />
+                {form.sortOrder || section.sort_order}
+              </span>
+              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+                {roleLabel}
+              </span>
+              <span className={form.visible ? 'inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300' : 'inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold text-muted-foreground'}>
+                {form.visible ? <Eye className="h-3 w-3" aria-hidden /> : <EyeOff className="h-3 w-3" aria-hidden />}
                 {form.visible ? 'Visible' : 'Masquée'}
               </span>
-              {' · '}
-              MAJ {new Date(section.updated_at).toLocaleString('fr-FR')}
-            </p>
-            <p className="text-xs text-muted-foreground">Brouillon local conservé dans le formulaire.</p>
+            </div>
+            <div className="mt-3 min-w-0">
+              <p className="font-mono text-xs text-muted-foreground">{section.key}</p>
+              <p className="mt-1 truncate text-base font-semibold text-foreground">{form.title || section.title}</p>
+            </div>
+            <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+              <span className="inline-flex items-center gap-2">
+                <LayoutGrid className="h-3.5 w-3.5" aria-hidden />
+                {layoutLabel}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Settings2 className="h-3.5 w-3.5" aria-hidden />
+                {summary}
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Clock3 className="h-3.5 w-3.5" aria-hidden />
+                {new Date(section.updated_at).toLocaleString('fr-FR')}
+              </span>
+            </div>
           </div>
           <Button
             type="button"
@@ -277,7 +331,23 @@ export function HomepageSectionEditor({
             <div className="grid gap-3 sm:grid-cols-2">
               {section.key === 'top_stories' ? (
                 <div className="space-y-3 sm:col-span-2">
-                  <p className="text-xs font-medium text-foreground">À la une — choix rédactionnel</p>
+                  <p className="text-xs font-medium text-foreground">À la une — automatique 48h, override manuel optionnel</p>
+                  <div className="space-y-1">
+                    <Label size="sm" className="text-muted-foreground">
+                      Fenêtre de popularité automatique (heures)
+                    </Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={168}
+                      value={form.timeframeHours}
+                      onChange={(e) => setForm((f) => ({ ...f, timeframeHours: e.target.value }))}
+                      placeholder="48"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Recommandé : 48. Le site convertit cette fenêtre en deux jours pour classer les articles les plus lus.
+                    </p>
+                  </div>
                   <div className="space-y-1">
                     <Label size="sm" className="text-muted-foreground">
                       ID ou slug de l&apos;article (publié)
