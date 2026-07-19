@@ -18,6 +18,11 @@ type NextAudioArticle = {
 
 const CONTINUOUS_AUDIO_KEY = 'scoop_continuous_audio'
 
+function stopOtherReaderAudio(instanceId: string) {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent('scoop-reader-audio-stop', { detail: { instanceId } }))
+}
+
 export function ArticleAudioPlayer({
   articleId,
   text,
@@ -45,6 +50,7 @@ export function ArticleAudioPlayer({
   const nextWarmupRef = useRef<string | null>(null)
   const playInFlightRef = useRef(false)
   const autoplayArticleRef = useRef<string | null>(null)
+  const instanceIdRef = useRef(`reader-audio-${articleId}-${Math.random().toString(36).slice(2)}`)
   const isHero = variant === 'hero'
   const currentAudioUrl = preparedAudioUrl ?? audioUrl ?? null
   const atmosphere = readerAudioAtmosphereForCategory(categorySlug ?? nextArticle?.category_slug)
@@ -54,7 +60,16 @@ export function ArticleAudioPlayer({
   }, [audioUrl])
 
   useEffect(() => {
+    const handleStop = (event: Event) => {
+      const detail = (event as CustomEvent<{ instanceId?: string }>).detail
+      if (detail?.instanceId === instanceIdRef.current) return
+      audioRef.current?.pause()
+      playInFlightRef.current = false
+      setState((current) => (current === 'playing' || current === 'preparing' ? 'idle' : current))
+    }
+    window.addEventListener('scoop-reader-audio-stop', handleStop)
     return () => {
+      window.removeEventListener('scoop-reader-audio-stop', handleStop)
       audioRef.current?.pause()
       playInFlightRef.current = false
     }
@@ -168,11 +183,12 @@ export function ArticleAudioPlayer({
       setState('error')
       return
     }
+    stopOtherReaderAudio(instanceIdRef.current)
+    startBedAmbience()
     playInFlightRef.current = true
     audio.play()
       .then(() => {
         setState('playing')
-        startBedAmbience()
       })
       .catch(() => {
         stopAmbience()
