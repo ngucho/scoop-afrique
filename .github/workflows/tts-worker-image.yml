@@ -53,15 +53,18 @@ jobs:
       - name: Trigger Render deploy
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          API_KEY_RENDER: ${{ secrets.API_KEY_RENDER || secrets.api_key_render }}
         run: |
-          if [ -z "$RENDER_API_KEY" ]; then
-            echo "RENDER_API_KEY is not configured. Add it in GitHub repository secrets to enable automatic Render redeploys."
+          RENDER_DEPLOY_TOKEN="${RENDER_API_KEY:-$API_KEY_RENDER}"
+
+          if [ -z "$RENDER_DEPLOY_TOKEN" ]; then
+            echo "RENDER_API_KEY is not configured. Add RENDER_API_KEY in GitHub repository secrets to enable automatic Render redeploys."
             exit 1
           fi
 
           curl --fail --silent --show-error -X POST \
             "https://api.render.com/v1/services/${RENDER_SERVICE_ID}/deploys" \
-            -H "Authorization: Bearer ${RENDER_API_KEY}" \
+            -H "Authorization: Bearer ${RENDER_DEPLOY_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{}' \
             | tee render-deploy-response.json
