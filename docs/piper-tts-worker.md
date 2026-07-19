@@ -76,7 +76,8 @@ pnpm --filter @scoop-afrique/tts-worker start
 Endpoints:
 
 - `GET /health`
-- `POST /process-one`
+- `POST /process-one` with optional JSON `{ "article_id": "<uuid>" }` to prioritize a reader-requested article.
+- `POST /process-batch` to process a small queue batch for scheduled automation.
 
 If `TTS_WORKER_SECRET` is set, call `/process-one` with:
 
@@ -120,6 +121,7 @@ TTS_AUDIO_FORMAT=mp3
 TTS_WORKER_MAX_CHARS=12000
 TTS_WORKER_MAX_CHUNK_CHARS=900
 TTS_WORKER_MAX_ATTEMPTS=3
+TTS_WORKER_BATCH_SIZE=2
 ```
 
 The Docker image already sets:
@@ -150,14 +152,14 @@ The backend calls `POST /process-one` when a reader clicks Play and no fresh aud
 Render Free web services sleep after inactivity, so use an external free cron/ping service to call:
 
 ```text
-POST https://<your-render-service>.onrender.com/process-one
+POST https://<your-render-service>.onrender.com/process-batch
 Authorization: Bearer <TTS_WORKER_SECRET>
 ```
 
 Suggested frequency:
 
-- every 10 or 15 minutes while testing;
-- every 30 minutes if article volume is low.
+- every 5 minutes while testing or after bulk publishing;
+- every 15 minutes if article volume is low.
 
 Free cron options include GitHub Actions scheduled workflow or cron-job.org.
 
@@ -189,7 +191,7 @@ Add repository secrets:
 - `TTS_WORKER_URL`: `https://<your-render-service>.onrender.com/process-one`
 - `TTS_WORKER_SECRET`: the same value as Render.
 
-The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render every 15 minutes. It safely skips execution until both secrets exist.
+The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render every 5 minutes. It safely skips execution until both secrets exist.
 
 ## Production Notes
 

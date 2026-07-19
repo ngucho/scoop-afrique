@@ -852,22 +852,28 @@ export async function enqueueArticleAudioJob(
     })
 }
 
-async function triggerArticleAudioWorker(): Promise<void> {
-  if (!config.ttsWorker) return
+async function triggerArticleAudioWorker(articleId?: string): Promise<void> {
+  if (!config.ttsWorker) {
+    console.warn(`[article-audio] worker trigger skipped article=${articleId ?? 'none'} reason=missing_tts_worker_config`)
+    return
+  }
   try {
     const response = await fetch(`${config.ttsWorker.url}/process-one`, {
       method: 'POST',
-      headers: config.ttsWorker.secret
-        ? { Authorization: `Bearer ${config.ttsWorker.secret}` }
-        : undefined,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(config.ttsWorker.secret ? { Authorization: `Bearer ${config.ttsWorker.secret}` } : {}),
+      },
+      body: JSON.stringify(articleId ? { article_id: articleId } : {}),
       signal: AbortSignal.timeout(15000),
     }) as unknown as { ok: boolean; status: number }
+    console.info(`[article-audio] worker trigger article=${articleId ?? 'none'} status=${response.status}`)
     if (!response.ok) {
       console.warn(`[article-audio] worker trigger failed status=${response.status}`)
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.warn(`[article-audio] worker trigger failed: ${message}`)
+    console.warn(`[article-audio] worker trigger failed article=${articleId ?? 'none'}: ${message}`)
   }
 }
 
@@ -898,7 +904,8 @@ export async function markArticleAudioAccess(
 
   if (!fresh) {
     await enqueueArticleAudioJob(article.id, 'manual')
-    await triggerArticleAudioWorker()
+    console.info(`[article-audio] access queued article=${article.id}`)
+    await triggerArticleAudioWorker(article.id)
     return { available: false, audio_url: null }
   }
 
