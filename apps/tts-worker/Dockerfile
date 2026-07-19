@@ -25,16 +25,16 @@ RUN mkdir -p /opt/piper /opt/piper/voices \
   && curl -fL --retry 3 "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_${PIPER_ARCH}.tar.gz" \
     | tar -xz -C /opt/piper --strip-components=1
 
-RUN curl -fL --retry 3 -o /opt/piper/voices/fr_FR-siwis-medium.onnx \
-    https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx \
-  && curl -fL --retry 3 -o /opt/piper/voices/fr_FR-siwis-medium.onnx.json \
-    https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json
+RUN curl -fL --retry 3 -o /opt/piper/voices/fr_FR-upmc-medium.onnx \
+    https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/upmc/medium/fr_FR-upmc-medium.onnx \
+  && curl -fL --retry 3 -o /opt/piper/voices/fr_FR-upmc-medium.onnx.json \
+    https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/upmc/medium/fr_FR-upmc-medium.onnx.json
 
 ENV NODE_ENV=production
 ENV PIPER_BINARY_PATH=/opt/piper/piper
-ENV PIPER_VOICE_MODEL=/opt/piper/voices/fr_FR-siwis-medium.onnx
-ENV PIPER_VOICE_CONFIG=/opt/piper/voices/fr_FR-siwis-medium.onnx.json
-ENV PIPER_VOICE_NAME=fr_FR-siwis-medium
+ENV PIPER_VOICE_MODEL=/opt/piper/voices/fr_FR-upmc-medium.onnx
+ENV PIPER_VOICE_CONFIG=/opt/piper/voices/fr_FR-upmc-medium.onnx.json
+ENV PIPER_VOICE_NAME=fr_FR-upmc-medium
 ENV TTS_AUDIO_FORMAT=mp3
 ENV FFMPEG_PATH=ffmpeg
 
