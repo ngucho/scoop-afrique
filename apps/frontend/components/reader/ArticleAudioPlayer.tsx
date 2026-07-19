@@ -29,6 +29,8 @@ export function ArticleAudioPlayer({
     setPreparedAudioUrl(audioUrl ?? null)
   }, [audioUrl])
 
+  const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
   const requestAudio = async (): Promise<string | null> => {
     const response = await fetch(`${config.apiBaseUrl}/api/v1/articles/${encodeURIComponent(articleId)}/audio-access`, {
       method: 'POST',
@@ -43,6 +45,15 @@ export function ArticleAudioPlayer({
     return nextUrl
   }
 
+  const waitForPreparedAudio = async (): Promise<string | null> => {
+    for (let attempt = 0; attempt < 12; attempt += 1) {
+      const nextUrl = await requestAudio()
+      if (nextUrl) return nextUrl
+      await wait(attempt < 3 ? 4000 : 7000)
+    }
+    return null
+  }
+
   const play = async () => {
     if (currentAudioUrl && audioRef.current) {
       audioRef.current.play().then(() => setState('playing')).catch(() => setState('error'))
@@ -51,7 +62,7 @@ export function ArticleAudioPlayer({
 
     setState('preparing')
     try {
-      const nextUrl = await requestAudio()
+      const nextUrl = await waitForPreparedAudio()
       if (!nextUrl) return
       window.setTimeout(() => {
         audioRef.current?.play().then(() => setState('playing')).catch(() => setState('error'))

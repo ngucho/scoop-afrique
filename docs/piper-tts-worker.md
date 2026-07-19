@@ -6,7 +6,7 @@ Article audio generation is intentionally outside the backend API.
 
 - Backend: creates or refreshes one `article_audio_jobs` row when an article is published or edited after publication.
 - TTS worker: polls `article_audio_jobs`, runs Piper locally, uploads audio to Supabase Storage, and writes `articles.audio_url`.
-- Frontend: plays `articles.audio_url` when available; falls back to browser speech while audio is not generated.
+- Frontend: plays `articles.audio_url` when available; if audio is missing, it asks the backend to enqueue generation and waits calmly. It never falls back to browser/device speech.
 
 This keeps CPU-heavy synthesis away from request/response traffic.
 
@@ -132,7 +132,18 @@ FFMPEG_PATH=ffmpeg
 
 The Dockerfile downloads `piper_linux_x86_64.tar.gz`, which is the Linux asset name published by Piper.
 
-### 3. Trigger processing
+### 3. Connect the Vercel backend to Render
+
+Set these variables on the Vercel backend project:
+
+```env
+TTS_WORKER_URL=https://<your-render-service>.onrender.com
+TTS_WORKER_SECRET=<same-value-as-render>
+```
+
+The backend calls `POST /process-one` when a reader clicks Play and no fresh audio exists.
+
+### 4. Trigger processing
 
 Render Free web services sleep after inactivity, so use an external free cron/ping service to call:
 
@@ -148,7 +159,7 @@ Suggested frequency:
 
 Free cron options include GitHub Actions scheduled workflow or cron-job.org.
 
-### 4. Manual test
+### 5. Manual test
 
 After publishing an article, trigger one job:
 
@@ -169,7 +180,7 @@ Expected response when the queue is empty:
 { "ok": true, "processed": false, "status": "none" }
 ```
 
-### 5. GitHub Actions cron option
+### 6. GitHub Actions cron option
 
 Add repository secrets:
 
@@ -185,6 +196,6 @@ The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render ev
 - Keep `TTS_WORKER_MAX_CHARS` conservative. Very long articles can be summarized or split later.
 - Use a public Supabase Storage bucket named `article-audio`.
 - Generated audio expires 5 days after the last playback. Each playback calls the backend and extends the expiration by 5 days.
-- The worker deletes expired Supabase audio files before processing new jobs. If a reader opens the article later, the backend requeues audio generation and the page uses browser speech until Piper finishes again.
-- If Piper fails, the article remains readable and the frontend falls back to browser speech.
+- The worker deletes expired Supabase audio files before processing new jobs. If a reader opens the article later, the backend requeues audio generation and the player waits for Piper.
+- If Piper fails, the article remains readable and the player shows a calm retry message.
 - Render Free is acceptable for low volume, but not production-grade. If audio volume grows, move the same Docker service to Render paid worker, Railway Hobby, or a small VPS.

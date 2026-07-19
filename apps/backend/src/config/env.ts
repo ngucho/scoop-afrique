@@ -68,6 +68,10 @@ const envSchema = z.object({
   /** Public reader site base URL (for digest links, unsubscribe). */
   PUBLIC_SITE_URL: z.string().url().optional(),
 
+  /** Piper TTS worker HTTP trigger (Render service). */
+  TTS_WORKER_URL: z.string().url().optional(),
+  TTS_WORKER_SECRET: z.string().min(1).optional(),
+
   // Twilio (WhatsApp + SMS for notifications)
   TWILIO_ACCOUNT_SID: z.string().min(1).optional(),
   TWILIO_AUTH_TOKEN: z.string().min(1).optional(),
@@ -153,6 +157,13 @@ export const config = {
   digestCronSecret: env.CRON_SECRET ?? env.DIGEST_CRON_SECRET ?? null,
 
   publicSiteUrl: env.PUBLIC_SITE_URL ?? null,
+
+  ttsWorker: env.TTS_WORKER_URL
+    ? {
+        url: env.TTS_WORKER_URL.replace(/\/+$/, ''),
+        secret: env.TTS_WORKER_SECRET?.trim() || null,
+      }
+    : null,
 
   twilio:
     env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_WHATSAPP_FROM && env.TWILIO_WHATSAPP_TO
