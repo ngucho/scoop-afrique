@@ -4,16 +4,19 @@ class ReaderAmbientAudio {
   private context: AudioContext | null = null
   private nodes: AudioNode[] = []
   private interval: number | null = null
+  private mode: AmbientMode | null = null
 
   start(mode: AmbientMode) {
     if (typeof window === 'undefined') return
     const context = this.getContext()
     if (!context) return
     void context.resume().catch(() => {})
+    if (this.mode === mode && this.nodes.length > 0) return
 
     this.stop()
+    this.mode = mode
     const master = context.createGain()
-    master.gain.value = mode === 'transition' ? 0.045 : 0.018
+    master.gain.value = mode === 'transition' ? 0.24 : 0.2
     master.connect(context.destination)
     this.nodes.push(master)
 
@@ -31,6 +34,7 @@ class ReaderAmbientAudio {
       window.clearInterval(this.interval)
       this.interval = null
     }
+    this.mode = null
     for (const node of this.nodes) {
       try {
         node.disconnect()
@@ -56,7 +60,7 @@ class ReaderAmbientAudio {
       const gain = context.createGain()
       oscillator.type = 'sine'
       oscillator.frequency.value = frequency
-      gain.gain.value = 0.16
+      gain.gain.value = 0.18
       oscillator.connect(gain)
       gain.connect(destination)
       oscillator.start()
@@ -73,7 +77,7 @@ class ReaderAmbientAudio {
     oscillator.type = 'sine'
     oscillator.frequency.setValueAtTime(frequency, now)
     gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(mode === 'transition' ? 0.34 : 0.16, now + 0.025)
+    gain.gain.exponentialRampToValueAtTime(mode === 'transition' ? 0.48 : 0.28, now + 0.025)
     gain.gain.exponentialRampToValueAtTime(0.0001, now + (mode === 'transition' ? 0.42 : 0.72))
     oscillator.connect(gain)
     gain.connect(destination)

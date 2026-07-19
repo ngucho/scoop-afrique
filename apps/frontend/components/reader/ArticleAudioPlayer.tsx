@@ -42,9 +42,9 @@ export function ArticleAudioPlayer({
   const [prepareAttempt, setPrepareAttempt] = useState(0)
   const router = useRouter()
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const transitionAudioRef = useRef<HTMLAudioElement | null>(null)
-  const bedAudioRef = useRef<HTMLAudioElement | null>(null)
   const nextWarmupRef = useRef<string | null>(null)
+  const playInFlightRef = useRef(false)
+  const autoplayArticleRef = useRef<string | null>(null)
   const isHero = variant === 'hero'
   const currentAudioUrl = preparedAudioUrl ?? audioUrl ?? null
   const atmosphere = readerAudioAtmosphereForCategory(categorySlug ?? nextArticle?.category_slug)
@@ -52,6 +52,13 @@ export function ArticleAudioPlayer({
   useEffect(() => {
     setPreparedAudioUrl(audioUrl ?? null)
   }, [audioUrl])
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause()
+      playInFlightRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     setNextAudioQueued(Boolean(nextArticle?.audio_url))
@@ -65,6 +72,8 @@ export function ArticleAudioPlayer({
       params.get('autoplayAudio') === '1' ||
       window.sessionStorage.getItem(CONTINUOUS_AUDIO_KEY) === articleId
     if (!shouldAutoplay) return
+    if (autoplayArticleRef.current === articleId) return
+    autoplayArticleRef.current = articleId
 
     window.sessionStorage.removeItem(CONTINUOUS_AUDIO_KEY)
     const timer = window.setTimeout(() => {
@@ -79,43 +88,20 @@ export function ArticleAudioPlayer({
   }, [articleId])
 
   const stopAmbience = () => {
-    const transition = transitionAudioRef.current
-    const bed = bedAudioRef.current
-    transition?.pause()
-    bed?.pause()
     getReaderAmbientAudio()?.stop()
   }
 
   const startTransitionAmbience = () => {
     if (!ambienceEnabled) return
-    const transition = transitionAudioRef.current
-    const bed = bedAudioRef.current
-    if (!transition) return
-    bed?.pause()
-    transition.volume = 0.28
-    transition.loop = true
-    if (transition.paused) transition.currentTime = 0
-    void transition.play().catch(() => {})
     getReaderAmbientAudio()?.start('transition')
   }
 
   const startBedAmbience = () => {
     if (!ambienceEnabled) return
-    const transition = transitionAudioRef.current
-    const bed = bedAudioRef.current
-    if (!bed) return
-    transition?.pause()
-    bed.volume = 0.07
-    bed.loop = true
-    void bed.play().catch(() => {})
     getReaderAmbientAudio()?.start('bed')
   }
 
   useEffect(() => {
-    const transition = transitionAudioRef.current
-    const bed = bedAudioRef.current
-    if (!transition || !bed) return
-
     if (!ambienceEnabled) {
       stopAmbience()
       return
@@ -175,12 +161,14 @@ export function ArticleAudioPlayer({
   }
 
   const playCurrentAudio = () => {
+    if (playInFlightRef.current) return
     const audio = audioRef.current
     if (!audio) {
       stopAmbience()
       setState('error')
       return
     }
+    playInFlightRef.current = true
     audio.play()
       .then(() => {
         setState('playing')
@@ -189,6 +177,9 @@ export function ArticleAudioPlayer({
       .catch(() => {
         stopAmbience()
         setState('error')
+      })
+      .finally(() => {
+        playInFlightRef.current = false
       })
   }
 
@@ -218,6 +209,7 @@ export function ArticleAudioPlayer({
 
   const pause = () => {
     audioRef.current?.pause()
+    playInFlightRef.current = false
     stopAmbience()
     setState('paused')
   }
@@ -227,6 +219,7 @@ export function ArticleAudioPlayer({
       audioRef.current.pause()
       audioRef.current.currentTime = 0
     }
+    playInFlightRef.current = false
     stopAmbience()
     setState('idle')
   }
@@ -236,6 +229,13 @@ export function ArticleAudioPlayer({
       setState('idle')
       return
     }
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+      audioRef.current.removeAttribute('src')
+      audioRef.current.load()
+    }
+    playInFlightRef.current = false
     startTransitionAmbience()
     setState('preparing')
     window.sessionStorage.setItem(CONTINUOUS_AUDIO_KEY, nextArticle.id)
@@ -281,9 +281,6 @@ export function ArticleAudioPlayer({
           onPlay={() => setState('playing')}
         />
       ) : null}
-      <audio ref={transitionAudioRef} preload="none" src={atmosphere.url} aria-hidden />
-      <audio ref={bedAudioRef} preload="none" src={atmosphere.url} aria-hidden />
-
       <div className={isHero ? 'flex items-center gap-3' : 'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'}>
         <div className="min-w-0">
           <p className="flex items-center gap-2 font-sans text-[10px] font-black uppercase tracking-[0.14em] text-primary">
