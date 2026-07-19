@@ -23,15 +23,15 @@ const SECTION_HELP: Record<string, string> = {
   top_stories:
     'Bloc « à la une » : par défaut, le site choisit l’article publié le plus lu sur les dernières 48 heures. Un article manuel peut servir d’override temporaire si une urgence éditoriale l’exige.',
   latest: 'Grille des derniers articles. `max_items` limite le nombre de cartes.',
-  trending: 'Articles triés par vues (`sort: views` dans le JSON avancé).',
-  video: 'Section carrousel ; utilisez le JSON pour un filtre par tag (ex. `"tag":"video"`).',
-  editors: 'Sélection courte type « rédaction ».',
+  trending: 'Rail des articles les plus consultés dans le pool d’accueil. `max_items` limite le nombre de cartes.',
+  video: 'Rail de cartes vidéo/audio ; utilisez le tag pour filtrer (ex. `"tag":"video"`).',
+  editors: 'Rail type « sélection de la rédaction » : cartes larges, défilement automatique, consultation rapide.',
   rubriques:
     'Bandes par rubrique (ordre des catégories reader). `max_per_strip` par rubrique. Le « layout » s’applique à chaque rubrique : liste, grille ou carrousel horizontal.',
   home_ad_mid:
-    'Encart publicitaire milieu de page (emplacement HOME_MID_1). Déplacez la ligne « ordre » pour le placer entre deux blocs éditoriaux. Le layout CMS est ignoré sur le site.',
+    'Carte publicitaire injectée dans le prochain rail d’articles. Quand elle arrive au centre, le rail marque une pause d’au moins 5 secondes.',
   home_ad_bottom:
-    'Encart publicitaire bas de page (emplacement HOME_BOTTOM). Même principe que milieu : l’ordre dans la liste définit où il apparaît. Le layout CMS est ignoré sur le site.',
+    'Carte publicitaire injectée dans le prochain rail d’articles. Déplacez l’ordre pour choisir après quelle section elle apparaît.',
   partnership_strip:
     'Bandeau au-dessus du footer sur tout le site lecteur (www), avec CTA vers brands.scoop-afrique.com. N’alimente pas la page d’accueil : uniquement on/off + texte d’aide ci-dessous.',
 }
