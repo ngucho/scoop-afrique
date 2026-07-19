@@ -44,7 +44,8 @@ const config = {
   maxAttempts: Number(process.env.TTS_WORKER_MAX_ATTEMPTS ?? 3),
   maxChars: Number(process.env.TTS_WORKER_MAX_CHARS ?? 12000),
   maxChunkChars: Number(process.env.TTS_WORKER_MAX_CHUNK_CHARS ?? 900),
-  batchSize: Number(process.env.TTS_WORKER_BATCH_SIZE ?? 2),
+  batchSize: Number(process.env.TTS_WORKER_BATCH_SIZE ?? 1),
+  staleJobMinutes: Number(process.env.TTS_WORKER_STALE_JOB_MINUTES ?? 12),
   cleanupLimit: Number(process.env.TTS_WORKER_CLEANUP_LIMIT ?? 10),
   outputFormat: (process.env.TTS_AUDIO_FORMAT ?? 'wav').toLowerCase() === 'mp3' ? 'mp3' : 'wav',
   ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
@@ -59,6 +60,7 @@ const supabase = createClient(config.supabaseUrl, config.supabaseServiceRoleKey,
   auth: { persistSession: false },
 })
 let backgroundJob: Promise<void> | null = null
+let activeJob = false
 
 function required(name: string): string {
   const value = process.env[name]?.trim()
@@ -155,7 +157,7 @@ async function claimJob(articleId?: string | null): Promise<ClaimedJob | null> {
       FROM article_audio_jobs
       WHERE (
           status IN ('queued', 'failed')
-          OR (status = 'processing' AND locked_at < now() - interval '20 minutes')
+          OR (status = 'processing' AND locked_at < now() - (${config.staleJobMinutes}::int * interval '1 minute'))
         )
         AND attempts < ${config.maxAttempts}
         AND (${articleId ?? null}::uuid IS NULL OR article_id = ${articleId ?? null}::uuid)
@@ -368,7 +370,7 @@ async function tick(): Promise<boolean> {
   return (await processOneJob()).processed
 }
 
-async function processBackgroundBatch(articleId?: string | null): Promise<void> {
+async function processBatch(articleId?: string | null): Promise<Array<Awaited<ReturnType<typeof processOneJob>>>> {
   const limit = articleId ? 1 : Math.max(1, Math.min(config.batchSize, 5))
   const results: Array<Awaited<ReturnType<typeof processOneJob>>> = []
 
@@ -379,6 +381,11 @@ async function processBackgroundBatch(articleId?: string | null): Promise<void> 
   }
 
   console.log(`[tts-worker] background batch results=${JSON.stringify(results)}`)
+  return results
+}
+
+async function processBackgroundBatch(articleId?: string | null): Promise<void> {
+  await processBatch(articleId)
 }
 
 function isUuid(value: string | null | undefined): value is string {
@@ -425,8 +432,35 @@ function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify(body))
+  if (res.writableEnded || res.destroyed) return
+  try {
+    res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
+    res.end(JSON.stringify(body))
+  } catch {
+    // The caller may have timed out while the synchronous job was still running.
+  }
+}
+
+async function runExclusive(
+  res: ServerResponse,
+  articleId?: string | null,
+): Promise<void> {
+  if (activeJob) {
+    sendJson(res, 202, { ok: true, mode: 'busy', started: false, articleId: articleId ?? undefined })
+    return
+  }
+
+  activeJob = true
+  try {
+    const results = await processBatch(articleId)
+    sendJson(res, 200, { ok: true, mode: 'sync', started: true, articleId: articleId ?? undefined, results })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[tts-worker] request fatal ${message}`)
+    sendJson(res, 500, { ok: false, error: message })
+  } finally {
+    activeJob = false
+  }
 }
 
 function isAuthorized(req: IncomingMessage): boolean {
@@ -450,8 +484,7 @@ function startHttpServer(): void {
       void readJsonBody(req).then((body) => {
         const requestedArticleId = typeof body.article_id === 'string' ? body.article_id : null
         const articleId = isUuid(requestedArticleId) ? requestedArticleId : null
-        const result = kickBackgroundJob(articleId)
-        sendJson(res, 202, { ok: true, mode: 'background', ...result })
+        void runExclusive(res, articleId)
       })
       return
     }
@@ -461,8 +494,7 @@ function startHttpServer(): void {
         sendJson(res, 401, { ok: false, error: 'Unauthorized' })
         return
       }
-      const result = kickBackgroundJob()
-      sendJson(res, 202, { ok: true, mode: 'background', ...result })
+      void runExclusive(res)
       return
     }
 

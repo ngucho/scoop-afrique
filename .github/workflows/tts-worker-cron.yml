@@ -9,7 +9,7 @@ on:
 jobs:
   process-one:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Trigger Piper batch
         env:
@@ -28,5 +28,5 @@ jobs:
             WORKER_URL="$WORKER_URL/process-batch"
           fi
 
-          curl --fail --silent --show-error --max-time 240 -X POST "$WORKER_URL" \
+          curl --fail --silent --show-error --max-time 840 -X POST "$WORKER_URL" \
             -H "Authorization: Bearer $TTS_WORKER_SECRET"
