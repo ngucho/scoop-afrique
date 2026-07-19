@@ -1152,13 +1152,13 @@ export async function incrementViewCount(articleId: string): Promise<void> {
   }
 }
 
-/** Article IDs with the most view events in the last `days` days (published only). */
-export async function listPublishedArticleIdsByRecentViewEvents(days: number, limit: number): Promise<string[]> {
+/** Article IDs with the most view events in the last `hours` hours (published only). */
+export async function listPublishedArticleIdsByRecentViewEventsHours(hours: number, limit: number): Promise<string[]> {
   if (!config.database) return []
   const db = getDb()
-  const d = Math.min(Math.max(days, 1), 90)
+  const h = Math.min(Math.max(hours, 1), 2160)
   const lim = Math.min(Math.max(limit, 1), 25)
-  const since = new Date(Date.now() - d * 86400000).toISOString()
+  const since = new Date(Date.now() - h * 3600000).toISOString()
   const rows = await db.execute(
     sql`
     SELECT e.article_id AS "article_id"
@@ -1174,6 +1174,11 @@ export async function listPublishedArticleIdsByRecentViewEvents(days: number, li
   )
   const list = rows as unknown as { article_id: string }[]
   return list.map((r) => r.article_id).filter(Boolean)
+}
+
+/** Article IDs with the most view events in the last `days` days (published only). */
+export async function listPublishedArticleIdsByRecentViewEvents(days: number, limit: number): Promise<string[]> {
+  return listPublishedArticleIdsByRecentViewEventsHours(days * 24, limit)
 }
 
 export async function listTopPublishedArticleIdsByAllTimeViews(limit: number): Promise<string[]> {
@@ -1195,6 +1200,18 @@ export async function getPublishedArticlesMostReadForHero(
   maxCandidates: number,
 ): Promise<PublicArticleCard[]> {
   let ids = await listPublishedArticleIdsByRecentViewEvents(days, maxCandidates)
+  if (ids.length === 0) {
+    ids = await listTopPublishedArticleIdsByAllTimeViews(maxCandidates)
+  }
+  return listPublishedArticleCardsByIds(ids)
+}
+
+/** For homepage hero fallback: recent view events in an exact hour window, then all-time view_count. */
+export async function getPublishedArticlesMostReadForHeroHours(
+  hours: number,
+  maxCandidates: number,
+): Promise<PublicArticleCard[]> {
+  let ids = await listPublishedArticleIdsByRecentViewEventsHours(hours, maxCandidates)
   if (ids.length === 0) {
     ids = await listTopPublishedArticleIdsByAllTimeViews(maxCandidates)
   }
