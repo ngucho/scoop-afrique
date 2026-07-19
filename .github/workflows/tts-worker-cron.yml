@@ -1,9 +1,6 @@
-name: TTS worker cron
+name: Ping Render TTS worker
 
 on:
-  schedule:
-    # Render Free can sleep; this keeps the Piper service warm enough for reader-triggered audio.
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:

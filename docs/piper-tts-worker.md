@@ -137,7 +137,40 @@ FFMPEG_PATH=ffmpeg
 
 The Dockerfile downloads `piper_linux_x86_64.tar.gz`, which is the Linux asset name published by Piper.
 
-### 3. Connect the Vercel backend to Render
+### 3. Preferred free execution: GitHub Actions generation
+
+Render Free can restart a long HTTP request while UPMC is still generating. The repo therefore includes `.github/workflows/tts-worker-generate.yml`, which runs the same Piper Docker image inside GitHub Actions and writes the generated MP3 to Supabase Storage.
+
+Add these GitHub repository secrets:
+
+```env
+DATABASE_URL=postgresql://...
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=...
+```
+
+The workflow runs every 5 minutes and can also be started manually from GitHub Actions. Manual inputs:
+
+- `article_id`: optional article UUID to process first.
+- `batch_size`: number of queued articles to process when no `article_id` is provided. Default: `4`.
+
+For immediate generation when a reader clicks Play, create a GitHub fine-grained token with repository Actions write access, then set this on the Vercel backend:
+
+```env
+GITHUB_TTS_DISPATCH_TOKEN=github_pat_...
+GITHUB_TTS_OWNER=ngucho
+GITHUB_TTS_REPO=scoop-afrique
+GITHUB_TTS_WORKFLOW=tts-worker-generate.yml
+GITHUB_TTS_REF=main
+```
+
+If `GITHUB_TTS_DISPATCH_TOKEN` is not configured, the backend only queues the job and the scheduled workflow will process it on the next run.
+
+### 4. Optional Render trigger
+
+Render can still be used for manual tests or on a paid instance. On Render Free with UPMC, do not use it as the scheduled queue processor because it can restart before upload.
+
+To connect the Vercel backend to Render, set:
 
 Set these variables on the Vercel backend project:
 
@@ -146,25 +179,20 @@ TTS_WORKER_URL=https://<your-render-service>.onrender.com
 TTS_WORKER_SECRET=<same-value-as-render>
 ```
 
-The backend calls `POST /process-one` when a reader clicks Play and no fresh audio exists. The worker keeps the HTTP request open while Piper runs so Render Free does not stop background work after a quick `202` response.
+The backend calls `POST /process-one` when a reader clicks Play and no fresh audio exists. If `GITHUB_TTS_DISPATCH_TOKEN` is also configured, GitHub Actions is used first and Render is only a fallback.
 
-### 4. Trigger processing
+### 5. Trigger processing
 
-Render Free web services sleep after inactivity, so use an external free cron/ping service to call:
+The preferred cron is `.github/workflows/tts-worker-generate.yml`; it runs every 5 minutes and consumes queued jobs directly.
+
+For a Render manual test:
 
 ```text
 POST https://<your-render-service>.onrender.com/process-batch
 Authorization: Bearer <TTS_WORKER_SECRET>
 ```
 
-Suggested frequency:
-
-- every 5 minutes while testing or after bulk publishing;
-- every 15 minutes if article volume is low.
-
-Free cron options include GitHub Actions scheduled workflow or cron-job.org.
-
-### 5. Manual test
+### 6. Manual test
 
 After publishing an article, trigger one job:
 
@@ -185,14 +213,14 @@ Expected response when the queue is empty:
 { "ok": true, "processed": false, "status": "none" }
 ```
 
-### 6. GitHub Actions cron option
+### 7. Legacy Render ping workflow
 
 Add repository secrets:
 
 - `TTS_WORKER_URL`: `https://<your-render-service>.onrender.com/process-one`
 - `TTS_WORKER_SECRET`: the same value as Render.
 
-The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render every 5 minutes. It safely skips execution until both secrets exist.
+The repo includes `.github/workflows/tts-worker-cron.yml`, which can be run manually to ping Render. It is intentionally not scheduled because the direct GitHub Actions generator is more reliable for the UPMC voice on free infrastructure.
 
 ## Production Notes
 
@@ -205,4 +233,4 @@ The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render ev
 - Generated audio expires 5 days after the last playback. Each playback calls the backend and extends the expiration by 5 days.
 - The worker deletes expired Supabase audio files before processing new jobs. If a reader opens the article later, the backend requeues audio generation and the player waits for Piper.
 - If Piper fails, the article remains readable and the player shows a calm retry message.
-- Render Free is acceptable for low volume, but not production-grade. If audio volume grows, move the same Docker service to Render paid worker, Railway Hobby, or a small VPS.
+- Render Free is acceptable for health checks and light manual tests, but not reliable for long UPMC synthesis. The free production path is GitHub Actions queue generation; if audio volume grows, move the same Docker service to Render paid worker, Railway Hobby, or a small VPS.
