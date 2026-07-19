@@ -46,10 +46,10 @@ export function ArticleAudioPlayer({
   }
 
   const waitForPreparedAudio = async (): Promise<string | null> => {
-    for (let attempt = 0; attempt < 12; attempt += 1) {
+    for (let attempt = 0; attempt < 36; attempt += 1) {
       const nextUrl = await requestAudio()
       if (nextUrl) return nextUrl
-      await wait(attempt < 3 ? 4000 : 7000)
+      await wait(attempt < 3 ? 4000 : 10000)
     }
     return null
   }
@@ -63,7 +63,10 @@ export function ArticleAudioPlayer({
     setState('preparing')
     try {
       const nextUrl = await waitForPreparedAudio()
-      if (!nextUrl) return
+      if (!nextUrl) {
+        setState('idle')
+        return
+      }
       window.setTimeout(() => {
         audioRef.current?.play().then(() => setState('playing')).catch(() => setState('error'))
       }, 0)
