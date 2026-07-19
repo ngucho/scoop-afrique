@@ -177,9 +177,10 @@ Set these variables on the Vercel backend project:
 ```env
 TTS_WORKER_URL=https://<your-render-service>.onrender.com
 TTS_WORKER_SECRET=<same-value-as-render>
+TTS_RENDER_FALLBACK_ENABLED=true
 ```
 
-The backend calls `POST /process-one` when a reader clicks Play and no fresh audio exists. If `GITHUB_TTS_DISPATCH_TOKEN` is also configured, GitHub Actions is used first and Render is only a fallback.
+The backend calls `POST /process-one` when a reader clicks Play and no fresh audio exists only when `TTS_RENDER_FALLBACK_ENABLED=true`. If `GITHUB_TTS_DISPATCH_TOKEN` is configured, GitHub Actions is used first and Render is only a fallback.
 
 ### 5. Trigger processing
 

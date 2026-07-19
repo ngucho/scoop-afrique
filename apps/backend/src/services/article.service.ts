@@ -885,8 +885,8 @@ async function triggerArticleAudioWorker(articleId?: string): Promise<void> {
     }
   }
 
-  if (!config.ttsWorker) {
-    console.warn(`[article-audio] worker trigger skipped article=${articleId ?? 'none'} reason=missing_tts_worker_config`)
+  if (!config.ttsWorker || !config.ttsWorker.fallbackEnabled) {
+    console.warn(`[article-audio] worker trigger skipped article=${articleId ?? 'none'} reason=github_dispatch_not_configured`)
     return
   }
   try {

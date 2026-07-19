@@ -43,7 +43,7 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
 
-Render HTTP triggering remains available through `TTS_WORKER_URL` and `TTS_WORKER_SECRET`, but it should not be the primary free path for the UPMC voice because Render Free can restart before long audio generation finishes.
+Render HTTP triggering remains available through `TTS_WORKER_URL`, `TTS_WORKER_SECRET`, and `TTS_RENDER_FALLBACK_ENABLED=true`, but it should not be the primary free path for the UPMC voice because Render Free can restart before long audio generation finishes.
 
 ## UX
 
