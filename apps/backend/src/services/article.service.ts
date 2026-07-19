@@ -1081,7 +1081,7 @@ export async function listPublishedArticleIdsByRecentViewEvents(days: number, li
   const db = getDb()
   const d = Math.min(Math.max(days, 1), 90)
   const lim = Math.min(Math.max(limit, 1), 25)
-  const since = new Date(Date.now() - d * 86400000)
+  const since = new Date(Date.now() - d * 86400000).toISOString()
   const rows = await db.execute(
     sql`
     SELECT e.article_id AS "article_id"
