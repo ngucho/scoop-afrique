@@ -9,6 +9,7 @@ import { config } from '@/lib/config'
 import { buildHomeSections } from '@/lib/homeSections'
 import { buildEditorialHomeModel, articlesFromHomeBlocks } from '@/lib/editorialHomeModel'
 import type { Article } from '@/lib/api/types'
+import { articleDateLine, mediaCreditLine } from '@/lib/articleDisplayMeta'
 
 export const revalidate = 30
 
@@ -105,6 +106,8 @@ function SearchDock({ categories }: { categories: { name: string; href: string }
 
 function HeroRead({ article, nextArticle }: { article: Article; nextArticle?: Article }) {
   const image = articleImage(article)
+  const dateLine = articleDateLine(article)
+  const creditLine = mediaCreditLine(article)
 
   return (
     <section className="relative overflow-hidden bg-background">
@@ -131,6 +134,12 @@ function HeroRead({ article, nextArticle }: { article: Article; nextArticle?: Ar
           {article.excerpt ? (
             <p className="mt-6 line-clamp-2 max-w-xl text-base leading-7 text-muted-foreground sm:line-clamp-none sm:text-lg">
               {article.excerpt}
+            </p>
+          ) : null}
+
+          {dateLine ? (
+            <p className="mt-4 max-w-xl font-sans text-xs font-semibold leading-5 text-muted-foreground">
+              {dateLine}
             </p>
           ) : null}
 
@@ -187,6 +196,11 @@ function HeroRead({ article, nextArticle }: { article: Article; nextArticle?: Ar
                 <ArrowRight className="h-5 w-5" aria-hidden />
               </span>
             </div>
+            {creditLine ? (
+              <p className="mt-3 max-w-full truncate font-sans text-[10px] font-semibold text-background/58">
+                {creditLine}
+              </p>
+            ) : null}
           </div>
         </Link>
       </div>
@@ -229,7 +243,9 @@ function ArticlePoster({ article, priority = false }: { article: Article; priori
             {article.category?.name ?? 'Story'}
           </div>
           <div className="absolute bottom-4 left-4 right-4">
-            <p className="font-sans text-xs font-bold text-background/70">{readingTime(article)} min</p>
+            <p className="font-sans text-xs font-bold text-background/70">
+              {formatDate(article.published_at ?? article.updated_at)} / {readingTime(article)} min
+            </p>
             <h3
               className="mt-2 line-clamp-3 text-2xl font-black leading-[1.02] text-background"
               style={{ fontFamily: 'var(--font-headline)' }}
@@ -302,7 +318,9 @@ function QueueList({ articles }: { articles: Article[] }) {
               </span>
               <span className="mt-1 block text-lg font-black leading-snug text-foreground">{article.title}</span>
             </span>
-            <span className="font-sans text-xs font-bold text-muted-foreground">{readingTime(article)} min</span>
+            <span className="font-sans text-xs font-bold text-muted-foreground">
+              {formatDate(article.published_at ?? article.updated_at)} / {readingTime(article)} min
+            </span>
           </Link>
         ))}
       </div>
