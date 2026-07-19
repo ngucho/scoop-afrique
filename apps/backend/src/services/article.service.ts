@@ -823,15 +823,52 @@ export async function enqueueArticleAudioJob(
       target: articleAudioJobs.articleId,
       set: {
         reason,
-        status: 'queued',
-        attempts: 0,
-        lastError: null,
-        lockedAt: null,
-        startedAt: null,
-        finishedAt: null,
+        status: sql`CASE
+          WHEN ${articleAudioJobs.status} IN ('queued', 'processing') THEN ${articleAudioJobs.status}
+          ELSE 'queued'::article_audio_job_status
+        END`,
+        attempts: sql`CASE
+          WHEN ${articleAudioJobs.status} IN ('queued', 'processing') THEN ${articleAudioJobs.attempts}
+          ELSE 0
+        END`,
+        lastError: sql`CASE
+          WHEN ${articleAudioJobs.status} IN ('queued', 'processing') THEN ${articleAudioJobs.lastError}
+          ELSE NULL
+        END`,
+        lockedAt: sql`CASE
+          WHEN ${articleAudioJobs.status} IN ('queued', 'processing') THEN ${articleAudioJobs.lockedAt}
+          ELSE NULL
+        END`,
+        startedAt: sql`CASE
+          WHEN ${articleAudioJobs.status} IN ('queued', 'processing') THEN ${articleAudioJobs.startedAt}
+          ELSE NULL
+        END`,
+        finishedAt: sql`CASE
+          WHEN ${articleAudioJobs.status} IN ('queued', 'processing') THEN ${articleAudioJobs.finishedAt}
+          ELSE NULL
+        END`,
         updatedAt: new Date(),
       },
     })
+}
+
+async function triggerArticleAudioWorker(): Promise<void> {
+  if (!config.ttsWorker) return
+  try {
+    const response = await fetch(`${config.ttsWorker.url}/process-one`, {
+      method: 'POST',
+      headers: config.ttsWorker.secret
+        ? { Authorization: `Bearer ${config.ttsWorker.secret}` }
+        : undefined,
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!response.ok) {
+      console.warn(`[article-audio] worker trigger failed status=${response.status}`)
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`[article-audio] worker trigger failed: ${message}`)
+  }
 }
 
 export async function markArticleAudioAccess(
@@ -861,6 +898,7 @@ export async function markArticleAudioAccess(
 
   if (!fresh) {
     await enqueueArticleAudioJob(article.id, 'manual')
+    await triggerArticleAudioWorker()
     return { available: false, audio_url: null }
   }
 
