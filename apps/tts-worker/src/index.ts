@@ -44,6 +44,7 @@ const config = {
   maxAttempts: Number(process.env.TTS_WORKER_MAX_ATTEMPTS ?? 3),
   maxChars: Number(process.env.TTS_WORKER_MAX_CHARS ?? 12000),
   maxChunkChars: Number(process.env.TTS_WORKER_MAX_CHUNK_CHARS ?? 900),
+  batchSize: Number(process.env.TTS_WORKER_BATCH_SIZE ?? 2),
   cleanupLimit: Number(process.env.TTS_WORKER_CLEANUP_LIMIT ?? 10),
   outputFormat: (process.env.TTS_AUDIO_FORMAT ?? 'wav').toLowerCase() === 'mp3' ? 'mp3' : 'wav',
   ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
@@ -140,7 +141,7 @@ function runProcess(command: string, args: string[], input?: string): Promise<vo
   })
 }
 
-async function claimJob(): Promise<ClaimedJob | null> {
+async function claimJob(articleId?: string | null): Promise<ClaimedJob | null> {
   const rows = await sql<ClaimedJob[]>`
     UPDATE article_audio_jobs
     SET status = 'processing',
@@ -157,6 +158,7 @@ async function claimJob(): Promise<ClaimedJob | null> {
           OR (status = 'processing' AND locked_at < now() - interval '20 minutes')
         )
         AND attempts < ${config.maxAttempts}
+        AND (${articleId ?? null}::uuid IS NULL OR article_id = ${articleId ?? null}::uuid)
       ORDER BY created_at ASC
       FOR UPDATE SKIP LOCKED
       LIMIT 1
@@ -344,10 +346,10 @@ async function processJob(job: ClaimedJob): Promise<void> {
   }
 }
 
-async function processOneJob(): Promise<{ processed: boolean; jobId?: string; articleId?: string; status: JobStatus | 'none'; error?: string }> {
+async function processOneJob(articleId?: string | null): Promise<{ processed: boolean; jobId?: string; articleId?: string; status: JobStatus | 'none'; error?: string }> {
   await cleanupExpiredAudio()
-  const job = await claimJob()
-  if (!job) return { processed: false, status: 'none' }
+  const job = await claimJob(articleId)
+  if (!job) return { processed: false, articleId: articleId ?? undefined, status: 'none' }
   try {
     console.log(`[tts-worker] processing article=${job.article_id} job=${job.id}`)
     await processJob(job)
@@ -366,12 +368,26 @@ async function tick(): Promise<boolean> {
   return (await processOneJob()).processed
 }
 
-function kickBackgroundJob(): { started: boolean } {
-  if (backgroundJob) return { started: false }
-  backgroundJob = processOneJob()
-    .then((result) => {
-      console.log(`[tts-worker] background result=${JSON.stringify(result)}`)
-    })
+async function processBackgroundBatch(articleId?: string | null): Promise<void> {
+  const limit = articleId ? 1 : Math.max(1, Math.min(config.batchSize, 5))
+  const results: Array<Awaited<ReturnType<typeof processOneJob>>> = []
+
+  for (let index = 0; index < limit; index += 1) {
+    const result = await processOneJob(index === 0 ? articleId : null)
+    results.push(result)
+    if (!result.processed) break
+  }
+
+  console.log(`[tts-worker] background batch results=${JSON.stringify(results)}`)
+}
+
+function isUuid(value: string | null | undefined): value is string {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value ?? '')
+}
+
+function kickBackgroundJob(articleId?: string | null): { started: boolean; articleId?: string } {
+  if (backgroundJob) return { started: false, articleId: articleId ?? undefined }
+  backgroundJob = processBackgroundBatch(articleId)
     .catch((error) => {
       const message = error instanceof Error ? error.message : String(error)
       console.error(`[tts-worker] background fatal ${message}`)
@@ -380,6 +396,32 @@ function kickBackgroundJob(): { started: boolean } {
       backgroundJob = null
     })
   return { started: true }
+}
+
+function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve) => {
+    let body = ''
+    req.on('data', (chunk) => {
+      body += chunk
+      if (body.length > 4096) {
+        body = ''
+        req.destroy()
+      }
+    })
+    req.on('end', () => {
+      if (!body.trim()) {
+        resolve({})
+        return
+      }
+      try {
+        const parsed = JSON.parse(body) as Record<string, unknown>
+        resolve(parsed && typeof parsed === 'object' ? parsed : {})
+      } catch {
+        resolve({})
+      }
+    })
+    req.on('error', () => resolve({}))
+  })
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -401,6 +443,20 @@ function startHttpServer(): void {
     }
 
     if (req.method === 'POST' && req.url === '/process-one') {
+      if (!isAuthorized(req)) {
+        sendJson(res, 401, { ok: false, error: 'Unauthorized' })
+        return
+      }
+      void readJsonBody(req).then((body) => {
+        const requestedArticleId = typeof body.article_id === 'string' ? body.article_id : null
+        const articleId = isUuid(requestedArticleId) ? requestedArticleId : null
+        const result = kickBackgroundJob(articleId)
+        sendJson(res, 202, { ok: true, mode: 'background', ...result })
+      })
+      return
+    }
+
+    if (req.method === 'POST' && req.url === '/process-batch') {
       if (!isAuthorized(req)) {
         sendJson(res, 401, { ok: false, error: 'Unauthorized' })
         return
