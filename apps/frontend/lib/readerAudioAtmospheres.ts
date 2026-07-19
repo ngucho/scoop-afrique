@@ -1,10 +1,12 @@
-const ASSET_BASE_URL = process.env.NEXT_PUBLIC_READER_AUDIO_ASSETS_BASE_URL?.replace(/\/$/, '')
+const DEFAULT_ASSET_BASE_URL =
+  'https://tgotzuqlashlnxjtnrwq.supabase.co/storage/v1/object/public/reader-audio-assets/ambiences'
+
+const ASSET_BASE_URL =
+  process.env.NEXT_PUBLIC_READER_AUDIO_ASSETS_BASE_URL?.replace(/\/$/, '') ?? DEFAULT_ASSET_BASE_URL
 
 function audioAsset(filename: string) {
   const encodedFilename = filename.split('/').map(encodeURIComponent).join('/')
-  return ASSET_BASE_URL
-    ? `${ASSET_BASE_URL}/${encodedFilename}`
-    : `/audio/ambiences/${encodedFilename}`
+  return `${ASSET_BASE_URL}/${encodedFilename}`
 }
 
 export interface ReaderAudioAtmosphere {
