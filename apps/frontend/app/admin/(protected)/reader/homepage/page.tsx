@@ -8,8 +8,8 @@ import { HomepageSectionEditor } from './HomepageSectionEditor'
 
 const LAYOUT_LABELS: Record<string, string> = {
   featured_grid: 'Grille mise en avant',
-  list: 'Liste',
-  carousel: 'Carrousel',
+  list: 'Liste éditoriale (une seule fois)',
+  carousel: 'Rail de cartes',
 }
 
 export default async function ReaderHomepagePage() {
@@ -31,9 +31,9 @@ export default async function ReaderHomepagePage() {
               Configuration de l&apos;accueil
             </Heading>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Pilotez l&apos;ordre, la visibilité, les titres, les formats et les limites des sections affichées sur la
-              homepage lecteur. La section <strong className="font-medium text-foreground">À la une</strong> est alignée
-              sur les articles les plus lus des dernières 48 heures, avec un override manuel temporaire si nécessaire.
+              Pilotez l&apos;ordre, la visibilité, les titres et les rails d&apos;articles affichés sur la homepage lecteur.
+              L&apos;expérience publique reste proche d&apos;une plateforme de streaming : grandes cartes qui défilent,
+              sélection récente, articles consultés récemment et publicités injectées dans les rails.
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-3 lg:w-[420px]">
