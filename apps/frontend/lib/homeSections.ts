@@ -4,7 +4,8 @@ import { apiGet } from '@/lib/api/client'
 import { READER_CATEGORIES } from '@/lib/readerCategories'
 import { AD_SLOT_KEYS, type AdSlotKey } from '@/lib/readerAds'
 
-const POOL = 48
+const POOL = 72
+const MIN_RAIL_ITEMS = 9
 
 export type HomeInlineAdSlotKey = Extract<AdSlotKey, 'HOME_MID_1' | 'HOME_BOTTOM'>
 
@@ -75,6 +76,22 @@ function takeUnique(articles: Article[], exclude: Set<string>, n: number): Artic
     if (out.length >= n) break
   }
   return out
+}
+
+function takeLocalUnique(articles: Article[], n: number, exclude = new Set<string>()): Article[] {
+  const seen = new Set<string>(exclude)
+  const out: Article[] = []
+  for (const a of articles) {
+    if (seen.has(a.id)) continue
+    seen.add(a.id)
+    out.push(a)
+    if (out.length >= n) break
+  }
+  return out
+}
+
+function railLimit(config: Record<string, unknown> | undefined, key: string, fallback: number): number {
+  return Math.max(MIN_RAIL_ITEMS, numConfig(config, key, fallback))
 }
 
 function numConfig(config: Record<string, unknown> | undefined, key: string, fallback: number): number {
@@ -236,7 +253,7 @@ export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
         break
       }
       case 'latest': {
-        const maxLatest = numConfig(row.config, 'max_items', 10)
+        const maxLatest = railLimit(row.config, 'max_items', 10)
         const latest = takeUnique(excludeIds(articles, used), used, maxLatest)
         if (latest.length === 0) break
         blocks.push({
@@ -251,9 +268,9 @@ export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
       }
       case 'video': {
         const videoTag = strConfig(row.config, 'tag', 'video')
-        const maxVideo = numConfig(row.config, 'max_items', 8)
+        const maxVideo = railLimit(row.config, 'max_items', 8)
         const videoPool = [...articles].sort(byViewCount).filter((a) => articleMatchesVideoSection(a, videoTag))
-        const videoArticles = takeUnique(excludeIds(videoPool, used), used, maxVideo)
+        const videoArticles = takeLocalUnique(videoPool, maxVideo)
         if (videoArticles.length === 0) break
         blocks.push({
           type: 'articles',
@@ -266,9 +283,9 @@ export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
         break
       }
       case 'trending': {
-        const maxTrend = numConfig(row.config, 'max_items', 5)
+        const maxTrend = railLimit(row.config, 'max_items', 9)
         const trendingPool = [...articles].sort(byViewCount)
-        const trending = takeUnique(excludeIds(trendingPool, used), used, maxTrend)
+        const trending = takeLocalUnique(trendingPool, maxTrend, used)
         if (trending.length === 0) break
         blocks.push({
           type: 'articles',
@@ -281,8 +298,8 @@ export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
         break
       }
       case 'editors': {
-        const maxEditors = numConfig(row.config, 'max_items', 4)
-        const editorsPicks = takeUnique(excludeIds(articles, used), used, maxEditors)
+        const maxEditors = railLimit(row.config, 'max_items', 9)
+        const editorsPicks = takeLocalUnique(articles, maxEditors, used)
         if (editorsPicks.length === 0) break
         blocks.push({
           type: 'articles',
@@ -296,11 +313,11 @@ export async function buildHomeSections(): Promise<BuildHomeSectionsResult> {
       }
       case 'rubriques': {
         const strips: { slug: string; label: string; articles: Article[] }[] = []
-        const perStrip = numConfig(row.config, 'max_per_strip', 2)
+        const perStrip = railLimit(row.config, 'max_per_strip', 9)
         for (const rc of READER_CATEGORIES.slice(0, 6)) {
           if (!categorySlugSet.has(rc.slug)) continue
           const inCat = articles.filter((a) => a.category?.slug === rc.slug)
-          const picked = takeUnique(excludeIds(inCat, used), used, perStrip)
+          const picked = takeLocalUnique(inCat, perStrip)
           if (picked.length === 0) continue
           strips.push({ slug: rc.slug, label: rc.label, articles: picked })
         }
