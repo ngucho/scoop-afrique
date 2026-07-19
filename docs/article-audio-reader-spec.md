@@ -2,49 +2,46 @@
 
 ## Goal
 
-Give readers a “listen” option on every published article without adding a paid dependency or server-side audio generation pipeline.
+Give readers a "listen" option on every published article using Scoop Afrique's Piper-generated voice. The reader must never fall back to browser or device voices.
 
 ## Constraints
 
-- No paid service and no external TTS API.
-- Fast start: playback must begin from the browser without waiting for audio file generation.
-- Reliable on low bandwidth: no audio download is required after the page loads.
-- Accessible: keyboard controls, clear labels, and no autoplay.
-- African audience: prioritize available French and African-locale browser voices when present, while allowing the reader to choose and persist a preferred voice.
+- No paid TTS service and no external TTS API.
+- No browser `speechSynthesis` fallback.
+- No autoplay; audio generation starts only after a reader clicks Play.
+- Reliable on mobile networks: generated files use compressed audio when available.
+- Calm UX while audio is being prepared.
 
 ## Technical Approach
 
-- Use the browser Web Speech API (`window.speechSynthesis`).
-- Extract article title, excerpt, and TipTap body into plain text server-side.
-- Send plain text to a client component.
-- Split long article text into sentence-aware chunks before playback.
-- Store voice, rate, and pitch preferences in `localStorage`.
-- If Web Speech API or voices are unavailable, show a clear fallback message instead of failing silently.
+- The frontend calls `POST /api/v1/articles/:id/audio-access` when the reader clicks Play.
+- The backend checks whether a fresh `articles.audio_url` exists.
+- If audio exists, the frontend plays it with a native `<audio>` element.
+- If audio is missing or expired, the backend enqueues one `article_audio_jobs` row and triggers the Piper worker through `TTS_WORKER_URL`.
+- The Piper worker runs on Render, generates the audio, uploads it to Supabase Storage, and updates `articles.audio_url`.
+- The frontend polls the same access endpoint briefly and starts playback when the generated file becomes available.
 
-## Voice Strategy
+## Backend Environment
 
-Browser TTS voices depend on the reader device and OS. The app ranks voices as follows:
+The Vercel backend must know where the Render Piper worker lives:
 
-1. Reader's saved voice.
-2. African-locale voices if exposed by the OS/browser (`fr-*`, `en-ZA`, `en-NG`, `en-KE`, etc.).
-3. French voices (`fr-FR`, `fr-CA`, `fr-BE`, `fr-CH`).
-4. Any available local voice.
+```env
+TTS_WORKER_URL=https://scoop-tts-image.onrender.com
+TTS_WORKER_SECRET=same-secret-as-render-worker
+```
 
-This avoids paid cloud TTS while letting readers select the best voice available on their own device.
+`TTS_WORKER_SECRET` must match the value configured on Render. If the Render worker has no secret, the backend variable can be omitted, but production should use a secret.
 
 ## UX
 
-- Compact audio module appears near article actions.
-- Primary button toggles play/pause/resume.
-- Stop button resets playback.
-- Progress shows current chunk over total chunks.
-- Advanced controls expose voice, speed, and tone.
+- The player appears as a compact article control.
+- Play starts existing audio immediately or starts preparation.
+- During generation, the player says: "Nous preparons la version audio de cet article. Elle sera disponible dans quelques instants."
+- No technical segment count is shown to readers.
+- No device voice settings are exposed.
 
-## Manual Setup
+## Expiration
 
-- No API key is required.
-- For best results, install high-quality French voices on test devices:
-  - Windows: Settings > Time & language > Speech > Manage voices.
-  - macOS/iOS: System Settings > Accessibility > Spoken Content > System Voice.
-  - Android: Settings > Accessibility or Text-to-speech output.
-- Test on Chrome/Edge Android and desktop Chrome/Edge because available voices differ by platform.
+- Generated audio expires 5 days after the last playback.
+- Each successful audio access extends expiration by 5 days.
+- If an expired file has been cleaned up, a later Play click requeues generation.
