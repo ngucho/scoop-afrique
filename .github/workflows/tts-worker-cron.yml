@@ -3,7 +3,7 @@ name: TTS worker cron
 on:
   schedule:
     # Render Free can sleep; this keeps the Piper service warm enough for reader-triggered audio.
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Trigger one Piper job
+      - name: Trigger Piper batch
         env:
           TTS_WORKER_URL: ${{ secrets.TTS_WORKER_URL }}
           TTS_WORKER_SECRET: ${{ secrets.TTS_WORKER_SECRET }}
@@ -22,8 +22,10 @@ jobs:
           fi
 
           WORKER_URL="${TTS_WORKER_URL%/}"
-          if [ "${WORKER_URL##*/}" != "process-one" ]; then
-            WORKER_URL="$WORKER_URL/process-one"
+          if [ "${WORKER_URL##*/}" = "process-one" ]; then
+            WORKER_URL="${WORKER_URL%/process-one}/process-batch"
+          elif [ "${WORKER_URL##*/}" != "process-batch" ]; then
+            WORKER_URL="$WORKER_URL/process-batch"
           fi
 
           curl --fail --silent --show-error --max-time 240 -X POST "$WORKER_URL" \
