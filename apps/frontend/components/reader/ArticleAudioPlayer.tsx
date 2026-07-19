@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Pause, Play, Radio, Square, Volume2 } from 'lucide-react'
-import { config } from '@/lib/config'
 import { readerAudioAtmosphereForCategory } from '@/lib/readerAudioAtmospheres'
 
-type PlaybackState = 'idle' | 'playing' | 'paused' | 'preparing' | 'error'
+type PlaybackState = 'idle' | 'playing' | 'paused' | 'preparing' | 'queued' | 'error'
 
 type NextAudioArticle = {
   id: string
@@ -38,6 +37,7 @@ export function ArticleAudioPlayer({
   const [preparedAudioUrl, setPreparedAudioUrl] = useState<string | null>(audioUrl ?? null)
   const [ambienceEnabled, setAmbienceEnabled] = useState(true)
   const [nextAudioQueued, setNextAudioQueued] = useState(Boolean(nextArticle?.audio_url))
+  const [prepareAttempt, setPrepareAttempt] = useState(0)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const transitionAudioRef = useRef<HTMLAudioElement | null>(null)
   const bedAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -75,32 +75,55 @@ export function ArticleAudioPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId])
 
+  const stopAmbience = () => {
+    const transition = transitionAudioRef.current
+    const bed = bedAudioRef.current
+    transition?.pause()
+    bed?.pause()
+  }
+
+  const startTransitionAmbience = () => {
+    if (!ambienceEnabled) return
+    const transition = transitionAudioRef.current
+    const bed = bedAudioRef.current
+    if (!transition) return
+    bed?.pause()
+    transition.volume = 0.28
+    transition.loop = true
+    if (transition.paused) transition.currentTime = 0
+    void transition.play().catch(() => {})
+  }
+
+  const startBedAmbience = () => {
+    if (!ambienceEnabled) return
+    const transition = transitionAudioRef.current
+    const bed = bedAudioRef.current
+    if (!bed) return
+    transition?.pause()
+    bed.volume = 0.07
+    bed.loop = true
+    void bed.play().catch(() => {})
+  }
+
   useEffect(() => {
     const transition = transitionAudioRef.current
     const bed = bedAudioRef.current
     if (!transition || !bed) return
 
-    transition.volume = 0.2
-    transition.loop = true
-    bed.volume = 0.045
-    bed.loop = true
-
     if (!ambienceEnabled) {
-      transition.pause()
-      bed.pause()
+      stopAmbience()
       return
     }
 
     if (state === 'preparing') {
-      bed.pause()
-      void transition.play().catch(() => {})
+      startTransitionAmbience()
     } else if (state === 'playing') {
-      transition.pause()
-      void bed.play().catch(() => {})
+      startBedAmbience()
     } else {
-      transition.pause()
-      bed.pause()
+      stopAmbience()
     }
+    // Ambience helpers intentionally read refs and the current toggle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ambienceEnabled, state])
 
   const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
@@ -109,9 +132,11 @@ export function ArticleAudioPlayer({
     targetArticleId = articleId,
     updateCurrent = targetArticleId === articleId,
   ): Promise<string | null> => {
-    const response = await fetch(`${config.apiBaseUrl}/api/v1/articles/${encodeURIComponent(targetArticleId)}/audio-access`, {
+    const response = await fetch('/api/reader-bff/article-audio-access', {
       method: 'POST',
-      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ article_id: targetArticleId }),
+      cache: 'no-store',
     })
     if (!response.ok) throw new Error('audio-access failed')
     const payload = (await response.json()) as {
@@ -134,37 +159,60 @@ export function ArticleAudioPlayer({
   }
 
   const waitForPreparedAudio = async (): Promise<string | null> => {
-    for (let attempt = 0; attempt < 36; attempt += 1) {
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      setPrepareAttempt(attempt + 1)
       const nextUrl = await requestAudio()
       if (nextUrl) return nextUrl
-      await wait(attempt < 3 ? 4000 : 10000)
+      await wait(attempt < 3 ? 3000 : 6000)
     }
     return null
   }
 
+  const playCurrentAudio = () => {
+    const audio = audioRef.current
+    if (!audio) {
+      stopAmbience()
+      setState('error')
+      return
+    }
+    audio.play()
+      .then(() => {
+        setState('playing')
+        startBedAmbience()
+      })
+      .catch(() => {
+        stopAmbience()
+        setState('error')
+      })
+  }
+
   const play = async () => {
     if (currentAudioUrl && audioRef.current) {
-      audioRef.current.play().then(() => setState('playing')).catch(() => setState('error'))
+      playCurrentAudio()
       return
     }
 
+    setPrepareAttempt(0)
+    startTransitionAmbience()
     setState('preparing')
     try {
       const nextUrl = await waitForPreparedAudio()
       if (!nextUrl) {
-        setState('idle')
+        setState('queued')
         return
       }
       window.setTimeout(() => {
-        audioRef.current?.play().then(() => setState('playing')).catch(() => setState('error'))
+        playCurrentAudio()
       }, 0)
     } catch {
+      stopAmbience()
       setState('error')
     }
   }
 
   const pause = () => {
     audioRef.current?.pause()
+    stopAmbience()
     setState('paused')
   }
 
@@ -173,6 +221,7 @@ export function ArticleAudioPlayer({
       audioRef.current.pause()
       audioRef.current.currentTime = 0
     }
+    stopAmbience()
     setState('idle')
   }
 
@@ -195,12 +244,14 @@ export function ArticleAudioPlayer({
 
   const helperText =
     state === 'preparing'
-      ? "Nous préparons la version audio. Une ambiance douce reste en fond pendant l'attente."
-      : state === 'error'
-        ? "Nous n'avons pas pu lancer l'audio pour le moment. Réessayez dans un instant."
-        : currentAudioUrl
-          ? 'Voix Scoop générée avec Piper, accompagnée discrètement.'
-          : "La version audio n'est pas encore prête. Nous la préparons dès que vous la demandez."
+      ? `Nous préparons la version audio avec Piper. Une ambiance douce reste en fond pendant l'attente${prepareAttempt ? ` (${prepareAttempt}/16)` : ''}.`
+      : state === 'queued'
+        ? 'La génération est bien lancée et continue en arrière-plan. Vous pouvez réessayer dans un instant.'
+        : state === 'error'
+          ? "Nous n'avons pas pu lancer l'audio pour le moment. Réessayez dans un instant."
+          : currentAudioUrl
+            ? 'Voix Scoop générée avec Piper, accompagnée discrètement.'
+            : "La version audio n'est pas encore prête. Nous la préparons dès que vous la demandez."
 
   return (
     <section
@@ -277,7 +328,7 @@ export function ArticleAudioPlayer({
             ) : (
               <Play className="h-4 w-4" aria-hidden />
             )}
-            {isHero ? null : state === 'preparing' ? 'Préparation' : state === 'playing' ? 'Pause' : state === 'paused' ? 'Reprendre' : 'Ecouter'}
+            {isHero ? null : state === 'preparing' ? 'Préparation' : state === 'playing' ? 'Pause' : state === 'paused' ? 'Reprendre' : state === 'queued' ? 'Réessayer' : 'Ecouter'}
           </button>
           <button
             type="button"

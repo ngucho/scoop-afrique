@@ -44,6 +44,8 @@ const config = {
   maxAttempts: Number(process.env.TTS_WORKER_MAX_ATTEMPTS ?? 3),
   maxChars: Number(process.env.TTS_WORKER_MAX_CHARS ?? 12000),
   maxChunkChars: Number(process.env.TTS_WORKER_MAX_CHUNK_CHARS ?? 900),
+  piperChunkTimeoutMs: Number(process.env.TTS_PIPER_CHUNK_TIMEOUT_MS ?? 120000),
+  ffmpegTimeoutMs: Number(process.env.TTS_FFMPEG_TIMEOUT_MS ?? 90000),
   batchSize: Number(process.env.TTS_WORKER_BATCH_SIZE ?? 1),
   staleJobMinutes: Number(process.env.TTS_WORKER_STALE_JOB_MINUTES ?? 12),
   cleanupLimit: Number(process.env.TTS_WORKER_CLEANUP_LIMIT ?? 10),
@@ -139,13 +141,28 @@ function splitSpeechText(text: string): string[] {
   return chunks
 }
 
-function runProcess(command: string, args: string[], input?: string): Promise<void> {
+function runProcess(command: string, args: string[], input?: string, timeoutMs?: number): Promise<void> {
   return new Promise((resolve, reject) => {
+    let settled = false
+    let timeout: ReturnType<typeof setTimeout> | null = null
     const child = spawn(command, args, { stdio: ['pipe', 'inherit', 'inherit'] })
-    child.on('error', reject)
+    const finish = (error?: Error) => {
+      if (settled) return
+      settled = true
+      if (timeout) clearTimeout(timeout)
+      if (error) reject(error)
+      else resolve()
+    }
+    if (timeoutMs && timeoutMs > 0) {
+      timeout = setTimeout(() => {
+        child.kill('SIGKILL')
+        finish(new Error(`${command} timed out after ${timeoutMs}ms`))
+      }, timeoutMs)
+    }
+    child.on('error', finish)
     child.on('close', (code) => {
-      if (code === 0) resolve()
-      else reject(new Error(`${command} exited with code ${code}`))
+      if (code === 0) finish()
+      else finish(new Error(`${command} exited with code ${code}`))
     })
     if (input) child.stdin.write(input)
     child.stdin.end()
@@ -170,7 +187,14 @@ async function claimJob(articleId?: string | null): Promise<ClaimedJob | null> {
         )
         AND attempts < ${config.maxAttempts}
         AND (${articleId ?? null}::uuid IS NULL OR article_id = ${articleId ?? null}::uuid)
-      ORDER BY created_at ASC
+      ORDER BY
+        CASE reason
+          WHEN 'manual' THEN 0
+          WHEN 'content_updated' THEN 1
+          ELSE 2
+        END ASC,
+        updated_at DESC,
+        created_at ASC
       FOR UPDATE SKIP LOCKED
       LIMIT 1
     )
@@ -239,7 +263,7 @@ async function updateJob(jobId: string, status: JobStatus, error?: string): Prom
 async function generatePiperAudio(text: string, wavPath: string): Promise<void> {
   const args = ['--model', config.piperVoiceModel, '--output_file', wavPath]
   if (config.piperVoiceConfig) args.push('--config', config.piperVoiceConfig)
-  await runProcess(config.piperBinaryPath, args, text)
+  await runProcess(config.piperBinaryPath, args, `${text}\n`, config.piperChunkTimeoutMs)
 }
 
 async function generatePiperChunks(chunks: string[], workdir: string): Promise<string[]> {
@@ -247,9 +271,10 @@ async function generatePiperChunks(chunks: string[], workdir: string): Promise<s
   for (let index = 0; index < chunks.length; index += 1) {
     const wavPath = join(workdir, `chunk-${String(index + 1).padStart(3, '0')}.wav`)
     console.log(`[tts-worker] piper chunk ${index + 1}/${chunks.length} chars=${chunks[index].length}`)
+    const startedAt = Date.now()
     await generatePiperAudio(chunks[index], wavPath)
     const size = (await stat(wavPath)).size
-    console.log(`[tts-worker] piper chunk ${index + 1}/${chunks.length} done bytes=${size}`)
+    console.log(`[tts-worker] piper chunk ${index + 1}/${chunks.length} done bytes=${size} ms=${Date.now() - startedAt}`)
     paths.push(wavPath)
   }
   return paths
@@ -278,7 +303,7 @@ async function concatAudio(wavPaths: string[], listPath: string, finalPath: stri
   }
 
   args.push(finalPath)
-  await runProcess(config.ffmpegPath, args)
+  await runProcess(config.ffmpegPath, args, undefined, config.ffmpegTimeoutMs)
 }
 
 async function buildFinalAudio(chunks: string[], workdir: string): Promise<string> {
@@ -403,6 +428,7 @@ function isUuid(value: string | null | undefined): value is string {
 
 function kickBackgroundJob(articleId?: string | null): { started: boolean; articleId?: string } {
   if (backgroundJob) return { started: false, articleId: articleId ?? undefined }
+  console.log(`[tts-worker] background requested article=${articleId ?? 'none'}`)
   backgroundJob = processBackgroundBatch(articleId)
     .catch((error) => {
       const message = error instanceof Error ? error.message : String(error)
@@ -455,13 +481,16 @@ async function runExclusive(
   articleId?: string | null,
 ): Promise<void> {
   if (activeJob) {
+    console.log(`[tts-worker] request busy article=${articleId ?? 'none'}`)
     sendJson(res, 202, { ok: true, mode: 'busy', started: false, articleId: articleId ?? undefined })
     return
   }
 
   activeJob = true
   try {
+    console.log(`[tts-worker] request start article=${articleId ?? 'none'}`)
     const results = await processBatch(articleId)
+    console.log(`[tts-worker] request done article=${articleId ?? 'none'} results=${JSON.stringify(results)}`)
     sendJson(res, 200, { ok: true, mode: 'sync', started: true, articleId: articleId ?? undefined, results })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

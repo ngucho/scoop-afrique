@@ -77,6 +77,8 @@ jobs:
             -e TTS_AUDIO_FORMAT="mp3" \
             -e TTS_WORKER_MAX_CHARS="12000" \
             -e TTS_WORKER_MAX_CHUNK_CHARS="900" \
+            -e TTS_PIPER_CHUNK_TIMEOUT_MS="120000" \
+            -e TTS_FFMPEG_TIMEOUT_MS="90000" \
             -e TTS_WORKER_MAX_ATTEMPTS="3" \
             -e TTS_WORKER_ONCE_BATCH_SIZE="$BATCH_SIZE" \
             "$IMAGE_NAME" \
