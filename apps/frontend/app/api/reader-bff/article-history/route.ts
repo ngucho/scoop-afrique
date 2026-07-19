@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 export async function POST(request: NextRequest) {
   const tokenResult = await getReaderAccessToken()
   if (!tokenResult?.accessToken) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ data: { synced: false } }, { status: 202 })
   }
 
   const json = (await request.json().catch(() => null)) as { article_id?: string } | null

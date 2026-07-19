@@ -775,6 +775,13 @@ export async function getRecommendedArticleForReader(
   const historyCategoryIds = new Set(historyCards.map((a) => a.category_id).filter(Boolean))
   const historyTags = new Set(historyCards.flatMap((a) => a.tags ?? []).map((t) => t.toLowerCase()))
   const readIds = new Set(historyIds)
+  const historyRank = new Map(historyIds.map((id, index) => [id, index]))
+  const recentHistory = historyCards.slice(0, 12)
+  const recentHistoryTokens = tokenizeForRecommendation(
+    recentHistory
+      .map((a) => [a.title, a.excerpt, a.tags.join(' ')].filter(Boolean).join(' '))
+      .join(' '),
+  )
 
   const scored = candidates
     .filter((candidate) => candidate.id !== current.id)
@@ -790,8 +797,9 @@ export async function getRecommendedArticleForReader(
       score += overlapScore(currentTokens, candidateTokens, 3, 24)
       if (candidate.category_id && historyCategoryIds.has(candidate.category_id)) score += 10
       score += overlapScore(historyTags, candidateTags, 5, 20)
+      score += overlapScore(recentHistoryTokens, candidateTokens, 2, 22)
       score += Math.min(12, Math.log10(10 + (candidate.view_count ?? 0)) * 5)
-      if (readIds.has(candidate.id)) score -= 35
+      if (readIds.has(candidate.id)) score -= 60 - Math.min(20, historyRank.get(candidate.id) ?? 0)
       return { candidate, score }
     })
     .sort((a, b) => b.score - a.score)
@@ -1245,7 +1253,7 @@ export async function getPublishedArticlesMostReadForHero(
   return listPublishedArticleCardsByIds(ids)
 }
 
-/** For homepage hero fallback: recent view events in an exact hour window, then all-time view_count. */
+/** For homepage hero fallback: recent view events in an exact hour window, then recent-published view_count. */
 export async function getPublishedArticlesMostReadForHeroHours(
   hours: number,
   maxCandidates: number,

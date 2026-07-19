@@ -15,7 +15,7 @@ import { ArticleCommentsSection } from '@/components/reader/ArticleCommentsSecti
 import { ArticleAuthorCard } from '@/components/reader/ArticleAuthorCard'
 import { ReaderCoverImage } from '@/components/reader/ReaderCoverImage'
 import { ArticleHistoryTracker } from '@/components/reader/ArticleHistoryTracker'
-import { RecommendedNextArticle } from '@/components/reader/RecommendedNextArticle'
+import { PersonalizedNextArticle } from '@/components/reader/PersonalizedNextArticle'
 import { ArticleAudioPlayer } from '@/components/reader/ArticleAudioPlayer'
 import { apiGet } from '@/lib/api/client'
 import type { Article, ArticleResponse, LikesResponse } from '@/lib/api/types'
@@ -395,11 +395,12 @@ export default async function ArticleDetailPage({ params }: PageProps) {
             <ArticleCommentsSection articleId={article.id} />
           </div>
 
-          {recommendedArticle ? (
-            <RecommendedNextArticle article={recommendedArticle} className="mt-10" />
-          ) : (
-            <RelatedArticles excludeSlug={article.slug} className="mt-10" />
-          )}
+          <PersonalizedNextArticle
+            currentArticleId={article.id}
+            initialArticle={recommendedArticle}
+            className="mt-10"
+            fallback={<RelatedArticles excludeSlug={article.slug} className="mt-10" />}
+          />
 
           {relatedBelow ? (
             <div className="mt-10">
