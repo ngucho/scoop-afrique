@@ -7,6 +7,7 @@ import { ReaderLayout } from '@/components/reader/ReaderLayout'
 import { HomeNewsletterCta } from '@/components/reader/HomeNewsletterCta'
 import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { HomeStreamingRail } from '@/components/reader/HomeStreamingRail'
+import { HomeReaderPulse } from '@/components/reader/HomeReaderPulse'
 import { absoluteReaderImageUrl } from '@/lib/readerImageSrc'
 import { config } from '@/lib/config'
 import { buildHomeSections, type HomePageBlock } from '@/lib/homeSections'
@@ -547,6 +548,7 @@ export default async function HomePage() {
         <div key={block.cmsKey}>
           <HeroRead article={block.article} nextArticle={nextArticle} />
           <SearchDock categories={categories} />
+          <HomeReaderPulse />
         </div>,
       )
       continue
@@ -594,7 +596,12 @@ export default async function HomePage() {
 
       <main className="bg-background text-foreground">
         <div>
-          {!heroBlock ? <SearchDock categories={categories} /> : null}
+          {!heroBlock ? (
+            <>
+              <SearchDock categories={categories} />
+              <HomeReaderPulse />
+            </>
+          ) : null}
           {renderedBlocks}
           <div className="mx-auto max-w-[1460px] px-5 sm:px-8 lg:px-10">
             <HomeNewsletterCta />

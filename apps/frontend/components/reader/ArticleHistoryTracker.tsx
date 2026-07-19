@@ -1,10 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-
-const STORAGE_KEY = 'scoop_reader_history'
-const COOKIE_KEY = 'scoop_reader_history'
-const MAX_HISTORY = 50
+import { recordReaderArticle } from '@/lib/readerHistory'
 
 interface ArticleHistoryItem {
   id: string
@@ -24,21 +21,7 @@ export function ArticleHistoryTracker({
 }) {
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY)
-      const previous = raw ? (JSON.parse(raw) as ArticleHistoryItem[]) : []
-      const nextItem: ArticleHistoryItem = { ...article, viewed_at: new Date().toISOString() }
-      const next = [nextItem, ...previous.filter((item) => item.id !== article.id)].slice(0, MAX_HISTORY)
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-
-      const ids = next.map((item) => item.id).join(',')
-      document.cookie = `${COOKIE_KEY}=${encodeURIComponent(ids)}; Max-Age=31536000; Path=/; SameSite=Lax`
-
-      fetch('/api/reader-bff/article-history', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ article_id: article.id }),
-        keepalive: true,
-      }).catch(() => {})
+      recordReaderArticle(article)
     } catch {
       // Reading history is best-effort; article reading should never fail because of it.
     }
