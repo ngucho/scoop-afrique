@@ -72,7 +72,10 @@ export function ArticleAudioPlayer({
       window.removeEventListener('scoop-reader-audio-stop', handleStop)
       audioRef.current?.pause()
       playInFlightRef.current = false
+      stopAmbience()
     }
+    // `stopAmbience` is stable enough here; cleanup must always silence global ambience.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -106,11 +109,6 @@ export function ArticleAudioPlayer({
     getReaderAmbientAudio()?.stop()
   }
 
-  const startTransitionAmbience = () => {
-    if (!ambienceEnabled) return
-    getReaderAmbientAudio()?.start('transition', atmosphere.url)
-  }
-
   const startBedAmbience = () => {
     if (!ambienceEnabled) return
     getReaderAmbientAudio()?.start('bed', atmosphere.url)
@@ -122,11 +120,7 @@ export function ArticleAudioPlayer({
       return
     }
 
-    if (state === 'preparing') {
-      startTransitionAmbience()
-    } else if (state === 'playing') {
-      startBedAmbience()
-    } else {
+    if (state !== 'playing') {
       stopAmbience()
     }
     // Ambience helpers intentionally read refs and the current toggle.
@@ -184,7 +178,6 @@ export function ArticleAudioPlayer({
       return
     }
     stopOtherReaderAudio(instanceIdRef.current)
-    startBedAmbience()
     playInFlightRef.current = true
     audio.play()
       .then(() => {
@@ -206,7 +199,7 @@ export function ArticleAudioPlayer({
     }
 
     setPrepareAttempt(0)
-    startTransitionAmbience()
+    stopAmbience()
     setState('preparing')
     try {
       const nextUrl = await waitForPreparedAudio()
@@ -243,6 +236,7 @@ export function ArticleAudioPlayer({
   const goToNextArticle = () => {
     if (!nextArticle?.slug) {
       setState('idle')
+      stopAmbience()
       return
     }
     if (audioRef.current) {
@@ -252,7 +246,7 @@ export function ArticleAudioPlayer({
       audioRef.current.load()
     }
     playInFlightRef.current = false
-    startTransitionAmbience()
+    stopAmbience()
     setState('preparing')
     window.sessionStorage.setItem(CONTINUOUS_AUDIO_KEY, nextArticle.id)
     router.push(`/articles/${nextArticle.slug}?autoplayAudio=1`)
@@ -268,7 +262,7 @@ export function ArticleAudioPlayer({
 
   const helperText =
     state === 'preparing'
-      ? `Nous préparons la version audio avec Piper. Une ambiance douce reste en fond pendant l'attente${prepareAttempt ? ` (${prepareAttempt}/16)` : ''}.`
+      ? `Nous préparons la version audio avec Piper${prepareAttempt ? ` (${prepareAttempt}/16)` : ''}. L'ambiance démarre avec la lecture.`
       : state === 'queued'
         ? 'La génération est bien lancée et continue en arrière-plan. Vous pouvez réessayer dans un instant.'
         : state === 'error'
@@ -293,8 +287,14 @@ export function ArticleAudioPlayer({
           src={currentAudioUrl}
           onEnded={goToNextArticle}
           onTimeUpdate={handleTimeUpdate}
-          onPause={() => setState((current) => (current === 'playing' ? 'paused' : current))}
-          onPlay={() => setState('playing')}
+          onPause={() => {
+            stopAmbience()
+            setState((current) => (current === 'playing' ? 'paused' : current))
+          }}
+          onPlay={() => {
+            setState('playing')
+            startBedAmbience()
+          }}
         />
       ) : null}
       <div className={isHero ? 'flex items-center gap-3' : 'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'}>
