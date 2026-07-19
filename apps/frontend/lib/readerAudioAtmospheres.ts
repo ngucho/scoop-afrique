@@ -1,9 +1,10 @@
 const ASSET_BASE_URL = process.env.NEXT_PUBLIC_READER_AUDIO_ASSETS_BASE_URL?.replace(/\/$/, '')
 
 function audioAsset(filename: string) {
+  const encodedFilename = filename.split('/').map(encodeURIComponent).join('/')
   return ASSET_BASE_URL
-    ? `${ASSET_BASE_URL}/${filename}`
-    : `/audio/ambiences/${filename}`
+    ? `${ASSET_BASE_URL}/${encodedFilename}`
+    : `/audio/ambiences/${encodedFilename}`
 }
 
 export interface ReaderAudioAtmosphere {
@@ -15,40 +16,52 @@ export interface ReaderAudioAtmosphere {
 
 const ATMOSPHERES: ReaderAudioAtmosphere[] = [
   {
-    key: 'kora',
-    label: 'Kora douce',
-    url: audioAsset('kora.ogg'),
-    attribution: 'Cinus Laurent - Kora, Licence Art Libre, via Wikimedia Commons',
+    key: 'backbay-lounge',
+    label: 'Backbay Lounge',
+    url: audioAsset('Backbay Lounge.mp3'),
+    attribution: 'Backbay Lounge - ambiance musicale fournie par Scoop Afrique',
   },
   {
-    key: 'market',
-    label: 'Rythme vivant',
-    url: audioAsset('market.ogg'),
-    attribution: 'ItzAbdullahi - The African Anthem, CC BY-SA 4.0, via Wikimedia Commons',
+    key: 'backed-vibes',
+    label: 'Backed Vibes',
+    url: audioAsset('Backed Vibes Clean.mp3'),
+    attribution: 'Backed Vibes Clean - ambiance musicale fournie par Scoop Afrique',
   },
   {
-    key: 'bell',
-    label: 'Agogo',
-    url: audioAsset('bell.ogg'),
-    attribution: 'Freddythehat - African double bell, public domain, via Wikimedia Commons',
+    key: 'bass-vibes',
+    label: 'Bass Vibes',
+    url: audioAsset('Bass Vibes.mp3'),
+    attribution: 'Bass Vibes - ambiance musicale fournie par Scoop Afrique',
   },
   {
-    key: 'ambient',
-    label: 'Ambiance calme',
-    url: audioAsset('ambient.ogg'),
-    attribution: 'Brenticus - Ambient, CC BY 3.0, via Wikimedia Commons',
+    key: 'on-the-ground',
+    label: 'On the Ground',
+    url: audioAsset('On the Ground.mp3'),
+    attribution: 'On the Ground - ambiance musicale fournie par Scoop Afrique',
+  },
+  {
+    key: 'slow-heat',
+    label: 'Slow Heat',
+    url: audioAsset('Slow Heat.mp3'),
+    attribution: 'Slow Heat - ambiance musicale fournie par Scoop Afrique',
+  },
+  {
+    key: 'whimsy-groove',
+    label: 'Whimsy Groove',
+    url: audioAsset('Whimsy Groove.mp3'),
+    attribution: 'Whimsy Groove - ambiance musicale fournie par Scoop Afrique',
   },
 ]
 
 const CATEGORY_ATMOSPHERE: Record<string, string> = {
-  culture: 'kora',
-  actualites: 'ambient',
-  politique: 'ambient',
-  economie: 'ambient',
-  sport: 'market',
-  sports: 'market',
-  environnement: 'kora',
-  societe: 'bell',
+  culture: 'backbay-lounge',
+  actualites: 'slow-heat',
+  politique: 'on-the-ground',
+  economie: 'backed-vibes',
+  sport: 'bass-vibes',
+  sports: 'bass-vibes',
+  environnement: 'whimsy-groove',
+  societe: 'slow-heat',
 }
 
 export function readerAudioAtmosphereForCategory(categorySlug?: string | null): ReaderAudioAtmosphere {

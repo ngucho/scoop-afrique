@@ -108,12 +108,12 @@ export function ArticleAudioPlayer({
 
   const startTransitionAmbience = () => {
     if (!ambienceEnabled) return
-    getReaderAmbientAudio()?.start('transition')
+    getReaderAmbientAudio()?.start('transition', atmosphere.url)
   }
 
   const startBedAmbience = () => {
     if (!ambienceEnabled) return
-    getReaderAmbientAudio()?.start('bed')
+    getReaderAmbientAudio()?.start('bed', atmosphere.url)
   }
 
   useEffect(() => {
