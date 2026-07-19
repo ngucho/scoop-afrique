@@ -53,6 +53,8 @@ const config = {
   workerSecret: process.env.TTS_WORKER_SECRET?.trim() || null,
   once: process.argv.includes('--once'),
   loop: process.argv.includes('--loop'),
+  onceArticleId: getArgValue('--article-id') ?? process.env.TTS_WORKER_ARTICLE_ID?.trim() ?? null,
+  onceBatchSize: Number(process.env.TTS_WORKER_ONCE_BATCH_SIZE ?? 4),
 }
 
 const sql = postgres(config.databaseUrl, { max: 2, prepare: false })
@@ -61,6 +63,13 @@ const supabase = createClient(config.supabaseUrl, config.supabaseServiceRoleKey,
 })
 let backgroundJob: Promise<void> | null = null
 let activeJob = false
+
+function getArgValue(name: string): string | null {
+  const exact = process.argv.indexOf(name)
+  if (exact >= 0) return process.argv[exact + 1] ?? null
+  const prefixed = process.argv.find((arg) => arg.startsWith(`${name}=`))
+  return prefixed ? prefixed.slice(name.length + 1) : null
+}
 
 function required(name: string): string {
   const value = process.env[name]?.trim()
@@ -512,9 +521,19 @@ async function main() {
     startHttpServer()
     return
   }
+  if (config.once) {
+    const articleId = isUuid(config.onceArticleId) ? config.onceArticleId : null
+    const limit = articleId ? 1 : Math.max(1, Math.min(config.onceBatchSize, 10))
+    for (let index = 0; index < limit; index += 1) {
+      const result = await processOneJob(index === 0 ? articleId : null)
+      console.log(`[tts-worker] once result=${JSON.stringify(result)}`)
+      if (!result.processed) break
+    }
+    await sql.end()
+    return
+  }
   do {
     const processed = await tick()
-    if (config.once) break
     if (!processed) await new Promise((resolve) => setTimeout(resolve, config.pollMs))
   } while (true)
   await sql.end()
