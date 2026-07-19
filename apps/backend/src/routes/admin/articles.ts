@@ -38,6 +38,16 @@ function requireDatabase(c: import('hono').Context) {
 
 const app = new Hono<AppEnv>()
 
+const ARTICLE_SORT_FIELDS = new Set(['title', 'status', 'category', 'author', 'views', 'published_at', 'updated_at'])
+
+function articleSortField(raw: string | undefined): articleService.ListOptions['sortBy'] {
+  return raw && ARTICLE_SORT_FIELDS.has(raw) ? raw as articleService.ListOptions['sortBy'] : 'published_at'
+}
+
+function sortDirection(raw: string | undefined): 'asc' | 'desc' {
+  return raw === 'asc' ? 'asc' : 'desc'
+}
+
 function toAdminArticlePayload(a: articleService.ArticleWithAuthor) {
   const { reader_public_display_name: _r, ...rest } = a
   return rest
@@ -90,6 +100,8 @@ app.get('/', async (c) => {
   const status = c.req.query('status') as articleService.ArticleStatus | undefined
   const authorId = c.req.query('author_id') ?? undefined
   const q = c.req.query('q') ?? undefined
+  const sortBy = articleSortField(c.req.query('sort'))
+  const sortDir = sortDirection(c.req.query('dir'))
   const page = Number(c.req.query('page')) || 1
   const limit = Math.min(Number(c.req.query('limit')) || 20, 100)
 
@@ -100,6 +112,8 @@ app.get('/', async (c) => {
     q,
     page,
     limit,
+    sortBy,
+    sortDir,
     allowAllStatuses: true,
   })
   return c.json({ data: data.map(toAdminArticlePayload), total })
