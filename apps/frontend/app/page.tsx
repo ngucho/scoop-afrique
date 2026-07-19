@@ -279,21 +279,25 @@ function StoryRail({
   title,
   href,
   articles,
-  ads = [],
+  ad,
+  adPosition,
+  showHeader = true,
 }: {
   title: string
   href?: string
   articles: Article[]
-  ads?: HomeRailAd[]
+  ad?: HomeRailAd
+  adPosition?: number
+  showHeader?: boolean
 }) {
-  if (!articles.length && !ads.length) return null
-  const railItems = buildRailItems(articles, ads)
+  if (!articles.length && !ad) return null
+  const railItems = buildRailItems(articles, ad, adPosition)
   const shouldAnimate = railItems.length > 2
   const displayItems = shouldAnimate ? [...railItems, ...railItems] : railItems
 
   return (
     <section className="py-8">
-      <RailHeader title={title} href={href} />
+      {showHeader ? <RailHeader title={title} href={href} /> : null}
       <div className="overflow-hidden px-5 pb-3 sm:px-8 lg:px-10">
         <HomeStreamingRail
           className={
@@ -323,20 +327,22 @@ function StoryRail({
   )
 }
 
-function buildRailItems(articles: Article[], ads: HomeRailAd[]): Array<{ type: 'article'; article: Article } | { type: 'ad'; ad: HomeRailAd }> {
+function buildRailItems(
+  articles: Article[],
+  ad?: HomeRailAd,
+  adPosition?: number,
+): Array<{ type: 'article'; article: Article } | { type: 'ad'; ad: HomeRailAd }> {
   const out: Array<{ type: 'article'; article: Article } | { type: 'ad'; ad: HomeRailAd }> = []
-  const insertAfter = Math.min(2, articles.length)
+  const insertAt = ad
+    ? Math.max(1, Math.min(articles.length, adPosition ?? Math.floor(articles.length / 2)))
+    : -1
 
   articles.forEach((article, index) => {
-    if (index === insertAfter) {
-      for (const ad of ads) out.push({ type: 'ad', ad })
-    }
+    if (index === insertAt && ad) out.push({ type: 'ad', ad })
     out.push({ type: 'article', article })
   })
 
-  if (articles.length <= insertAfter) {
-    for (const ad of ads) out.push({ type: 'ad', ad })
-  }
+  if (!articles.length && ad) out.push({ type: 'ad', ad })
 
   return out
 }
@@ -345,7 +351,7 @@ function HomeAdPoster({ ad }: { ad: HomeRailAd }) {
   return (
     <article className="w-[78vw] shrink-0 sm:w-[360px]">
       <div className="relative aspect-[4/5] overflow-hidden rounded-[1.4rem] border border-border bg-card">
-        <div className="absolute inset-0 p-3">
+        <div className="absolute inset-0 [&_[data-ad-slot]]:h-full [&_[data-ad-slot]>*]:h-full">
           <AdSlotSection
             slotKey={ad.adSlotKey}
             creative={ad.creative}
@@ -416,22 +422,46 @@ function PosterGrid({ title, href, articles }: { title: string; href?: string; a
   )
 }
 
-function RubriqueStrips({ block, ads = [] }: { block: Extract<HomePageBlock, { type: 'rubriques' }>; ads?: HomeRailAd[] }) {
+interface HomeRailAdPlacement {
+  ad: HomeRailAd
+  position: number
+}
+
+function RubriqueStrips({
+  block,
+  adPlacement,
+}: {
+  block: Extract<HomePageBlock, { type: 'rubriques' }>
+  adPlacement?: HomeRailAdPlacement
+}) {
   if (!block.strips.length) return null
 
   return (
     <section className="py-8">
-      <RailHeader title={block.title} href="/articles" />
       <div className="space-y-8">
         {block.strips.map((strip, index) => (
           <div key={strip.slug}>
             <RailHeader title={strip.label} href={`/category/${strip.slug}`} />
             {block.layout === 'list' ? (
-              <StoryRail title={strip.label} href={`/category/${strip.slug}`} articles={strip.articles} ads={index === 0 ? ads : []} />
+              <StoryRail
+                title={strip.label}
+                href={`/category/${strip.slug}`}
+                articles={strip.articles}
+                ad={index === 0 ? adPlacement?.ad : undefined}
+                adPosition={adPlacement?.position}
+                showHeader={false}
+              />
             ) : block.layout === 'featured_grid' ? (
               <PosterGrid title={strip.label} href={`/category/${strip.slug}`} articles={strip.articles} />
             ) : (
-              <StoryRail title={strip.label} href={`/category/${strip.slug}`} articles={strip.articles} ads={index === 0 ? ads : []} />
+              <StoryRail
+                title={strip.label}
+                href={`/category/${strip.slug}`}
+                articles={strip.articles}
+                ad={index === 0 ? adPlacement?.ad : undefined}
+                adPosition={adPlacement?.position}
+                showHeader={false}
+              />
             )}
           </div>
         ))}
@@ -442,17 +472,59 @@ function RubriqueStrips({ block, ads = [] }: { block: Extract<HomePageBlock, { t
 
 function ArticlesBlock({
   block,
-  ads = [],
+  adPlacement,
   useQueueLayout = false,
 }: {
   block: Extract<HomePageBlock, { type: 'articles' }>
-  ads?: HomeRailAd[]
+  adPlacement?: HomeRailAdPlacement
   useQueueLayout?: boolean
 }) {
   const href = block.sectionKey === 'video' ? '/video' : '/articles'
   if (block.layout === 'list' && useQueueLayout) return <QueueList title={block.title} articles={block.articles} />
   if (block.layout === 'featured_grid') return <PosterGrid title={block.title} href={href} articles={block.articles} />
-  return <StoryRail title={block.title} href={href} articles={block.articles} ads={ads} />
+  return <StoryRail title={block.title} href={href} articles={block.articles} ad={adPlacement?.ad} adPosition={adPlacement?.position} />
+}
+
+type RailBlock = Extract<HomePageBlock, { type: 'articles' | 'rubriques' }>
+
+function seededNumber(seed: string): number {
+  let hash = 2166136261
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0) / 4294967296
+}
+
+function railArticleCount(block: RailBlock): number {
+  if (block.type === 'articles') return block.articles.length
+  return block.strips[0]?.articles.length ?? 0
+}
+
+function assignAdsToRails(blocks: HomePageBlock[], placements: ReturnType<typeof fetchAdPlacements> extends Promise<infer T> ? T : never) {
+  const railBlocks = blocks.filter((block): block is RailBlock => block.type === 'articles' || block.type === 'rubriques')
+  const adBlocks = blocks
+    .filter((block): block is Extract<HomePageBlock, { type: 'inline_ad' }> => block.type === 'inline_ad')
+    .map((block) => {
+      const picked = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, block.adSlotKey)
+      return { ...block, creative: picked?.creative ?? null }
+    })
+
+  const availableRails = [...railBlocks]
+  const out = new Map<string, HomeRailAdPlacement>()
+
+  for (const ad of adBlocks) {
+    if (!availableRails.length) break
+    const railIndex = Math.floor(seededNumber(`${ad.cmsKey}:${ad.adSlotKey}:rail`) * availableRails.length)
+    const rail = availableRails.splice(railIndex, 1)[0]
+    const count = railArticleCount(rail)
+    const min = Math.min(2, Math.max(1, count))
+    const max = Math.max(min, count - 2)
+    const position = Math.floor(seededNumber(`${ad.cmsKey}:${rail.cmsKey}:position`) * (max - min + 1)) + min
+    out.set(rail.cmsKey, { ad, position })
+  }
+
+  return out
 }
 
 export default async function HomePage() {
@@ -462,32 +534,8 @@ export default async function HomePage() {
   const heroBlock = blocks.find((block): block is Extract<HomePageBlock, { type: 'hero' }> => block.type === 'hero')
   const nextArticle = allArticles.find((article) => article.id !== heroBlock?.article.id)
   const renderedBlocks: ReactNode[] = []
-  const adsByBlockKey = new Map<string, HomeRailAd[]>()
-  const leadingAds: HomeRailAd[] = []
-  let lastRailKey: string | null = null
+  const adsByBlockKey = assignAdsToRails(blocks, placements)
   let queueLayoutUsed = false
-
-  for (const block of blocks) {
-    if (block.type === 'inline_ad') {
-      const picked = pickCreativeForSlot(placements.slots, placements.creatives_by_slot, block.adSlotKey)
-      const ad = { ...block, creative: picked?.creative ?? null }
-      if (lastRailKey) {
-        const list = adsByBlockKey.get(lastRailKey) ?? []
-        list.push(ad)
-        adsByBlockKey.set(lastRailKey, list)
-      } else {
-        leadingAds.push(ad)
-      }
-      continue
-    }
-
-    if (block.type === 'articles' || block.type === 'rubriques') {
-      lastRailKey = block.cmsKey
-      if (leadingAds.length) {
-        adsByBlockKey.set(block.cmsKey, leadingAds.splice(0, leadingAds.length))
-      }
-    }
-  }
 
   for (const block of blocks) {
     if (block.type === 'inline_ad') {
@@ -504,18 +552,18 @@ export default async function HomePage() {
       continue
     }
 
-    const ads = adsByBlockKey.get(block.cmsKey) ?? []
+    const adPlacement = adsByBlockKey.get(block.cmsKey)
     if (block.type === 'articles') {
       const useQueueLayout = block.layout === 'list' && !queueLayoutUsed
       if (useQueueLayout) queueLayoutUsed = true
       renderedBlocks.push(
-        <ArticlesBlock key={block.cmsKey} block={block} ads={ads} useQueueLayout={useQueueLayout} />,
+        <ArticlesBlock key={block.cmsKey} block={block} adPlacement={adPlacement} useQueueLayout={useQueueLayout} />,
       )
       continue
     }
 
     if (block.type === 'rubriques') {
-      renderedBlocks.push(<RubriqueStrips key={block.cmsKey} block={block} ads={ads} />)
+      renderedBlocks.push(<RubriqueStrips key={block.cmsKey} block={block} adPlacement={adPlacement} />)
     }
   }
 
