@@ -1,38 +1,115 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Loader2, Pause, Play, Square, Volume2 } from 'lucide-react'
+import { Loader2, Pause, Play, Radio, Square, Volume2 } from 'lucide-react'
 import { config } from '@/lib/config'
+import { readerAudioAtmosphereForCategory } from '@/lib/readerAudioAtmospheres'
 
 type PlaybackState = 'idle' | 'playing' | 'paused' | 'preparing' | 'error'
+
+type NextAudioArticle = {
+  id: string
+  slug: string
+  title: string
+  audio_url?: string | null
+  category_slug?: string | null
+}
+
+const CONTINUOUS_AUDIO_KEY = 'scoop_continuous_audio'
 
 export function ArticleAudioPlayer({
   articleId,
   text,
   audioUrl,
+  categorySlug,
+  nextArticle,
   className = '',
   variant = 'inline',
 }: {
   articleId: string
   text: string
   audioUrl?: string | null
+  categorySlug?: string | null
+  nextArticle?: NextAudioArticle | null
   className?: string
   variant?: 'inline' | 'hero'
 }) {
   const [state, setState] = useState<PlaybackState>('idle')
   const [preparedAudioUrl, setPreparedAudioUrl] = useState<string | null>(audioUrl ?? null)
+  const [ambienceEnabled, setAmbienceEnabled] = useState(true)
+  const [nextAudioQueued, setNextAudioQueued] = useState(Boolean(nextArticle?.audio_url))
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const transitionAudioRef = useRef<HTMLAudioElement | null>(null)
+  const bedAudioRef = useRef<HTMLAudioElement | null>(null)
+  const nextWarmupRef = useRef<string | null>(null)
   const isHero = variant === 'hero'
   const currentAudioUrl = preparedAudioUrl ?? audioUrl ?? null
+  const atmosphere = readerAudioAtmosphereForCategory(categorySlug ?? nextArticle?.category_slug)
 
   useEffect(() => {
     setPreparedAudioUrl(audioUrl ?? null)
   }, [audioUrl])
 
+  useEffect(() => {
+    setNextAudioQueued(Boolean(nextArticle?.audio_url))
+    nextWarmupRef.current = null
+  }, [nextArticle?.id, nextArticle?.audio_url])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const shouldAutoplay =
+      params.get('autoplayAudio') === '1' ||
+      window.sessionStorage.getItem(CONTINUOUS_AUDIO_KEY) === articleId
+    if (!shouldAutoplay) return
+
+    window.sessionStorage.removeItem(CONTINUOUS_AUDIO_KEY)
+    const timer = window.setTimeout(() => {
+      void play()
+      params.delete('autoplayAudio')
+      const qs = params.toString()
+      window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`)
+    }, 350)
+    return () => window.clearTimeout(timer)
+    // `play` intentionally uses current refs/state; this effect runs once per article page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [articleId])
+
+  useEffect(() => {
+    const transition = transitionAudioRef.current
+    const bed = bedAudioRef.current
+    if (!transition || !bed) return
+
+    transition.volume = 0.2
+    transition.loop = true
+    bed.volume = 0.045
+    bed.loop = true
+
+    if (!ambienceEnabled) {
+      transition.pause()
+      bed.pause()
+      return
+    }
+
+    if (state === 'preparing') {
+      bed.pause()
+      void transition.play().catch(() => {})
+    } else if (state === 'playing') {
+      transition.pause()
+      void bed.play().catch(() => {})
+    } else {
+      transition.pause()
+      bed.pause()
+    }
+  }, [ambienceEnabled, state])
+
   const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
 
-  const requestAudio = async (): Promise<string | null> => {
-    const response = await fetch(`${config.apiBaseUrl}/api/v1/articles/${encodeURIComponent(articleId)}/audio-access`, {
+  const requestAudio = async (
+    targetArticleId = articleId,
+    updateCurrent = targetArticleId === articleId,
+  ): Promise<string | null> => {
+    const response = await fetch(`${config.apiBaseUrl}/api/v1/articles/${encodeURIComponent(targetArticleId)}/audio-access`, {
       method: 'POST',
       keepalive: true,
     })
@@ -41,8 +118,19 @@ export function ArticleAudioPlayer({
       data?: { available?: boolean; audio_url?: string | null }
     }
     const nextUrl = payload.data?.available ? payload.data.audio_url ?? null : null
-    if (nextUrl) setPreparedAudioUrl(nextUrl)
+    if (nextUrl && updateCurrent) setPreparedAudioUrl(nextUrl)
     return nextUrl
+  }
+
+  const warmNextAudio = async () => {
+    if (!nextArticle?.id || nextWarmupRef.current === nextArticle.id) return
+    nextWarmupRef.current = nextArticle.id
+    try {
+      const nextUrl = nextArticle.audio_url ?? await requestAudio(nextArticle.id, false)
+      setNextAudioQueued(Boolean(nextUrl))
+    } catch {
+      setNextAudioQueued(false)
+    }
   }
 
   const waitForPreparedAudio = async (): Promise<string | null> => {
@@ -88,15 +176,30 @@ export function ArticleAudioPlayer({
     setState('idle')
   }
 
+  const goToNextArticle = () => {
+    if (!nextArticle?.slug) {
+      setState('idle')
+      return
+    }
+    window.sessionStorage.setItem(CONTINUOUS_AUDIO_KEY, nextArticle.id)
+    window.location.href = `/articles/${nextArticle.slug}?autoplayAudio=1`
+  }
+
+  const handleTimeUpdate = () => {
+    const audio = audioRef.current
+    if (!audio?.duration || Number.isNaN(audio.duration)) return
+    if (audio.currentTime >= audio.duration / 2) void warmNextAudio()
+  }
+
   if (!articleId || (!text.trim() && !currentAudioUrl)) return null
 
   const helperText =
     state === 'preparing'
-      ? "Nous préparons la version audio de cet article. Elle sera disponible dans quelques instants."
+      ? "Nous préparons la version audio. Une ambiance douce reste en fond pendant l'attente."
       : state === 'error'
         ? "Nous n'avons pas pu lancer l'audio pour le moment. Réessayez dans un instant."
         : currentAudioUrl
-          ? 'Voix Scoop générée avec Piper.'
+          ? 'Voix Scoop générée avec Piper, accompagnée discrètement.'
           : "La version audio n'est pas encore prête. Nous la préparons dès que vous la demandez."
 
   return (
@@ -113,11 +216,14 @@ export function ArticleAudioPlayer({
           ref={audioRef}
           preload="metadata"
           src={currentAudioUrl}
-          onEnded={() => setState('idle')}
+          onEnded={goToNextArticle}
+          onTimeUpdate={handleTimeUpdate}
           onPause={() => setState((current) => (current === 'playing' ? 'paused' : current))}
           onPlay={() => setState('playing')}
         />
       ) : null}
+      <audio ref={transitionAudioRef} preload="none" src={atmosphere.url} aria-hidden />
+      <audio ref={bedAudioRef} preload="none" src={atmosphere.url} aria-hidden />
 
       <div className={isHero ? 'flex items-center gap-3' : 'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'}>
         <div className="min-w-0">
@@ -140,7 +246,15 @@ export function ArticleAudioPlayer({
               ))}
             </div>
           ) : (
-            <p className="mt-1 max-w-xl text-sm leading-5 text-muted-foreground">{helperText}</p>
+            <div className="mt-1 space-y-1">
+              <p className="max-w-xl text-sm leading-5 text-muted-foreground">{helperText}</p>
+              {nextArticle ? (
+                <p className="flex items-center gap-1.5 font-sans text-xs font-semibold text-muted-foreground">
+                  <Radio className="h-3.5 w-3.5 text-primary" aria-hidden />
+                  Lecture continue : {nextAudioQueued ? 'prochain audio prêt' : 'préparation automatique à mi-parcours'}.
+                </p>
+              ) : null}
+            </div>
           )}
         </div>
 
@@ -165,6 +279,19 @@ export function ArticleAudioPlayer({
             )}
             {isHero ? null : state === 'preparing' ? 'Préparation' : state === 'playing' ? 'Pause' : state === 'paused' ? 'Reprendre' : 'Ecouter'}
           </button>
+          <button
+            type="button"
+            onClick={() => setAmbienceEnabled((value) => !value)}
+            className={
+              isHero
+                ? `hidden h-10 w-10 items-center justify-center rounded-full border border-background/18 bg-background/10 transition hover:bg-background/20 sm:inline-flex ${ambienceEnabled ? 'text-primary' : 'text-foreground/55'}`
+                : `inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card transition hover:border-primary ${ambienceEnabled ? 'text-primary' : 'text-muted-foreground'}`
+            }
+            aria-label={ambienceEnabled ? "Couper l'ambiance sonore" : "Activer l'ambiance sonore"}
+            title={atmosphere.label}
+          >
+            <Volume2 className="h-4 w-4" aria-hidden />
+          </button>
           {!isHero ? (
             <button
               type="button"
@@ -180,7 +307,14 @@ export function ArticleAudioPlayer({
       </div>
 
       {isHero && state !== 'idle' ? (
-        <p className="mt-3 max-w-sm text-xs leading-5 text-muted-foreground">{helperText}</p>
+        <div className="mt-3 space-y-1">
+          <p className="max-w-sm text-xs leading-5 text-muted-foreground">{helperText}</p>
+          {nextArticle ? (
+            <p className="max-w-sm font-sans text-[11px] font-semibold text-muted-foreground">
+              Lecture continue vers : {nextArticle.title}
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </section>
   )
