@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Heading } from 'scoop'
-import { IconChevronLeft, IconChevronRight, IconEdit, IconEye, IconFileUpload, IconPlus, IconSearch } from '@tabler/icons-react'
+import { IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp, IconEdit, IconEye, IconFileUpload, IconPlus, IconSearch } from '@tabler/icons-react'
 import { fetchAdminArticles } from '@/lib/admin/fetchers'
 import { STATUS_LABELS, STATUS_COLORS } from '@/lib/admin/rbac'
 import { formatDateShort } from '@/lib/formatDate'
@@ -8,18 +8,65 @@ import { buildPaginationItems } from '@/lib/adminPagination'
 import { ArticleFilters } from './ArticleFilters'
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>
+  searchParams: Promise<{ status?: string; q?: string; page?: string; sort?: string; dir?: string }>
 }
 
 const PAGE_SIZE = 25
+const SORT_FIELDS = new Set(['title', 'status', 'category', 'author', 'views', 'published_at', 'updated_at'])
+type SortDir = 'asc' | 'desc'
 
-function articlesHref(params: { status?: string; q?: string; page?: number }) {
+function normalizeSort(value: string | undefined) {
+  return value && SORT_FIELDS.has(value) ? value : 'published_at'
+}
+
+function normalizeDir(value: string | undefined): SortDir {
+  return value === 'asc' ? 'asc' : 'desc'
+}
+
+function articlesHref(params: { status?: string; q?: string; page?: number; sort?: string; dir?: SortDir }) {
   const sp = new URLSearchParams()
   if (params.status) sp.set('status', params.status)
   if (params.q) sp.set('q', params.q)
+  if (params.sort && params.sort !== 'published_at') sp.set('sort', params.sort)
+  if (params.dir && params.dir !== 'desc') sp.set('dir', params.dir)
   if (params.page && params.page > 1) sp.set('page', String(params.page))
   const qs = sp.toString()
   return `/admin/articles${qs ? `?${qs}` : ''}`
+}
+
+function SortHeader({
+  label,
+  field,
+  align = 'left',
+  status,
+  q,
+  currentSort,
+  currentDir,
+}: {
+  label: string
+  field: string
+  align?: 'left' | 'right'
+  status?: string
+  q?: string
+  currentSort: string
+  currentDir: SortDir
+}) {
+  const active = currentSort === field
+  const nextDir: SortDir = active && currentDir === 'desc' ? 'asc' : 'desc'
+  const Icon = active && currentDir === 'asc' ? IconChevronUp : IconChevronDown
+  return (
+    <th className={`px-4 py-3 ${align === 'right' ? 'text-right' : 'text-left'}`}>
+      <Link
+        href={articlesHref({ status, q, sort: field, dir: nextDir })}
+        className={`inline-flex items-center gap-1.5 font-sans text-[10px] font-black uppercase tracking-[0.12em] transition hover:text-primary ${
+          active ? 'text-primary' : 'text-muted-foreground'
+        } ${align === 'right' ? 'justify-end' : ''}`}
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${active ? 'opacity-100' : 'opacity-35'}`} aria-hidden />
+      </Link>
+    </th>
+  )
 }
 
 export default async function AdminArticlesPage({ searchParams }: PageProps) {
@@ -27,12 +74,16 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
   const status = params.status
   const q = params.q
   const page = Math.max(1, Number(params.page) || 1)
+  const sort = normalizeSort(params.sort)
+  const dir = normalizeDir(params.dir)
 
   const { data: articles, total } = await fetchAdminArticles({
     status,
     q,
     page,
     limit: PAGE_SIZE,
+    sort,
+    dir,
   })
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -109,12 +160,12 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
             <table className="w-full min-w-[980px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/35">
-                  <th className="px-4 py-3 text-left font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Article</th>
-                  <th className="px-4 py-3 text-left font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Statut</th>
-                  <th className="px-4 py-3 text-left font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Rubrique</th>
-                  <th className="px-4 py-3 text-left font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Auteur</th>
-                  <th className="px-4 py-3 text-right font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Vues</th>
-                  <th className="px-4 py-3 text-left font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Date</th>
+                  <SortHeader label="Article" field="title" status={status} q={q} currentSort={sort} currentDir={dir} />
+                  <SortHeader label="Statut" field="status" status={status} q={q} currentSort={sort} currentDir={dir} />
+                  <SortHeader label="Rubrique" field="category" status={status} q={q} currentSort={sort} currentDir={dir} />
+                  <SortHeader label="Auteur" field="author" status={status} q={q} currentSort={sort} currentDir={dir} />
+                  <SortHeader label="Vues" field="views" align="right" status={status} q={q} currentSort={sort} currentDir={dir} />
+                  <SortHeader label="Publication" field="published_at" status={status} q={q} currentSort={sort} currentDir={dir} />
                   <th className="px-4 py-3 text-right font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Actions</th>
                 </tr>
               </thead>
@@ -175,7 +226,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
       {totalPages > 1 ? (
         <nav className="flex flex-wrap items-center justify-center gap-2" aria-label="Pagination des articles admin">
           <Link
-            href={articlesHref({ status, q, page: Math.max(1, page - 1) })}
+            href={articlesHref({ status, q, page: Math.max(1, page - 1), sort, dir })}
             aria-disabled={page <= 1}
             className={`inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card px-4 font-sans text-xs font-black uppercase tracking-[0.1em] ${
               page <= 1 ? 'pointer-events-none opacity-45' : 'hover:border-primary hover:text-primary'
@@ -190,7 +241,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
             ) : (
               <Link
                 key={item.page}
-                href={articlesHref({ status, q, page: item.page })}
+                href={articlesHref({ status, q, page: item.page, sort, dir })}
                 aria-current={item.isCurrent ? 'page' : undefined}
                 className={`inline-flex h-10 min-w-10 items-center justify-center rounded-full px-3 font-sans text-sm font-black ${
                   item.isCurrent
@@ -203,7 +254,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
             )
           )}
           <Link
-            href={articlesHref({ status, q, page: Math.min(totalPages, page + 1) })}
+            href={articlesHref({ status, q, page: Math.min(totalPages, page + 1), sort, dir })}
             aria-disabled={page >= totalPages}
             className={`inline-flex h-10 items-center gap-2 rounded-full border border-border bg-card px-4 font-sans text-xs font-black uppercase tracking-[0.1em] ${
               page >= totalPages ? 'pointer-events-none opacity-45' : 'hover:border-primary hover:text-primary'

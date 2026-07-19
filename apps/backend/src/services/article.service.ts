@@ -8,7 +8,7 @@
  * - Computes word_count / reading_time_min on every save.
  * - Uses collaborator service for canEdit checks.
  */
-import { eq, and, desc, sql, or, ilike, isNotNull, inArray } from 'drizzle-orm'
+import { eq, and, asc, desc, sql, or, ilike, isNotNull, inArray } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { articles, articleAudioJobs, articleViewEvents, categories, profiles, readerArticleHistory, readerPublicProfiles } from '../db/schema.js'
 import { config } from '../config/env.js'
@@ -96,6 +96,8 @@ export interface ListOptions {
   tag?: string
   /** If true, return all statuses (admin listing). */
   allowAllStatuses?: boolean
+  sortBy?: 'title' | 'status' | 'category' | 'author' | 'views' | 'published_at' | 'updated_at'
+  sortDir?: 'asc' | 'desc'
 }
 
 export interface ArticleFeedCursor {
@@ -231,6 +233,27 @@ function computeWordCount(content: unknown): number {
 
 function computeReadingTime(wordCount: number): number {
   return Math.max(1, Math.ceil(wordCount / 200))
+}
+
+function adminArticleOrderBy(sortBy: ListOptions['sortBy'], sortDir: ListOptions['sortDir']) {
+  const direction = sortDir === 'asc' ? asc : desc
+  switch (sortBy) {
+    case 'title':
+      return [direction(articles.title), desc(articles.updatedAt)]
+    case 'status':
+      return [direction(articles.status), desc(articles.updatedAt)]
+    case 'category':
+      return [direction(categories.name), desc(articles.updatedAt)]
+    case 'author':
+      return [direction(articles.authorDisplayName), desc(articles.updatedAt)]
+    case 'views':
+      return [direction(articles.viewCount), desc(articles.publishedAt), desc(articles.updatedAt)]
+    case 'updated_at':
+      return [direction(articles.updatedAt), desc(articles.id)]
+    case 'published_at':
+    default:
+      return [direction(articles.publishedAt), desc(articles.updatedAt), desc(articles.id)]
+  }
 }
 
 function hasUsableText(value: string | null | undefined, minLength: number): boolean {
@@ -477,7 +500,7 @@ export async function listArticles(
     .leftJoin(readerPublicProfiles, eq(profiles.auth0Id, readerPublicProfiles.auth0Sub))
     .leftJoin(categories, eq(articles.categoryId, categories.id))
     .where(whereClause)
-    .orderBy(desc(articles.publishedAt))
+    .orderBy(...adminArticleOrderBy(options.sortBy, options.sortDir))
     .limit(limit)
     .offset(offset)
 
@@ -1167,6 +1190,7 @@ export async function listPublishedArticleIdsByRecentViewEventsHours(hours: numb
     WHERE e.created_at >= ${since}
       AND a.status = 'published'
       AND a.published_at IS NOT NULL
+      AND a.published_at >= ${since}
     GROUP BY e.article_id
     ORDER BY COUNT(*)::int DESC
     LIMIT ${lim}
@@ -1194,7 +1218,22 @@ export async function listTopPublishedArticleIdsByAllTimeViews(limit: number): P
   return rows.map((r) => r.id)
 }
 
-/** For homepage hero fallback: recent view events first, then all-time view_count. */
+export async function listTopPublishedArticleIdsByRecentPublishedViewsHours(hours: number, limit: number): Promise<string[]> {
+  if (!config.database) return []
+  const db = getDb()
+  const h = Math.min(Math.max(hours, 1), 2160)
+  const lim = Math.min(Math.max(limit, 1), 25)
+  const since = new Date(Date.now() - h * 3600000).toISOString()
+  const rows = await db
+    .select({ id: articles.id })
+    .from(articles)
+    .where(and(eq(articles.status, 'published'), isNotNull(articles.publishedAt), sql`${articles.publishedAt} >= ${since}`))
+    .orderBy(desc(articles.viewCount), desc(articles.publishedAt))
+    .limit(lim)
+  return rows.map((r) => r.id)
+}
+
+/** For homepage hero fallback: recent view events first, then recent-published view_count. */
 export async function getPublishedArticlesMostReadForHero(
   days: number,
   maxCandidates: number,
@@ -1213,7 +1252,7 @@ export async function getPublishedArticlesMostReadForHeroHours(
 ): Promise<PublicArticleCard[]> {
   let ids = await listPublishedArticleIdsByRecentViewEventsHours(hours, maxCandidates)
   if (ids.length === 0) {
-    ids = await listTopPublishedArticleIdsByAllTimeViews(maxCandidates)
+    ids = await listTopPublishedArticleIdsByRecentPublishedViewsHours(hours, maxCandidates)
   }
   return listPublishedArticleCardsByIds(ids)
 }
