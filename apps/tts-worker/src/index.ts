@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import { createHash, randomUUID } from 'node:crypto'
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
@@ -43,6 +43,7 @@ const config = {
   pollMs: Number(process.env.TTS_WORKER_POLL_MS ?? 5000),
   maxAttempts: Number(process.env.TTS_WORKER_MAX_ATTEMPTS ?? 3),
   maxChars: Number(process.env.TTS_WORKER_MAX_CHARS ?? 12000),
+  maxChunkChars: Number(process.env.TTS_WORKER_MAX_CHUNK_CHARS ?? 900),
   cleanupLimit: Number(process.env.TTS_WORKER_CLEANUP_LIMIT ?? 10),
   outputFormat: (process.env.TTS_AUDIO_FORMAT ?? 'wav').toLowerCase() === 'mp3' ? 'mp3' : 'wav',
   ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
@@ -91,6 +92,40 @@ function hashText(text: string): string {
   return createHash('sha256').update(text).digest('hex')
 }
 
+function splitSpeechText(text: string): string[] {
+  const max = Math.max(300, config.maxChunkChars)
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const chunks: string[] = []
+  let current = ''
+
+  for (const sentence of sentences) {
+    if (sentence.length > max) {
+      if (current) {
+        chunks.push(current)
+        current = ''
+      }
+      for (let index = 0; index < sentence.length; index += max) {
+        chunks.push(sentence.slice(index, index + max).trim())
+      }
+      continue
+    }
+
+    const next = current ? `${current} ${sentence}` : sentence
+    if (next.length > max && current) {
+      chunks.push(current)
+      current = sentence
+    } else {
+      current = next
+    }
+  }
+
+  if (current) chunks.push(current)
+  return chunks
+}
+
 function runProcess(command: string, args: string[], input?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { stdio: ['pipe', 'inherit', 'inherit'] })
@@ -116,9 +151,11 @@ async function claimJob(): Promise<ClaimedJob | null> {
     WHERE id = (
       SELECT id
       FROM article_audio_jobs
-      WHERE status IN ('queued', 'failed')
+      WHERE (
+          status IN ('queued', 'failed')
+          OR (status = 'processing' AND locked_at < now() - interval '20 minutes')
+        )
         AND attempts < ${config.maxAttempts}
-        AND (locked_at IS NULL OR locked_at < now() - interval '20 minutes')
       ORDER BY created_at ASC
       FOR UPDATE SKIP LOCKED
       LIMIT 1
@@ -191,32 +228,72 @@ async function generatePiperAudio(text: string, wavPath: string): Promise<void> 
   await runProcess(config.piperBinaryPath, args, text)
 }
 
-async function maybeConvertAudio(wavPath: string, finalPath: string): Promise<void> {
-  if (config.outputFormat === 'wav') return
-  await runProcess(config.ffmpegPath, [
+async function generatePiperChunks(chunks: string[], workdir: string): Promise<string[]> {
+  const paths: string[] = []
+  for (let index = 0; index < chunks.length; index += 1) {
+    const wavPath = join(workdir, `chunk-${String(index + 1).padStart(3, '0')}.wav`)
+    console.log(`[tts-worker] piper chunk ${index + 1}/${chunks.length} chars=${chunks[index].length}`)
+    await generatePiperAudio(chunks[index], wavPath)
+    const size = (await stat(wavPath)).size
+    console.log(`[tts-worker] piper chunk ${index + 1}/${chunks.length} done bytes=${size}`)
+    paths.push(wavPath)
+  }
+  return paths
+}
+
+async function concatAudio(wavPaths: string[], listPath: string, finalPath: string): Promise<void> {
+  const list = wavPaths
+    .map((path) => `file '${path.replace(/'/g, "'\\''")}'`)
+    .join('\n')
+  await writeFile(listPath, `${list}\n`, 'utf8')
+
+  const args = [
     '-y',
+    '-f',
+    'concat',
+    '-safe',
+    '0',
     '-i',
-    wavPath,
-    '-codec:a',
-    'libmp3lame',
-    '-b:a',
-    '64k',
-    finalPath,
-  ])
+    listPath,
+  ]
+
+  if (config.outputFormat === 'mp3') {
+    args.push('-codec:a', 'libmp3lame', '-b:a', '64k')
+  } else {
+    args.push('-c', 'copy')
+  }
+
+  args.push(finalPath)
+  await runProcess(config.ffmpegPath, args)
+}
+
+async function buildFinalAudio(chunks: string[], workdir: string): Promise<string> {
+  const wavPaths = await generatePiperChunks(chunks, workdir)
+  if (wavPaths.length === 1 && config.outputFormat === 'wav') return wavPaths[0]
+  const finalPath = join(workdir, `article.${config.outputFormat}`)
+  const listPath = join(workdir, 'chunks.txt')
+  console.log(`[tts-worker] concat chunks=${wavPaths.length} format=${config.outputFormat}`)
+  await concatAudio(wavPaths, listPath, finalPath)
+  const size = (await stat(finalPath)).size
+  console.log(`[tts-worker] final audio ready bytes=${size}`)
+  return finalPath
 }
 
 async function uploadAudio(article: ArticleRow, path: string): Promise<{ url: string; storagePath: string }> {
+  console.log(`[tts-worker] ensure bucket=${config.bucket}`)
   await supabase.storage.createBucket(config.bucket, { public: true }).catch(() => {})
   const ext = config.outputFormat
   const storagePath = `${article.id}/${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`
   const buffer = await readFile(path)
   const contentType = ext === 'mp3' ? 'audio/mpeg' : 'audio/wav'
+  console.log(`[tts-worker] upload start path=${storagePath} bytes=${buffer.length}`)
   const { error } = await supabase.storage.from(config.bucket).upload(storagePath, buffer, {
     contentType,
     upsert: true,
   })
   if (error) throw new Error(`Storage upload failed: ${error.message}`)
   const { data } = supabase.storage.from(config.bucket).getPublicUrl(storagePath)
+  console.log(`[tts-worker] upload done path=${storagePath}`)
   return { url: data.publicUrl, storagePath }
 }
 
@@ -241,13 +318,12 @@ async function processJob(job: ClaimedJob): Promise<void> {
 
   const workdir = join(tmpdir(), `scoop-tts-${job.id}`)
   await mkdir(workdir, { recursive: true })
-  const wavPath = join(workdir, 'article.wav')
-  const finalPath = config.outputFormat === 'mp3' ? join(workdir, 'article.mp3') : wavPath
 
   try {
     await writeFile(join(workdir, 'article.txt'), text, 'utf8')
-    await generatePiperAudio(text, wavPath)
-    await maybeConvertAudio(wavPath, finalPath)
+    const chunks = splitSpeechText(text)
+    console.log(`[tts-worker] article text chars=${text.length} chunks=${chunks.length} max_chunk=${config.maxChunkChars}`)
+    const finalPath = await buildFinalAudio(chunks, workdir)
     const uploaded = await uploadAudio(article, finalPath)
     await sql`
       UPDATE articles
@@ -279,7 +355,7 @@ async function processOneJob(): Promise<{ processed: boolean; jobId?: string; ar
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[tts-worker] failed job=${job.id}`, message)
-    const status = job.attempts + 1 >= config.maxAttempts ? 'failed' : 'queued'
+    const status = job.attempts >= config.maxAttempts ? 'failed' : 'queued'
     await updateJob(job.id, status, message.slice(0, 2000))
     return { processed: true, jobId: job.id, articleId: job.article_id, status, error: message }
   }
