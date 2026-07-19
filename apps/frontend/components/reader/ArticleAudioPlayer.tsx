@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Pause, Play, Radio, Square, Volume2 } from 'lucide-react'
+import { FastForward, Loader2, Pause, Play, Radio, Rewind, Square, Volume2 } from 'lucide-react'
 import { getReaderAmbientAudio } from '@/lib/readerAmbientAudio'
 import { readerAudioAtmosphereForCategory } from '@/lib/readerAudioAtmospheres'
 
@@ -17,10 +17,20 @@ type NextAudioArticle = {
 }
 
 const CONTINUOUS_AUDIO_KEY = 'scoop_continuous_audio'
+const SEEK_BACK_SECONDS = 15
+const SEEK_FORWARD_SECONDS = 30
 
 function stopOtherReaderAudio(instanceId: string) {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new CustomEvent('scoop-reader-audio-stop', { detail: { instanceId } }))
+}
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00'
+  const rounded = Math.floor(seconds)
+  const minutes = Math.floor(rounded / 60)
+  const rest = rounded % 60
+  return `${minutes}:${rest.toString().padStart(2, '0')}`
 }
 
 export function ArticleAudioPlayer({
@@ -45,6 +55,8 @@ export function ArticleAudioPlayer({
   const [ambienceEnabled, setAmbienceEnabled] = useState(true)
   const [nextAudioQueued, setNextAudioQueued] = useState(Boolean(nextArticle?.audio_url))
   const [prepareAttempt, setPrepareAttempt] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
   const router = useRouter()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const nextWarmupRef = useRef<string | null>(null)
@@ -57,6 +69,8 @@ export function ArticleAudioPlayer({
 
   useEffect(() => {
     setPreparedAudioUrl(audioUrl ?? null)
+    setCurrentTime(0)
+    setDuration(0)
   }, [audioUrl])
 
   useEffect(() => {
@@ -228,6 +242,7 @@ export function ArticleAudioPlayer({
       audioRef.current.pause()
       audioRef.current.currentTime = 0
     }
+    setCurrentTime(0)
     playInFlightRef.current = false
     stopAmbience()
     setState('idle')
@@ -245,6 +260,8 @@ export function ArticleAudioPlayer({
       audioRef.current.removeAttribute('src')
       audioRef.current.load()
     }
+    setCurrentTime(0)
+    setDuration(0)
     playInFlightRef.current = false
     stopAmbience()
     setState('preparing')
@@ -255,7 +272,33 @@ export function ArticleAudioPlayer({
   const handleTimeUpdate = () => {
     const audio = audioRef.current
     if (!audio?.duration || Number.isNaN(audio.duration)) return
+    setCurrentTime(audio.currentTime)
+    setDuration(audio.duration)
     if (audio.currentTime >= audio.duration / 2) void warmNextAudio()
+  }
+
+  const handleLoadedMetadata = () => {
+    const audio = audioRef.current
+    if (!audio) return
+    setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
+    setCurrentTime(Number.isFinite(audio.currentTime) ? audio.currentTime : 0)
+  }
+
+  const seekTo = (value: number) => {
+    const audio = audioRef.current
+    if (!audio || !duration) return
+    const nextTime = Math.min(Math.max(value, 0), duration)
+    audio.currentTime = nextTime
+    setCurrentTime(nextTime)
+  }
+
+  const seekBy = (seconds: number) => {
+    const audio = audioRef.current
+    if (!audio) return
+    const max = Number.isFinite(audio.duration) ? audio.duration : duration
+    const nextTime = Math.min(Math.max(audio.currentTime + seconds, 0), max || audio.currentTime + seconds)
+    audio.currentTime = nextTime
+    setCurrentTime(nextTime)
   }
 
   if (!articleId || (!text.trim() && !currentAudioUrl)) return null
@@ -287,6 +330,7 @@ export function ArticleAudioPlayer({
           src={currentAudioUrl}
           onEnded={goToNextArticle}
           onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
           onPause={() => {
             stopAmbience()
             setState((current) => (current === 'playing' ? 'paused' : current))
@@ -298,7 +342,7 @@ export function ArticleAudioPlayer({
         />
       ) : null}
       <div className={isHero ? 'flex items-center gap-3' : 'flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between'}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 font-sans text-[10px] font-black uppercase tracking-[0.14em] text-primary">
             <Volume2 className="h-4 w-4" aria-hidden />
             Ecouter l'article
@@ -333,6 +377,17 @@ export function ArticleAudioPlayer({
         <div className={isHero ? 'ml-auto flex shrink-0 items-center gap-2' : 'flex items-center gap-2'}>
           <button
             type="button"
+            onClick={() => seekBy(-SEEK_BACK_SECONDS)}
+            disabled={!currentAudioUrl || duration <= 0}
+            className={isHero
+              ? 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-background/18 bg-background/10 transition hover:bg-background/20 disabled:cursor-not-allowed disabled:opacity-45'
+              : 'inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50'}
+            aria-label={`Reculer de ${SEEK_BACK_SECONDS} secondes`}
+          >
+            <Rewind className="h-4 w-4" aria-hidden />
+          </button>
+          <button
+            type="button"
             onClick={state === 'playing' ? pause : play}
             disabled={state === 'preparing'}
             className={
@@ -350,6 +405,17 @@ export function ArticleAudioPlayer({
               <Play className="h-4 w-4" aria-hidden />
             )}
             {isHero ? null : state === 'preparing' ? 'Préparation' : state === 'playing' ? 'Pause' : state === 'paused' ? 'Reprendre' : state === 'queued' ? 'Réessayer' : 'Ecouter'}
+          </button>
+          <button
+            type="button"
+            onClick={() => seekBy(SEEK_FORWARD_SECONDS)}
+            disabled={!currentAudioUrl || duration <= 0}
+            className={isHero
+              ? 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-background/18 bg-background/10 transition hover:bg-background/20 disabled:cursor-not-allowed disabled:opacity-45'
+              : 'inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50'}
+            aria-label={`Avancer de ${SEEK_FORWARD_SECONDS} secondes`}
+          >
+            <FastForward className="h-4 w-4" aria-hidden />
           </button>
           <button
             type="button"
@@ -376,6 +442,24 @@ export function ArticleAudioPlayer({
             </button>
           ) : null}
         </div>
+      </div>
+
+      <div className={isHero ? 'mt-3 space-y-2' : 'mt-4 space-y-2'}>
+        <div className="flex items-center justify-between font-sans text-[11px] font-bold text-muted-foreground">
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={1}
+          value={duration ? Math.min(currentTime, duration) : 0}
+          onChange={(event) => seekTo(Number(event.currentTarget.value))}
+          disabled={!currentAudioUrl || duration <= 0}
+          aria-label="Progression de la lecture"
+          className="h-2 w-full cursor-pointer accent-primary disabled:cursor-not-allowed disabled:opacity-50"
+        />
       </div>
 
       {isHero && state !== 'idle' ? (

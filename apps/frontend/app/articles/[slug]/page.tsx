@@ -310,6 +310,9 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                   {dateLine}
                 </p>
               ) : null}
+            </div>
+
+            <div className="relative z-20 mx-4 -mt-14 pb-5 sm:mx-6 lg:absolute lg:bottom-8 lg:left-8 lg:mx-0 lg:mt-0 lg:w-[min(440px,calc(50%-4rem))] lg:pb-0 xl:left-10">
               <ArticleAudioPlayer
                 articleId={article.id}
                 text={audioText}
@@ -317,7 +320,6 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 categorySlug={article.category?.slug ?? null}
                 nextArticle={continuousNextArticle}
                 variant="hero"
-                className="mt-6 max-w-[440px]"
               />
             </div>
           </div>
