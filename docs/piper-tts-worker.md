@@ -121,7 +121,8 @@ TTS_AUDIO_FORMAT=mp3
 TTS_WORKER_MAX_CHARS=12000
 TTS_WORKER_MAX_CHUNK_CHARS=900
 TTS_WORKER_MAX_ATTEMPTS=3
-TTS_WORKER_BATCH_SIZE=2
+TTS_WORKER_BATCH_SIZE=1
+TTS_WORKER_STALE_JOB_MINUTES=12
 ```
 
 The Docker image already sets:
@@ -145,7 +146,7 @@ TTS_WORKER_URL=https://<your-render-service>.onrender.com
 TTS_WORKER_SECRET=<same-value-as-render>
 ```
 
-The backend calls `POST /process-one` when a reader clicks Play and no fresh audio exists.
+The backend calls `POST /process-one` when a reader clicks Play and no fresh audio exists. The worker keeps the HTTP request open while Piper runs so Render Free does not stop background work after a quick `202` response.
 
 ### 4. Trigger processing
 
@@ -198,6 +199,7 @@ The repo includes `.github/workflows/tts-worker-cron.yml`, which calls Render ev
 - Run only one worker at first. The DB claim query uses `FOR UPDATE SKIP LOCKED`, so more workers can be added later.
 - Start with `TTS_AUDIO_FORMAT=mp3` if ffmpeg is available; it reduces bandwidth and improves Africa mobile performance.
 - Keep `TTS_WORKER_MAX_CHARS` conservative. The worker splits that text into Piper chunks with `TTS_WORKER_MAX_CHUNK_CHARS` to avoid long one-shot synthesis on small Render instances.
+- Keep `TTS_WORKER_BATCH_SIZE=1` on Render Free with UPMC. The voice is clearer but slow on small CPU; one synchronous article per request is more reliable than a long background batch.
 - Use a public Supabase Storage bucket named `article-audio`.
 - Worker logs include text length, chunk count, each Piper chunk, concat, upload start, and upload completion. If a log stops before upload, the failure is in synthesis/concat rather than Supabase Storage.
 - Generated audio expires 5 days after the last playback. Each playback calls the backend and extends the expiration by 5 days.
