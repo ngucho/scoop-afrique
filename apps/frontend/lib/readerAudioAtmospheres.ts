@@ -1,10 +1,9 @@
-const COMMONS_FILE_REDIRECT = 'https://commons.wikimedia.org/wiki/Special:Redirect/file'
 const ASSET_BASE_URL = process.env.NEXT_PUBLIC_READER_AUDIO_ASSETS_BASE_URL?.replace(/\/$/, '')
 
-function audioAsset(filename: string, commonsFilename: string) {
+function audioAsset(filename: string) {
   return ASSET_BASE_URL
     ? `${ASSET_BASE_URL}/${filename}`
-    : `${COMMONS_FILE_REDIRECT}/${commonsFilename}`
+    : `/audio/ambiences/${filename}`
 }
 
 export interface ReaderAudioAtmosphere {
@@ -18,25 +17,25 @@ const ATMOSPHERES: ReaderAudioAtmosphere[] = [
   {
     key: 'kora',
     label: 'Kora douce',
-    url: audioAsset('kora.ogg', '17_-_Cinus_Laurent_-_Kora.ogg'),
+    url: audioAsset('kora.ogg'),
     attribution: 'Cinus Laurent - Kora, Licence Art Libre, via Wikimedia Commons',
   },
   {
     key: 'market',
     label: 'Rythme vivant',
-    url: audioAsset('market.ogg', 'The_African_Anthem.ogg'),
+    url: audioAsset('market.ogg'),
     attribution: 'ItzAbdullahi - The African Anthem, CC BY-SA 4.0, via Wikimedia Commons',
   },
   {
     key: 'bell',
     label: 'Agogo',
-    url: audioAsset('bell.ogg', 'Africanagogosound.ogg'),
+    url: audioAsset('bell.ogg'),
     attribution: 'Freddythehat - African double bell, public domain, via Wikimedia Commons',
   },
   {
     key: 'ambient',
     label: 'Ambiance calme',
-    url: audioAsset('ambient.ogg', 'Brenticus_-_Ambient.ogg'),
+    url: audioAsset('ambient.ogg'),
     attribution: 'Brenticus - Ambient, CC BY 3.0, via Wikimedia Commons',
   },
 ]
