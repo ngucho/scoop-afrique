@@ -71,6 +71,7 @@ const envSchema = z.object({
   /** Piper TTS worker HTTP trigger (Render service). */
   TTS_WORKER_URL: z.string().url().optional(),
   TTS_WORKER_SECRET: z.string().min(1).optional(),
+  TTS_RENDER_FALLBACK_ENABLED: z.coerce.boolean().default(false),
   /** Optional GitHub Actions dispatch for article audio generation. */
   GITHUB_TTS_DISPATCH_TOKEN: z.string().min(1).optional(),
   GITHUB_TTS_OWNER: z.string().min(1).default('ngucho'),
@@ -168,6 +169,7 @@ export const config = {
     ? {
         url: env.TTS_WORKER_URL.replace(/\/+$/, ''),
         secret: env.TTS_WORKER_SECRET?.trim() || null,
+        fallbackEnabled: env.TTS_RENDER_FALLBACK_ENABLED,
       }
     : null,
 
