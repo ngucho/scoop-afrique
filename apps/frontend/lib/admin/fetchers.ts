@@ -41,12 +41,16 @@ export async function fetchAdminArticles(params?: {
   q?: string
   page?: number
   limit?: number
+  sort?: string
+  dir?: 'asc' | 'desc'
 }): Promise<{ data: Article[]; total: number }> {
   const token = await getToken()
   if (!token) return { data: [], total: 0 }
   const sp = new URLSearchParams()
   if (params?.status) sp.set('status', params.status)
   if (params?.q) sp.set('q', params.q)
+  if (params?.sort) sp.set('sort', params.sort)
+  if (params?.dir) sp.set('dir', params.dir)
   sp.set('page', String(params?.page ?? 1))
   sp.set('limit', String(params?.limit ?? 50))
   try {
