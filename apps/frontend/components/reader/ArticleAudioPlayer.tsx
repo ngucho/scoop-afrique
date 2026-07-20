@@ -345,7 +345,7 @@ export function ArticleAudioPlayer({
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-2 font-sans text-[10px] font-black uppercase tracking-[0.14em] text-primary">
             <Volume2 className="h-4 w-4" aria-hidden />
-            Ecouter l'article
+            Ecouter l&apos;article
           </p>
           {isHero ? (
             <div className="mt-2 flex h-8 items-end gap-1" aria-hidden>

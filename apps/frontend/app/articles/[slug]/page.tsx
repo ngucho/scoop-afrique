@@ -259,7 +259,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
                 />
                 <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-1/2 bg-gradient-to-r from-foreground/95 via-foreground/62 to-transparent lg:block" />
                 {creditLine ? (
-                  <figcaption className="absolute bottom-3 right-3 z-20 max-w-[calc(100%-1.5rem)] rounded-full bg-foreground/72 px-3 py-1.5 font-sans text-[10px] font-semibold leading-4 text-background/80 backdrop-blur-md sm:max-w-sm">
+                  <figcaption className="absolute right-3 top-3 z-20 max-w-[calc(100%-1.5rem)] rounded-full bg-foreground/72 px-3 py-1.5 font-sans text-[10px] font-semibold leading-4 text-background/80 backdrop-blur-md sm:max-w-sm">
                     {creditLine}
                   </figcaption>
                 ) : null}
@@ -312,7 +312,7 @@ export default async function ArticleDetailPage({ params }: PageProps) {
               ) : null}
             </div>
 
-            <div className="relative z-20 mx-4 -mt-14 pb-5 sm:mx-6 lg:absolute lg:bottom-8 lg:left-8 lg:mx-0 lg:mt-0 lg:w-[min(440px,calc(50%-4rem))] lg:pb-0 xl:left-10">
+            <div className="relative z-20 mx-4 -mt-14 pb-5 sm:mx-6 lg:absolute lg:bottom-8 lg:right-8 lg:mx-0 lg:mt-0 lg:w-[min(440px,calc(50%-4rem))] lg:pb-0 xl:right-10">
               <ArticleAudioPlayer
                 articleId={article.id}
                 text={audioText}
