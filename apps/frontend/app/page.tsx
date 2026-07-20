@@ -8,6 +8,7 @@ import { HomeNewsletterCta } from '@/components/reader/HomeNewsletterCta'
 import { AdSlotSection } from '@/components/reader/AdSlotSection'
 import { HomeStreamingRail } from '@/components/reader/HomeStreamingRail'
 import { HomeReaderPulse } from '@/components/reader/HomeReaderPulse'
+import { HomePersonalizedGroup } from '@/components/reader/HomePersonalizedGroup'
 import { absoluteReaderImageUrl } from '@/lib/readerImageSrc'
 import { config } from '@/lib/config'
 import { buildHomeSections, type HomePageBlock } from '@/lib/homeSections'
@@ -293,23 +294,32 @@ function StoryRail({
 }) {
   if (!articles.length && !ad) return null
   const railItems = buildRailItems(articles, ad, adPosition)
-  const shouldAnimate = railItems.length > 2
-  const displayItems = shouldAnimate ? [...railItems, ...railItems] : railItems
+  const shouldAnimate = railItems.length > 1
+  const displayItems = shouldAnimate
+    ? [...railItems, ...railItems.filter((item) => item.type === 'article')]
+    : railItems
 
   return (
     <section className="py-8">
       {showHeader ? <RailHeader title={title} href={href} /> : null}
-      <div className="overflow-hidden px-5 pb-3 sm:px-8 lg:px-10">
+      <div className="overflow-hidden pb-3">
         <HomeStreamingRail
           className={
             shouldAnimate
-              ? 'flex max-w-full gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-              : 'flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+              ? 'flex max-w-full touch-pan-x gap-4 overflow-x-auto overscroll-x-contain px-5 sm:px-8 lg:px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+              : 'flex touch-pan-x gap-4 overflow-x-auto overscroll-x-contain px-5 sm:px-8 lg:px-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
           }
         >
           {displayItems.map((item, index) => (
             item.type === 'article' ? (
-              <div key={`${item.article.id}-${index}`} data-home-rail-kind="article">
+              <div
+                key={`${item.article.id}-${index}`}
+                data-home-rail-kind="article"
+                data-home-article-id={item.article.id}
+                data-home-category-slug={item.article.category?.slug ?? ''}
+                data-home-tags={(item.article.tags ?? []).join('|')}
+                data-home-cycle={index >= railItems.length ? '1' : '0'}
+              >
                 <ArticlePoster article={item.article} priority={index < 2} />
               </div>
             ) : (
@@ -408,21 +418,6 @@ function QueueList({ title, articles }: { title: string; articles: Article[] }) 
   )
 }
 
-function PosterGrid({ title, href, articles }: { title: string; href?: string; articles: Article[] }) {
-  if (!articles.length) return null
-
-  return (
-    <section className="mx-auto max-w-[1460px] px-5 py-8 sm:px-8 lg:px-10">
-      <RailHeader title={title} href={href} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {articles.map((article, index) => (
-          <ArticlePoster key={article.id} article={article} priority={index < 2} mode="grid" />
-        ))}
-      </div>
-    </section>
-  )
-}
-
 interface HomeRailAdPlacement {
   ad: HomeRailAd
   position: number
@@ -439,34 +434,21 @@ function RubriqueStrips({
 
   return (
     <section className="py-8">
-      <div className="space-y-8">
+      <HomePersonalizedGroup className="flex flex-col gap-8">
         {block.strips.map((strip, index) => (
-          <div key={strip.slug}>
+          <div key={strip.slug} data-home-section-category-slug={strip.slug} data-home-section-key={strip.slug}>
             <RailHeader title={strip.label} href={`/category/${strip.slug}`} />
-            {block.layout === 'list' ? (
-              <StoryRail
-                title={strip.label}
-                href={`/category/${strip.slug}`}
-                articles={strip.articles}
-                ad={index === 0 ? adPlacement?.ad : undefined}
-                adPosition={adPlacement?.position}
-                showHeader={false}
-              />
-            ) : block.layout === 'featured_grid' ? (
-              <PosterGrid title={strip.label} href={`/category/${strip.slug}`} articles={strip.articles} />
-            ) : (
-              <StoryRail
-                title={strip.label}
-                href={`/category/${strip.slug}`}
-                articles={strip.articles}
-                ad={index === 0 ? adPlacement?.ad : undefined}
-                adPosition={adPlacement?.position}
-                showHeader={false}
-              />
-            )}
+            <StoryRail
+              title={strip.label}
+              href={`/category/${strip.slug}`}
+              articles={strip.articles}
+              ad={index === 0 ? adPlacement?.ad : undefined}
+              adPosition={adPlacement?.position}
+              showHeader={false}
+            />
           </div>
         ))}
-      </div>
+      </HomePersonalizedGroup>
     </section>
   )
 }
@@ -482,7 +464,6 @@ function ArticlesBlock({
 }) {
   const href = block.sectionKey === 'video' ? '/video' : '/articles'
   if (block.layout === 'list' && useQueueLayout) return <QueueList title={block.title} articles={block.articles} />
-  if (block.layout === 'featured_grid') return <PosterGrid title={block.title} href={href} articles={block.articles} />
   return <StoryRail title={block.title} href={href} articles={block.articles} ad={adPlacement?.ad} adPosition={adPlacement?.position} />
 }
 
@@ -500,6 +481,14 @@ function seededNumber(seed: string): number {
 function railArticleCount(block: RailBlock): number {
   if (block.type === 'articles') return block.articles.length
   return block.strips[0]?.articles.length ?? 0
+}
+
+function articleBlockTags(block: Extract<HomePageBlock, { type: 'articles' }>): string {
+  return Array.from(
+    new Set(
+      block.articles.flatMap((article) => [article.category?.slug ?? '', ...(article.tags ?? [])]).filter(Boolean),
+    ),
+  ).join('|')
 }
 
 function assignAdsToRails(blocks: HomePageBlock[], placements: ReturnType<typeof fetchAdPlacements> extends Promise<infer T> ? T : never) {
@@ -545,7 +534,7 @@ export default async function HomePage() {
 
     if (block.type === 'hero') {
       renderedBlocks.push(
-        <div key={block.cmsKey}>
+        <div key={block.cmsKey} data-home-section-key={block.cmsKey} data-home-section-locked="true">
           <HeroRead article={block.article} nextArticle={nextArticle} />
           <SearchDock categories={categories} />
           <HomeReaderPulse />
@@ -559,13 +548,23 @@ export default async function HomePage() {
       const useQueueLayout = block.layout === 'list' && !queueLayoutUsed
       if (useQueueLayout) queueLayoutUsed = true
       renderedBlocks.push(
-        <ArticlesBlock key={block.cmsKey} block={block} adPlacement={adPlacement} useQueueLayout={useQueueLayout} />,
+        <div
+          key={block.cmsKey}
+          data-home-section-key={block.sectionKey}
+          data-home-section-tags={articleBlockTags(block)}
+        >
+          <ArticlesBlock block={block} adPlacement={adPlacement} useQueueLayout={useQueueLayout} />
+        </div>,
       )
       continue
     }
 
     if (block.type === 'rubriques') {
-      renderedBlocks.push(<RubriqueStrips key={block.cmsKey} block={block} adPlacement={adPlacement} />)
+      renderedBlocks.push(
+        <div key={block.cmsKey} data-home-section-key="rubriques">
+          <RubriqueStrips block={block} adPlacement={adPlacement} />
+        </div>,
+      )
     }
   }
 
@@ -602,7 +601,7 @@ export default async function HomePage() {
               <HomeReaderPulse />
             </>
           ) : null}
-          {renderedBlocks}
+          <HomePersonalizedGroup className="flex flex-col">{renderedBlocks}</HomePersonalizedGroup>
           <div className="mx-auto max-w-[1460px] px-5 sm:px-8 lg:px-10">
             <HomeNewsletterCta />
           </div>
