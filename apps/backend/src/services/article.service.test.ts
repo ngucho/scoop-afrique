@@ -2,12 +2,35 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { PublicArticleCard } from './article.service.js'
 import {
+  articleViewEventBucket,
   canCreateArticleWithStatus,
   decodeArticleFeedCursor,
   encodeArticleFeedCursor,
+  hashArticleVisitor,
   presentArticleForPublicApi,
   presentArticleCardForPublicApi,
 } from './article.service.js'
+
+test('article visitor hashes are stable and do not expose the browser identifier', () => {
+  const visitorId = '11111111-1111-4111-8111-111111111111'
+  const hash = hashArticleVisitor(`anonymous:${visitorId}`)
+
+  assert.equal(hash.length, 64)
+  assert.equal(hash, hashArticleVisitor(`anonymous:${visitorId}`))
+  assert.notEqual(hash, hashArticleVisitor(`account:${visitorId}`))
+  assert.equal(hash.includes(visitorId), false)
+})
+
+test('article view buckets deduplicate events within thirty seconds', () => {
+  assert.equal(
+    articleViewEventBucket(new Date('2026-07-25T10:00:01.000Z')),
+    articleViewEventBucket(new Date('2026-07-25T10:00:29.000Z')),
+  )
+  assert.notEqual(
+    articleViewEventBucket(new Date('2026-07-25T10:00:29.000Z')),
+    articleViewEventBucket(new Date('2026-07-25T10:00:31.000Z')),
+  )
+})
 
 test('canCreateArticleWithStatus allows published creation only for editor roles', () => {
   assert.equal(canCreateArticleWithStatus('journalist', 'draft'), true)

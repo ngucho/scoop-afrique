@@ -87,6 +87,7 @@ export default async function AdminDashboardPage() {
   const avgCtrValue = avgCtr && avgCtr.length > 0
     ? avgCtr.reduce((sum, row) => sum + (row.ctr ?? 0), 0) / avgCtr.length
     : null
+  const traffic = readerKpis?.traffic
 
   return (
     <main className="space-y-8 bg-background text-foreground">
@@ -141,6 +142,31 @@ export default async function AdminDashboardPage() {
         </SignalCard>
       </section>
 
+      {showReaderKpis && traffic ? (
+        <section aria-labelledby="reader-traffic-heading">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <p className="font-sans text-[10px] font-black uppercase tracking-[0.16em] text-primary">Audience Reader</p>
+              <h2 id="reader-traffic-heading" className="mt-1 text-2xl font-black">Visites des articles</h2>
+            </div>
+            <p className="hidden max-w-sm text-right text-xs leading-5 text-muted-foreground sm:block">
+              Les visiteurs sont pseudonymises et les doublons immediats sont filtres.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <SignalCard label="Vues sur 30 jours" value={numberFr(traffic.last_30_days.views)} tone="light">
+              {numberFr(traffic.last_24_hours.views)} sur 24 h · {numberFr(traffic.last_7_days.views)} sur 7 jours
+            </SignalCard>
+            <SignalCard label="Vues distinctes" value={numberFr(traffic.last_30_days.unique_views)} tone="lime">
+              {numberFr(traffic.last_24_hours.unique_views)} sur 24 h · {numberFr(traffic.last_7_days.unique_views)} sur 7 jours
+            </SignalCard>
+            <SignalCard label="Visiteurs" value={numberFr(traffic.last_30_days.visitors)} tone="light">
+              {numberFr(traffic.last_24_hours.visitors)} sur 24 h · {numberFr(traffic.last_7_days.visitors)} sur 7 jours
+            </SignalCard>
+          </div>
+        </section>
+      ) : null}
+
       {hasMinRole(role, 'editor') && stats.inReview > 0 ? (
         <section className="flex flex-col gap-4 rounded-[1.5rem] border border-primary/20 bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
@@ -189,7 +215,12 @@ export default async function AdminDashboardPage() {
                     <span className="line-clamp-1 font-medium">{article.title}</span>
                     <span className="text-xs text-muted-foreground">{article.category_slug ?? 'sans rubrique'}</span>
                   </span>
-                  <span className="font-sans text-sm font-black">{numberFr(article.view_count)}</span>
+                  <span className="text-right">
+                    <span className="block font-sans text-sm font-black">{numberFr(article.view_count)}</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {numberFr(article.unique_view_count ?? 0)} uniques
+                    </span>
+                  </span>
                 </Link>
               ))}
               {readerKpis.topArticles.length === 0 ? <p className="py-8 text-sm text-muted-foreground">Pas encore de donnees.</p> : null}

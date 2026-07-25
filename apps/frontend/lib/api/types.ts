@@ -19,6 +19,7 @@ export interface Article {
   published_at: string | null
   scheduled_at: string | null
   view_count: number
+  unique_view_count?: number
   meta_title: string | null
   meta_description: string | null
   og_image_url: string | null
@@ -322,8 +323,14 @@ export interface ReaderDashboardKpis {
     title: string
     slug: string
     view_count: number
+    unique_view_count: number
     category_slug: string | null
   }[]
+  traffic?: {
+    last_24_hours: ReaderTrafficMetrics
+    last_7_days: ReaderTrafficMetrics
+    last_30_days: ReaderTrafficMetrics
+  }
   newsletterTotals: { confirmed: number; pending: number; unsubscribed: number }
   audienceLatest?: {
     platform: string
@@ -332,6 +339,12 @@ export interface ReaderDashboardKpis {
     value_numeric: string
     country_code: string
   }[]
+}
+
+export interface ReaderTrafficMetrics {
+  views: number
+  unique_views: number
+  visitors: number
 }
 
 /* Reader public announcement + ad placements */

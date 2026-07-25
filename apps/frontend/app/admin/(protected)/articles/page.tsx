@@ -164,7 +164,7 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
                   <SortHeader label="Statut" field="status" status={status} q={q} currentSort={sort} currentDir={dir} />
                   <SortHeader label="Rubrique" field="category" status={status} q={q} currentSort={sort} currentDir={dir} />
                   <SortHeader label="Auteur" field="author" status={status} q={q} currentSort={sort} currentDir={dir} />
-                  <SortHeader label="Vues" field="views" align="right" status={status} q={q} currentSort={sort} currentDir={dir} />
+                  <SortHeader label="Vues / uniques" field="views" align="right" status={status} q={q} currentSort={sort} currentDir={dir} />
                   <SortHeader label="Publication" field="published_at" status={status} q={q} currentSort={sort} currentDir={dir} />
                   <th className="px-4 py-3 text-right font-sans text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">Actions</th>
                 </tr>
@@ -187,7 +187,12 @@ export default async function AdminArticlesPage({ searchParams }: PageProps) {
                     <td className="max-w-[220px] truncate px-4 py-3 text-muted-foreground">
                       {article.author_display_name ?? article.author?.email ?? 'Non assigne'}
                     </td>
-                    <td className="px-4 py-3 text-right font-sans font-black tabular-nums">{(article.view_count ?? 0).toLocaleString('fr-FR')}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      <p className="font-sans font-black">{(article.view_count ?? 0).toLocaleString('fr-FR')}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {(article.unique_view_count ?? 0).toLocaleString('fr-FR')} uniques
+                      </p>
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDateShort(article.published_at ?? article.updated_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">

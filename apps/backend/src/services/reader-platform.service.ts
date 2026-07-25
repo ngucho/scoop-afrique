@@ -55,7 +55,19 @@ export interface ReaderDashboardKpis {
   subscriberGrowth: { week_start: string; new_subscribers: number }[]
   adCtrBySlot: { slot_key: string; impressions: number; clicks: number; ctr: number | null }[]
   topCategories: { category_id: string | null; name: string; slug: string | null; article_count: number; total_views: number }[]
-  topArticles: { id: string; title: string; slug: string; view_count: number; category_slug: string | null }[]
+  topArticles: {
+    id: string
+    title: string
+    slug: string
+    view_count: number
+    unique_view_count: number
+    category_slug: string | null
+  }[]
+  traffic: {
+    last_24_hours: ReaderTrafficMetrics
+    last_7_days: ReaderTrafficMetrics
+    last_30_days: ReaderTrafficMetrics
+  }
   newsletterTotals: { confirmed: number; pending: number; unsubscribed: number }
   /** Latest ingested audience / social / site KPI snapshots (if any). */
   audienceLatest: {
@@ -65,6 +77,12 @@ export interface ReaderDashboardKpis {
     value_numeric: string
     country_code: string
   }[]
+}
+
+export interface ReaderTrafficMetrics {
+  views: number
+  unique_views: number
+  visitors: number
 }
 
 export interface ReaderAdSlotMetricsRow {
@@ -145,19 +163,80 @@ export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
     total_views: number
   }>(catRaw)
 
-  const topArt = await db
-    .select({
-      id: articles.id,
-      title: articles.title,
-      slug: articles.slug,
-      view_count: articles.viewCount,
-      category_slug: categories.slug,
-    })
-    .from(articles)
-    .leftJoin(categories, eq(articles.categoryId, categories.id))
-    .where(eq(articles.status, 'published'))
-    .orderBy(desc(articles.viewCount))
-    .limit(10)
+  const topArtRaw = await db.execute(sql`
+    SELECT
+      a.id,
+      a.title,
+      a.slug,
+      a.view_count,
+      c.slug AS category_slug,
+      count(distinct e.visitor_hash)
+        filter (where e.visitor_hash is not null)::int AS unique_view_count
+    FROM articles a
+    LEFT JOIN categories c ON c.id = a.category_id
+    LEFT JOIN article_view_events e ON e.article_id = a.id
+    WHERE a.status = 'published'
+    GROUP BY a.id, a.title, a.slug, a.view_count, c.slug
+    ORDER BY a.view_count DESC
+    LIMIT 10
+  `)
+  const topArt = rowsFromExecute<{
+    id: string
+    title: string
+    slug: string
+    view_count: number
+    unique_view_count: number
+    category_slug: string | null
+  }>(topArtRaw)
+
+  const trafficRaw = await db.execute(sql`
+    SELECT
+      count(*) filter (where created_at >= now() - interval '24 hours')::int AS views_24h,
+      count(distinct (article_id, visitor_hash))
+        filter (
+          where created_at >= now() - interval '24 hours'
+            and visitor_hash is not null
+        )::int AS unique_views_24h,
+      count(distinct visitor_hash)
+        filter (
+          where created_at >= now() - interval '24 hours'
+            and visitor_hash is not null
+        )::int AS visitors_24h,
+      count(*) filter (where created_at >= now() - interval '7 days')::int AS views_7d,
+      count(distinct (article_id, visitor_hash))
+        filter (
+          where created_at >= now() - interval '7 days'
+            and visitor_hash is not null
+        )::int AS unique_views_7d,
+      count(distinct visitor_hash)
+        filter (
+          where created_at >= now() - interval '7 days'
+            and visitor_hash is not null
+        )::int AS visitors_7d,
+      count(*) filter (where created_at >= now() - interval '30 days')::int AS views_30d,
+      count(distinct (article_id, visitor_hash))
+        filter (
+          where created_at >= now() - interval '30 days'
+            and visitor_hash is not null
+        )::int AS unique_views_30d,
+      count(distinct visitor_hash)
+        filter (
+          where created_at >= now() - interval '30 days'
+            and visitor_hash is not null
+        )::int AS visitors_30d
+    FROM article_view_events
+  `)
+  const traffic = rowsFromExecute<{
+    views_24h: number
+    unique_views_24h: number
+    visitors_24h: number
+    views_7d: number
+    unique_views_7d: number
+    visitors_7d: number
+    views_30d: number
+    unique_views_30d: number
+    visitors_30d: number
+  }>(trafficRaw)[0]
 
   const [conf, pend, unsub, audienceLatest] = await Promise.all([
     db.select({ c: count() }).from(newsletterSubscribers).where(eq(newsletterSubscribers.status, 'confirmed')),
@@ -192,9 +271,27 @@ export async function getReaderDashboardKpis(): Promise<ReaderDashboardKpis> {
       id: a.id,
       title: a.title,
       slug: a.slug,
-      view_count: a.view_count,
+      view_count: Number(a.view_count),
+      unique_view_count: Number(a.unique_view_count),
       category_slug: a.category_slug,
     })),
+    traffic: {
+      last_24_hours: {
+        views: Number(traffic?.views_24h ?? 0),
+        unique_views: Number(traffic?.unique_views_24h ?? 0),
+        visitors: Number(traffic?.visitors_24h ?? 0),
+      },
+      last_7_days: {
+        views: Number(traffic?.views_7d ?? 0),
+        unique_views: Number(traffic?.unique_views_7d ?? 0),
+        visitors: Number(traffic?.visitors_7d ?? 0),
+      },
+      last_30_days: {
+        views: Number(traffic?.views_30d ?? 0),
+        unique_views: Number(traffic?.unique_views_30d ?? 0),
+        visitors: Number(traffic?.visitors_30d ?? 0),
+      },
+    },
     newsletterTotals: {
       confirmed: conf[0]?.c ?? 0,
       pending: pend[0]?.c ?? 0,

@@ -36,7 +36,7 @@ interface PageProps {
 
 async function getArticle(slug: string) {
   try {
-    const res = await apiGet<ArticleResponse>(`/articles/${slug}`, { revalidate: 60 })
+    const res = await apiGet<ArticleResponse>(`/articles/${slug}?track_view=0`, { revalidate: 60 })
     return res.data
   } catch {
     return null
