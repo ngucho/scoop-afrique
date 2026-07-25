@@ -116,7 +116,16 @@ app.get('/', async (c) => {
     sortDir,
     allowAllStatuses: true,
   })
-  return c.json({ data: data.map(toAdminArticlePayload), total })
+  const audienceByArticle = await articleService.getArticleViewAudienceStats(
+    data.map((article) => article.id),
+  )
+  return c.json({
+    data: data.map((article) => ({
+      ...toAdminArticlePayload(article),
+      unique_view_count: audienceByArticle.get(article.id)?.unique_view_count ?? 0,
+    })),
+    total,
+  })
 })
 
 /* --- Get single article --- */

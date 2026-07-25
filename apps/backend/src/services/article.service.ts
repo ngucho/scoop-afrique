@@ -8,6 +8,7 @@
  * - Computes word_count / reading_time_min on every save.
  * - Uses collaborator service for canEdit checks.
  */
+import { createHash } from 'node:crypto'
 import { eq, and, asc, desc, sql, or, ilike, isNotNull, inArray } from 'drizzle-orm'
 import { getDb } from '../db/index.js'
 import { articles, articleAudioJobs, articleViewEvents, categories, profiles, readerArticleHistory, readerPublicProfiles } from '../db/schema.js'
@@ -1163,24 +1164,77 @@ export async function getArticleByIdOrSlug(
   })
 }
 
-/* ---------- Increment view count ---------- */
+const ARTICLE_VIEW_BUCKET_SECONDS = 30
 
-export async function incrementViewCount(articleId: string): Promise<void> {
-  if (!config.database) return
+export function hashArticleVisitor(visitorKey: string): string {
+  return createHash('sha256')
+    .update(`scoop-afrique:reader:${visitorKey}`)
+    .digest('hex')
+}
+
+export function articleViewEventBucket(at = new Date()): number {
+  return Math.floor(at.getTime() / 1000 / ARTICLE_VIEW_BUCKET_SECONDS)
+}
+
+export async function recordArticleView(articleId: string, visitorKey: string): Promise<boolean> {
+  if (!config.database) return false
   const db = getDb()
   try {
-    await db.execute(sql`SELECT increment_view_count(${articleId}::uuid)`)
-  } catch {
-    try {
-      await db.insert(articleViewEvents).values({ articleId })
-      await db
+    return await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(articleViewEvents)
+        .values({
+          articleId,
+          visitorHash: hashArticleVisitor(visitorKey),
+          eventBucket: articleViewEventBucket(),
+        })
+        .onConflictDoNothing()
+        .returning({ id: articleViewEvents.id })
+
+      if (inserted.length === 0) return false
+
+      const updated = await tx
         .update(articles)
         .set({ viewCount: sql`${articles.viewCount} + 1` })
-        .where(eq(articles.id, articleId))
-    } catch {
-      // Silently fail — view count is non-critical
-    }
+        .where(and(eq(articles.id, articleId), eq(articles.status, 'published')))
+        .returning({ id: articles.id })
+
+      if (updated.length === 0) {
+        throw new Error('Published article not found while recording view')
+      }
+      return true
+    })
+  } catch {
+    // Reading remains available when analytics is temporarily unavailable.
+    return false
   }
+}
+
+export interface ArticleViewAudienceStats {
+  unique_view_count: number
+}
+
+export async function getArticleViewAudienceStats(
+  articleIds: string[],
+): Promise<Map<string, ArticleViewAudienceStats>> {
+  if (!config.database || articleIds.length === 0) return new Map()
+  const db = getDb()
+  const rows = await db
+    .select({
+      articleId: articleViewEvents.articleId,
+      uniqueViewCount: sql<number>`
+        count(distinct ${articleViewEvents.visitorHash})
+        filter (where ${articleViewEvents.visitorHash} is not null)
+      `,
+    })
+    .from(articleViewEvents)
+    .where(inArray(articleViewEvents.articleId, articleIds))
+    .groupBy(articleViewEvents.articleId)
+
+  return new Map(rows.map((row) => [
+    row.articleId,
+    { unique_view_count: Number(row.uniqueViewCount) },
+  ]))
 }
 
 /** Article IDs with the most view events in the last `hours` hours (published only). */

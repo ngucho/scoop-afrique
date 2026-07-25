@@ -2,7 +2,8 @@
  * Public article routes.
  *
  * - GET /          — list published articles (search, category, tag, pagination)
- * - GET /:id       — get article by id or slug (increments view count)
+ * - GET /:id       — get article by id or slug
+ * - POST /:id/view — record a real browser view
  * - GET /:id/likes — like count + liked state
  * - POST /:id/likes — toggle like
  */
@@ -91,6 +92,24 @@ app.post('/:id/audio-access', async (c) => {
   return c.json({ data: result })
 })
 
+app.post('/:id/view', async (c) => {
+  if (!config.database) return c.json({ data: { recorded: false } }, 503)
+  const article = await articleService.getArticleByIdOrSlug(c.req.param('id'), true)
+  if (!article || article.status !== 'published') return c.json({ error: 'Not found' }, 404)
+
+  const user = await getAuthUser(c)
+  const body = await c.req.json().catch(() => ({}))
+  const anonymousId = typeof body?.visitor_id === 'string' ? body.visitor_id.trim() : ''
+  if (!user && !/^[a-zA-Z0-9_-]{16,128}$/.test(anonymousId)) {
+    return c.json({ error: 'visitor_id required' }, 400)
+  }
+
+  const visitorKey = user ? `account:${user.id}` : `anonymous:${anonymousId}`
+  const recorded = await articleService.recordArticleView(article.id, visitorKey)
+  c.header('Cache-Control', 'no-store')
+  return c.json({ data: { recorded } }, recorded ? 201 : 200)
+})
+
 /* --- List published articles --- */
 app.get('/', async (c) => {
   if (!config.database) return c.json({ data: [], total: 0 })
@@ -126,7 +145,7 @@ app.get('/', async (c) => {
   return c.json({ data: presented, total, page, limit })
 })
 
-/* --- Get single article (view tracking) --- */
+/* --- Get single article --- */
 app.get('/:id', async (c) => {
   const id = c.req.param('id')
   const user = await getAuthUser(c)
@@ -134,12 +153,6 @@ app.get('/:id', async (c) => {
   const article = await articleService.getArticleByIdOrSlug(id, onlyPublished)
   if (!article) return c.json({ error: 'Not found' }, 404)
 
-  // Fire-and-forget view count increment for published articles (skip for server-side embeds, e.g. homepage hero)
-  const trackRaw = c.req.query('track_view')
-  const track = trackRaw !== '0' && trackRaw !== 'false'
-  if (track && article.status === 'published') {
-    articleService.incrementViewCount(article.id).catch(() => {})
-  }
   if (article.status === 'published' && !articleService.isArticleAudioFresh(article)) {
     articleService.enqueueArticleAudioJob(article.id, article.audio_url ? 'manual' : 'published').catch(() => {})
   }
