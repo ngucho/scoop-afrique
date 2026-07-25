@@ -5,19 +5,9 @@ import { Button } from 'scoop'
 import { IconHeart } from '@tabler/icons-react'
 import { config } from '@/lib/config'
 import type { LikesResponse } from '@/lib/api/types'
+import { getOrCreateReaderVisitorId } from '@/lib/readerIdentity'
 
 const API_PREFIX = '/api/v1'
-const ANON_ID_KEY = 'scoop_anonymous_id'
-
-function getOrCreateAnonymousId(): string {
-  if (typeof window === 'undefined') return ''
-  let id = localStorage.getItem(ANON_ID_KEY)
-  if (!id) {
-    id = crypto.randomUUID?.() ?? `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`
-    localStorage.setItem(ANON_ID_KEY, id)
-  }
-  return id
-}
 
 interface LikeButtonProps {
   articleId: string
@@ -32,7 +22,7 @@ export function LikeButton({ articleId, initialCount, initialLiked, className }:
   const [loading, setLoading] = useState(false)
 
   const fetchLikedState = useCallback(async () => {
-    const anonId = getOrCreateAnonymousId()
+    const anonId = getOrCreateReaderVisitorId()
     if (!anonId) return
     try {
       const url = `${config.apiBaseUrl}${API_PREFIX}/articles/${articleId}/likes?anonymous_id=${encodeURIComponent(anonId)}`
@@ -55,7 +45,7 @@ export function LikeButton({ articleId, initialCount, initialLiked, className }:
     if (loading) return
     setLoading(true)
     try {
-      const anonId = getOrCreateAnonymousId()
+      const anonId = getOrCreateReaderVisitorId()
       const url = `${config.apiBaseUrl}${API_PREFIX}/articles/${articleId}/likes`
       const res = await fetch(url, {
         method: 'POST',

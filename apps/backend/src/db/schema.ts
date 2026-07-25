@@ -298,11 +298,17 @@ export const articleViewEvents = pgTable(
     articleId: uuid('article_id')
       .notNull()
       .references(() => articles.id, { onDelete: 'cascade' }),
+    visitorHash: text('visitor_hash'),
+    eventBucket: integer('event_bucket'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index('article_view_events_article_created_idx').on(t.articleId, t.createdAt),
     index('article_view_events_created_idx').on(t.createdAt),
+    index('article_view_events_visitor_created_idx').on(t.visitorHash, t.createdAt),
+    uniqueIndex('article_view_events_article_visitor_bucket_unique_idx')
+      .on(t.articleId, t.visitorHash, t.eventBucket)
+      .where(sql`${t.visitorHash} is not null and ${t.eventBucket} is not null`),
   ],
 )
 

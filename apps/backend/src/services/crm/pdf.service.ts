@@ -12,6 +12,7 @@ import { ContractTemplate } from '../../pdf-templates/ContractTemplate.js'
 import { getPaymentMethods, getCompanyInfo } from './settings.service.js'
 
 const PDF_STORAGE_BUCKET = process.env.PDF_STORAGE_BUCKET ?? 'crm-documents'
+const PDF_SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 7
 
 export async function renderPdfToBuffer(doc: React.ReactElement): Promise<Buffer> {
   const buffer = await renderToBuffer(doc as Parameters<typeof renderToBuffer>[0])
@@ -212,6 +213,12 @@ export async function uploadPdfToStorage(
     return null
   }
 
-  const { data: urlData } = supabase.storage.from(PDF_STORAGE_BUCKET).getPublicUrl(path)
-  return urlData?.publicUrl ?? null
+  const { data: urlData, error: signedUrlError } = await supabase.storage
+    .from(PDF_STORAGE_BUCKET)
+    .createSignedUrl(path, PDF_SIGNED_URL_TTL_SECONDS)
+  if (signedUrlError) {
+    console.error('[crm-pdf] Signed URL error:', signedUrlError)
+    return null
+  }
+  return urlData?.signedUrl ?? null
 }

@@ -92,6 +92,20 @@ export function recordReaderArticle(article: ReaderHistoryArticle): ReaderHistor
   return next
 }
 
+export function trackReaderArticleView(articleId: string): Promise<Response | void> {
+  return import('./readerIdentity').then(({ getOrCreateReaderVisitorId }) =>
+    fetch('/api/reader-bff/article-view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        article_id: articleId,
+        visitor_id: getOrCreateReaderVisitorId(),
+      }),
+      keepalive: true,
+    }),
+  ).catch(() => {})
+}
+
 export function syncReaderArticleHistory(articleId: string): Promise<Response | void> {
   return fetch('/api/reader-bff/article-history', {
     method: 'POST',
