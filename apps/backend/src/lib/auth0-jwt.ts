@@ -57,7 +57,12 @@ function withJwksAvailabilityBoundary(
     try {
       return await keyResolver(protectedHeader, token)
     } catch (error) {
-      if (error instanceof errors.JWKSNoMatchingKey) throw error
+      if (
+        error instanceof errors.JWKSNoMatchingKey ||
+        error instanceof errors.JWKSMultipleMatchingKeys
+      ) {
+        throw error
+      }
       throw new Auth0JwksUnavailableError(error)
     }
   }

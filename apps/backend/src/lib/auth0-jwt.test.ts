@@ -297,3 +297,31 @@ test('keeps a remote JWKS key miss as an invalid token', async (t) => {
     { ok: false, reason: 'INVALID_TOKEN' },
   )
 })
+
+test('keeps ambiguous remote JWKS key matches as an invalid token', async (t) => {
+  const first = await fixture('key-1')
+  const second = await fixture('key-2')
+  const remote = await remoteJwksResolver((_request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ keys: [first.jwk, second.jwk] }))
+  })
+  t.after(remote.close)
+  const verify = createAuth0JwtVerifier({
+    domain: 'tenant.example.auth0.com',
+    audience,
+    keyResolver: remote.keyResolver,
+  })
+  const token = await new SignJWT({ permissions: ['read:crm'] })
+    .setProtectedHeader({ alg: 'RS256' })
+    .setSubject('auth0|editor-1')
+    .setIssuer(issuer)
+    .setAudience(audience)
+    .setIssuedAt()
+    .setExpirationTime('5m')
+    .sign(first.privateKey)
+
+  assert.deepEqual(await verify(token), {
+    ok: false,
+    reason: 'INVALID_TOKEN',
+  })
+})
