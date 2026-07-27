@@ -50,8 +50,8 @@ export async function requireContributorAuth(c: Context, next: Next) {
     return
   }
 
-  const staff = verifyAuth0Token(token)
-  if (staff) {
+  const staffResult = await verifyAuth0Token(token)
+  if (staffResult.ok) {
     return c.json(
       {
         error:
@@ -89,8 +89,8 @@ export async function optionalContributorAuth(c: Context, next: Next) {
     await next()
     return
   }
-  const staff = verifyAuth0Token(token)
-  if (staff) {
+  const staffResult = await verifyAuth0Token(token)
+  if (staffResult.ok) {
     // Staff JWT: do not attach a Tribune viewer (would bypass reader-only rules).
   }
   await next()
