@@ -13,7 +13,23 @@ import {
   hasStaffApiAccess,
   READER_ACCOUNT_PERMISSION,
 } from './api-permissions.js'
+import {
+  verifyConfiguredAuth0Jwt,
+  type Auth0JwtFailureReason,
+  type VerifiedAuth0Jwt,
+} from './auth0-jwt.js'
 import type { AppRole, Auth0UserInfo } from '../services/profile.service.js'
+
+export interface StaffAuth0UserInfo extends Auth0UserInfo {
+  permissions: string[]
+}
+
+export type StaffAuthResult =
+  | { ok: true; user: StaffAuth0UserInfo }
+  | {
+      ok: false
+      reason: Auth0JwtFailureReason | 'TOKEN_MISSING_STAFF_PERMISSION'
+    }
 
 /** Verified reader JWT: includes `access:reader` (may coexist with staff permissions on same user). */
 export interface ReaderAuth0TokenInfo {
@@ -95,70 +111,30 @@ export function readEmailFromAuth0AccessTokenPayload(
   )
 }
 
-/**
- * Verify an Auth0 access token using local validation only (no Auth0 call).
- * Checks: iss matches our tenant, aud matches our API, exp not past, sub present.
- * Returns null if token is invalid or Auth0 config is missing.
- */
-export function verifyAuth0Token(accessToken: string): Auth0UserInfo | null {
-  if (!config.auth0) return null
-  const { domain, audience } = config.auth0
-  const expectedIssuer = `https://${domain}/`
-
-  const payload = decodeJwtPayload(accessToken)
-  if (!payload) {
-    logger.jwtInvalid('Invalid JWT format (decode failed)')
-    return null
-  }
-
-  const sub = payload.sub
-  if (!sub || typeof sub !== 'string') {
-    logger.jwtInvalid('Missing or invalid sub claim')
-    return null
-  }
-
-  const iss = payload.iss
-  if (iss !== expectedIssuer) {
-    logger.jwtInvalid(`Issuer mismatch: expected ${expectedIssuer}, got ${String(iss)}`)
-    return null
-  }
-
-  const aud = payload.aud
-  const audMatch =
-    aud === audience ||
-    (Array.isArray(aud) && aud.includes(audience))
-  if (!audMatch) {
-    logger.jwtInvalid(`Audience mismatch: expected ${audience}, got ${JSON.stringify(aud)}`)
-    return null
-  }
-
-  const exp = payload.exp
-  if (typeof exp !== 'number') {
-    logger.jwtInvalid('Missing exp claim')
-    return null
-  }
-  const now = Math.floor(Date.now() / 1000)
-  const clockTolerance = 30
-  if (exp < now - clockTolerance) {
-    logger.jwtInvalid('Token expired')
-    return null
-  }
-
-  const permissions = (payload.permissions as string[] | undefined) ?? []
-
-  if (!hasStaffApiAccess(permissions)) {
-    logger.jwtInvalid('Staff API requires at least one employee permission (not reader-only)')
-    return null
-  }
-
-  const role = roleFromPermissions(permissions)
-  const email = readEmailFromAuth0AccessTokenPayload(payload, domain)
-
+export function staffInfoFromVerifiedToken(
+  token: VerifiedAuth0Jwt,
+): StaffAuth0UserInfo | null {
+  if (!hasStaffApiAccess(token.permissions)) return null
   return {
-    sub,
-    email,
-    role,
+    sub: token.sub,
+    email: readEmailFromAuth0AccessTokenPayload(
+      token.payload as Record<string, unknown>,
+      config.auth0?.domain ?? '',
+    ),
+    role: roleFromPermissions(token.permissions),
+    permissions: token.permissions,
   }
+}
+
+export async function verifyAuth0Token(
+  accessToken: string,
+): Promise<StaffAuthResult> {
+  const verified = await verifyConfiguredAuth0Jwt(accessToken)
+  if (!verified.ok) return verified
+  const user = staffInfoFromVerifiedToken(verified.token)
+  return user
+    ? { ok: true, user }
+    : { ok: false, reason: 'TOKEN_MISSING_STAFF_PERMISSION' }
 }
 
 /**
