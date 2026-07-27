@@ -25,6 +25,13 @@ export type Auth0JwtResult =
   | { ok: true; token: VerifiedAuth0Jwt }
   | { ok: false; reason: Auth0JwtFailureReason }
 
+class Auth0JwksUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super('Auth0 JWKS provider unavailable', { cause })
+    this.name = 'Auth0JwksUnavailableError'
+  }
+}
+
 function normalizePermissions(value: unknown): string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string')
     ? value
@@ -37,14 +44,23 @@ function failureReason(error: unknown): Auth0JwtFailureReason {
     if (error.claim === 'iss') return 'ISSUER_MISMATCH'
     if (error.claim === 'aud') return 'AUDIENCE_MISMATCH'
   }
-  if (
-    error instanceof errors.JWKSTimeout ||
-    error instanceof errors.JWKSInvalid ||
-    error instanceof TypeError
-  ) {
+  if (error instanceof Auth0JwksUnavailableError) {
     return 'AUTH_PROVIDER_UNAVAILABLE'
   }
   return 'INVALID_TOKEN'
+}
+
+function withJwksAvailabilityBoundary(
+  keyResolver: JWTVerifyGetKey,
+): JWTVerifyGetKey {
+  return async (protectedHeader, token) => {
+    try {
+      return await keyResolver(protectedHeader, token)
+    } catch (error) {
+      if (error instanceof errors.JWKSNoMatchingKey) throw error
+      throw new Auth0JwksUnavailableError(error)
+    }
+  }
 }
 
 export function createAuth0JwtVerifier(options: {
@@ -53,10 +69,11 @@ export function createAuth0JwtVerifier(options: {
   keyResolver: JWTVerifyGetKey
 }) {
   const issuer = `https://${options.domain}/`
+  const keyResolver = withJwksAvailabilityBoundary(options.keyResolver)
 
   return async (accessToken: string): Promise<Auth0JwtResult> => {
     try {
-      const { payload } = await jwtVerify(accessToken, options.keyResolver, {
+      const { payload } = await jwtVerify(accessToken, keyResolver, {
         issuer,
         audience: options.audience,
         algorithms: ['RS256'],

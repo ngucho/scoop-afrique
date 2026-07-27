@@ -1,11 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { once } from 'node:events'
+import { createServer, type RequestListener } from 'node:http'
 import {
   SignJWT,
   createLocalJWKSet,
+  createRemoteJWKSet,
   exportJWK,
   generateKeyPair,
   type KeyLike,
+  type JWTVerifyGetKey,
 } from 'jose'
 import { createAuth0JwtVerifier } from './auth0-jwt.js'
 
@@ -43,6 +47,32 @@ async function sign(
     .setIssuedAt()
     .setExpirationTime(overrides.expirationTime ?? '5m')
     .sign(privateKey)
+}
+
+async function remoteJwksResolver(listener: RequestListener): Promise<{
+  keyResolver: JWTVerifyGetKey
+  close: () => Promise<void>
+}> {
+  const server = createServer(listener)
+  server.listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  const address = server.address()
+  if (!address || typeof address === 'string') {
+    server.close()
+    throw new Error('JWKS test server did not bind to a TCP port')
+  }
+  return {
+    keyResolver: createRemoteJWKSet(
+      new URL(`http://127.0.0.1:${address.port}/.well-known/jwks.json`),
+    ),
+    close: () =>
+      new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error) reject(error)
+          else resolve()
+        })
+      }),
+  }
 }
 
 test('accepts a correctly signed RS256 Auth0 access token', async () => {
@@ -192,18 +222,78 @@ test('accepts a newly rotated signing key after the resolver refreshes', async (
   assert.equal((await verify(await sign(second.privateKey, 'key-2'))).ok, true)
 })
 
-test('fails closed when the JWKS provider is unavailable', async () => {
+test('maps a non-200 remote JWKS response to provider unavailable', async (t) => {
   const { privateKey } = await fixture()
+  const remote = await remoteJwksResolver((_request, response) => {
+    response.writeHead(503, { 'content-type': 'text/plain' })
+    response.end('unavailable')
+  })
+  t.after(remote.close)
   const verify = createAuth0JwtVerifier({
     domain: 'tenant.example.auth0.com',
     audience,
-    keyResolver: async () => {
-      throw new TypeError('network unavailable')
-    },
+    keyResolver: remote.keyResolver,
   })
 
   assert.deepEqual(await verify(await sign(privateKey, 'key-1')), {
     ok: false,
     reason: 'AUTH_PROVIDER_UNAVAILABLE',
   })
+})
+
+test('maps malformed remote JWKS JSON to provider unavailable', async (t) => {
+  const { privateKey } = await fixture()
+  const remote = await remoteJwksResolver((_request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end('{not-json')
+  })
+  t.after(remote.close)
+  const verify = createAuth0JwtVerifier({
+    domain: 'tenant.example.auth0.com',
+    audience,
+    keyResolver: remote.keyResolver,
+  })
+
+  assert.deepEqual(await verify(await sign(privateKey, 'key-1')), {
+    ok: false,
+    reason: 'AUTH_PROVIDER_UNAVAILABLE',
+  })
+})
+
+test('maps a remote JWKS socket error to provider unavailable', async (t) => {
+  const { privateKey } = await fixture()
+  const remote = await remoteJwksResolver((request) => {
+    request.socket.destroy()
+  })
+  t.after(remote.close)
+  const verify = createAuth0JwtVerifier({
+    domain: 'tenant.example.auth0.com',
+    audience,
+    keyResolver: remote.keyResolver,
+  })
+
+  assert.deepEqual(await verify(await sign(privateKey, 'key-1')), {
+    ok: false,
+    reason: 'AUTH_PROVIDER_UNAVAILABLE',
+  })
+})
+
+test('keeps a remote JWKS key miss as an invalid token', async (t) => {
+  const trusted = await fixture('trusted')
+  const attacker = await fixture('attacker')
+  const remote = await remoteJwksResolver((_request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ keys: [trusted.jwk] }))
+  })
+  t.after(remote.close)
+  const verify = createAuth0JwtVerifier({
+    domain: 'tenant.example.auth0.com',
+    audience,
+    keyResolver: remote.keyResolver,
+  })
+
+  assert.deepEqual(
+    await verify(await sign(attacker.privateKey, 'attacker')),
+    { ok: false, reason: 'INVALID_TOKEN' },
+  )
 })
