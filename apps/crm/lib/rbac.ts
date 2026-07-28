@@ -12,6 +12,12 @@ export const CRM_PERMISSIONS = {
   manage: 'manage:crm',
 } as const
 
+export interface CrmCapabilities {
+  canRead: boolean
+  canWrite: boolean
+  canManage: boolean
+}
+
 /**
  * Derive role from Auth0 permissions (must match backend apps/backend/src/lib/auth0.ts).
  */
@@ -45,4 +51,14 @@ export function hasWriteCrm(permissions: string[]): boolean {
 /** Check if user has manage:crm permission */
 export function hasManageCrm(permissions: string[]): boolean {
   return permissions.includes(CRM_PERMISSIONS.manage)
+}
+
+export function crmCapabilities(
+  permissions: string[],
+): CrmCapabilities {
+  return {
+    canRead: hasReadCrm(permissions),
+    canWrite: hasWriteCrm(permissions),
+    canManage: hasManageCrm(permissions),
+  }
 }

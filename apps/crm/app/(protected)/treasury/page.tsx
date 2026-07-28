@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { crmGetServer } from '@/lib/api-server'
-import { getCrmRole } from '@/lib/crm-admin'
+import { getCrmCanManage } from '@/lib/crm-admin'
 import { resolveCrmDateRangeFromSearchParams } from '@/lib/crm-date-range'
 import { TreasuryClient } from '@/components/treasury/TreasuryClient'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
@@ -13,8 +13,8 @@ export default async function TreasuryPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const role = await getCrmRole()
-  if (role !== 'manager' && role !== 'admin') {
+  const canManageCrm = await getCrmCanManage()
+  if (!canManageCrm) {
     redirect('/dashboard')
   }
 
