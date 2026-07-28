@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button, Input, Label, Textarea, Select } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const schema = z.object({
   slug: z.string().min(1, 'Slug requis').regex(/^[a-z0-9_]+$/, 'Slug: minuscules, chiffres, underscores'),
@@ -43,6 +44,7 @@ export function ServiceForm({
   defaultValues?: Record<string, unknown>
 }) {
   const router = useRouter()
+  const { canManage } = useCrmCapabilities()
   const {
     register,
     handleSubmit,
@@ -158,7 +160,7 @@ export function ServiceForm({
           <Label htmlFor="is_active">Prestation active</Label>
         </div>
       )}
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || !canManage}>
         {isSubmitting ? 'Enregistrement…' : serviceId ? 'Mettre à jour' : 'Créer'}
       </Button>
     </form>

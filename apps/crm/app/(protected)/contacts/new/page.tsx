@@ -1,12 +1,14 @@
 import { Heading } from 'scoop'
 import { ContactForm } from '@/components/contacts/ContactForm'
 import { crmGetServer } from '@/lib/api-server'
+import { requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function NewContactPage({
   searchParams,
 }: {
   searchParams: Promise<{ devis_request_id?: string }>
 }) {
+  await requireCrmWrite()
   const params = await searchParams
   const devisRequestId = params.devis_request_id
   let defaultValues: Partial<{

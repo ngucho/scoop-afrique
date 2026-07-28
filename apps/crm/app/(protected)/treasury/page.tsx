@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation'
 import { crmGetServer } from '@/lib/api-server'
-import { getCrmCanManage } from '@/lib/crm-admin'
 import { resolveCrmDateRangeFromSearchParams } from '@/lib/crm-date-range'
 import { TreasuryClient } from '@/components/treasury/TreasuryClient'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
@@ -13,11 +11,6 @@ export default async function TreasuryPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  const canManageCrm = await getCrmCanManage()
-  if (!canManageCrm) {
-    redirect('/dashboard')
-  }
-
   const sp = await searchParams
   const search = listSearchFromParams(sp)
   const view = parseListView(sp.view, 'list')
@@ -63,7 +56,7 @@ export default async function TreasuryPage({
         <div>
           <h1 className="crm-page-title">Trésorerie</h1>
           <p className="crm-page-subtitle">
-            Revenus et dépenses hors facturation (monétisation, dons, charges, etc.) — réservé aux managers
+            Revenus et dépenses hors facturation (monétisation, dons, charges, etc.) — les modifications exigent manage:crm
           </p>
         </div>
       </div>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 
 import { resolveCrmDateRangeFromSearchParams } from '@/lib/crm-date-range'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
@@ -105,13 +106,13 @@ const ACTION_ICON: Record<string, typeof CheckCircle> = {
 }
 
 const QUICK_ACTIONS = [
-  { href: '/contacts/new', label: 'Nouveau contact', icon: Users, color: 'oklch(0.42 0.16 260)' },
-  { href: '/devis/new', label: 'Nouveau devis', icon: FileText, color: 'oklch(0.42 0.14 145)' },
-  { href: '/invoices/new', label: 'Nouvelle facture', icon: Receipt, color: 'oklch(0.5 0.2 40)' },
+  { href: '/contacts/new', label: 'Nouveau contact', icon: Users, color: 'oklch(0.42 0.16 260)', capability: 'write' },
+  { href: '/devis/new', label: 'Nouveau devis', icon: FileText, color: 'oklch(0.42 0.14 145)', capability: 'write' },
+  { href: '/invoices/new', label: 'Nouvelle facture', icon: Receipt, color: 'oklch(0.5 0.2 40)', capability: 'write' },
   { href: '/reminders', label: 'Relances', icon: Bell, color: 'oklch(0.42 0.16 280)' },
-  { href: '/projects/new', label: 'Nouveau projet', icon: ClipboardList, color: 'oklch(0.42 0.16 300)' },
+  { href: '/projects/new', label: 'Nouveau projet', icon: ClipboardList, color: 'oklch(0.42 0.16 300)', capability: 'manage' },
   { href: '/treasury', label: 'Trésorerie', icon: Wallet, color: 'oklch(0.42 0.14 145)' },
-]
+] as const
 
 function formatMonthLabel(month: string): string {
   const [y, m] = month.split('-')
@@ -303,7 +304,7 @@ export default async function DashboardPage({
           <div className="grid grid-cols-2 gap-2">
             {QUICK_ACTIONS.map((action) => {
               const Icon = action.icon
-              return (
+              const link = (
                 <Link
                   key={action.href}
                   href={action.href}
@@ -322,6 +323,16 @@ export default async function DashboardPage({
                     {action.label}
                   </span>
                 </Link>
+              )
+              return 'capability' in action ? (
+                <CrmCapabilityGate
+                  key={action.href}
+                  capability={action.capability}
+                >
+                  {link}
+                </CrmCapabilityGate>
+              ) : (
+                link
               )
             })}
           </div>

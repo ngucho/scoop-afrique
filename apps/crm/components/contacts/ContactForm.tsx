@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button, Input, Label, Select, Textarea } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const schema = z.object({
   first_name: z.string().min(1, 'Prénom requis'),
@@ -33,6 +34,7 @@ export function ContactForm({
   defaultValues?: Partial<FormData>
 }) {
   const router = useRouter()
+  const { canWrite } = useCrmCapabilities()
   const {
     register,
     handleSubmit,
@@ -170,7 +172,7 @@ export function ContactForm({
           className={errors.notes ? 'border-destructive' : ''}
         />
       </div>
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || !canWrite}>
         {isSubmitting ? 'Enregistrement…' : 'Enregistrer'}
       </Button>
     </form>

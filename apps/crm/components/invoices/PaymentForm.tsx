@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Espèces' },
@@ -39,6 +40,7 @@ export function PaymentForm({
   variant?: 'default' | 'plain'
 }) {
   const router = useRouter()
+  const { canWrite } = useCrmCapabilities()
   const {
     register,
     handleSubmit,
@@ -76,6 +78,8 @@ export function PaymentForm({
     variant === 'plain'
       ? 'space-y-3 w-full max-w-md'
       : 'rounded-lg border border-border p-4 max-w-md space-y-3'
+
+  if (!canWrite) return null
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={wrapClass}>

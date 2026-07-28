@@ -7,6 +7,7 @@ import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -77,12 +78,14 @@ export default async function DevisPage({
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="hidden sm:inline">Demandes</span>
           </Link>
-          <Link href="/devis/new">
-            <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
-              <Plus className="h-4 w-4" />
-              Nouveau devis
-            </Button>
-          </Link>
+          <CrmCapabilityGate capability="write">
+            <Link href="/devis/new">
+              <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
+                <Plus className="h-4 w-4" />
+                Nouveau devis
+              </Button>
+            </Link>
+          </CrmCapabilityGate>
         </div>
       </div>
 
@@ -112,9 +115,11 @@ export default async function DevisPage({
             <FileText className="crm-empty-icon h-12 w-12" />
             <p className="crm-empty-title">Aucun devis</p>
             <p className="text-sm text-muted-foreground">Créez votre premier devis</p>
-            <Link href="/devis/new">
-              <Button className="mt-4 rounded-full px-5">Créer un devis</Button>
-            </Link>
+            <CrmCapabilityGate capability="write">
+              <Link href="/devis/new">
+                <Button className="mt-4 rounded-full px-5">Créer un devis</Button>
+              </Link>
+            </CrmCapabilityGate>
           </div>
         </div>
       ) : view === 'cards' ? (

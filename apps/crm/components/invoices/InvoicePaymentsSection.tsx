@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Button, Dialog, Input } from 'scoop'
 import { Pencil } from 'lucide-react'
 import { PaymentForm } from './PaymentForm'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Espèces' },
@@ -30,6 +31,7 @@ export function InvoicePaymentsSection({
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const { canWrite } = useCrmCapabilities()
 
   async function saveEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -84,7 +86,7 @@ export function InvoicePaymentsSection({
               {payments.map((p) => {
                 const id = String(p.id)
                 const isEdit = editingId === id
-                if (isEdit) {
+                if (canWrite && isEdit) {
                   return (
                     <tr key={id} className="border-t border-border bg-muted/20">
                       <td colSpan={5} className="p-4">
@@ -175,16 +177,18 @@ export function InvoicePaymentsSection({
                       </a>
                     </td>
                     <td className="p-3 text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 gap-1"
-                        onClick={() => setEditingId(id)}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Modifier
-                      </Button>
+                      {canWrite && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-1"
+                          onClick={() => setEditingId(id)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Modifier
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -193,7 +197,7 @@ export function InvoicePaymentsSection({
           </table>
         </div>
       )}
-      {balance > 0 && (
+      {canWrite && balance > 0 && (
         <>
           <Button type="button" className="mt-2 rounded-full" onClick={() => setPaymentOpen(true)}>
             Enregistrer un paiement

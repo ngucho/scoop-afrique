@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { crmGetServer } from '@/lib/api-server'
 import { ProjectFinanceClient } from '@/components/projects/ProjectFinanceClient'
 import { DollarSign, ExternalLink } from 'lucide-react'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 export default async function ProjectFinancePage({
   params,
@@ -40,12 +41,14 @@ export default async function ProjectFinancePage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/invoices/new?project_id=${id}`}
-            className="crm-quick-action"
-          >
-            <span>+ Nouvelle facture</span>
-          </Link>
+          <CrmCapabilityGate capability="write">
+            <Link
+              href={`/invoices/new?project_id=${id}`}
+              className="crm-quick-action"
+            >
+              <span>+ Nouvelle facture</span>
+            </Link>
+          </CrmCapabilityGate>
           <Link href={`/projects/${id}`} className="crm-quick-action text-muted-foreground">
             <ExternalLink className="h-4 w-4" />
             <span className="hidden sm:inline">Retour projet</span>

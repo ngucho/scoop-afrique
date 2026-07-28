@@ -8,6 +8,7 @@ import { Bell, Pencil, X, MessageCircle, Copy } from 'lucide-react'
 import type { CrmListViewMode } from '@/lib/crm-list-query'
 import { NewReminderModal } from '@/components/reminders/NewReminderModal'
 import { buildWaLink } from '@/lib/whatsapp'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -58,6 +59,7 @@ export function RemindersClient({
 }: RemindersClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { canWrite } = useCrmCapabilities()
   const statusFilter = searchParams.get('status') ?? ''
 
   const reminders: Reminder[] = useMemo(
@@ -236,13 +238,13 @@ export function RemindersClient({
         </div>
       </div>
 
-      <div>
+      {canWrite && <div>
         <Button type="button" onClick={() => setReminderModalOpen(true)} className="rounded-full">
           <Bell className="h-4 w-4 mr-2" />
           Nouvelle relance
         </Button>
         <NewReminderModal open={reminderModalOpen} onOpenChange={setReminderModalOpen} contacts={contacts} />
-      </div>
+      </div>}
 
       <div className="crm-card overflow-hidden">
         {view === 'cards' ? (
@@ -269,7 +271,7 @@ export function RemindersClient({
                 ) : (
                   <p className="line-clamp-3 text-muted-foreground">{r.message}</p>
                 )}
-                <div className="flex flex-wrap gap-1 pt-2 justify-end">
+                {canWrite && <div className="flex flex-wrap gap-1 pt-2 justify-end">
                   {editingId === r.id ? (
                     <>
                       <Button
@@ -301,7 +303,7 @@ export function RemindersClient({
                       )}
                     </>
                   )}
-                </div>
+                </div>}
               </div>
             ))}
           </div>
@@ -360,7 +362,7 @@ export function RemindersClient({
                     {r.sent_at ? new Date(r.sent_at).toLocaleDateString('fr-FR') : '—'}
                   </td>
                   <td className="text-right">
-                    <div className="flex flex-wrap gap-1 justify-end">
+                    {canWrite && <div className="flex flex-wrap gap-1 justify-end">
                       {editingId === r.id ? (
                         <>
                           <div className="w-full flex flex-wrap gap-1 mb-1">
@@ -477,7 +479,7 @@ export function RemindersClient({
                           )}
                         </>
                       )}
-                    </div>
+                    </div>}
                   </td>
                 </tr>
               ))}

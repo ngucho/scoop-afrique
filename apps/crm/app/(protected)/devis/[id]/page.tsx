@@ -6,6 +6,7 @@ import { DevisActions } from '@/components/devis/DevisActions'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { ActivityClient } from '@/components/activity/ActivityClient'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 export default async function DevisDetailPage({
   params,
@@ -53,9 +54,11 @@ export default async function DevisDetailPage({
       </div>
 
       <div className="flex gap-4">
-        <Link href={`/devis/${id}/edit`}>
-          <Button variant="outline">Modifier</Button>
-        </Link>
+        <CrmCapabilityGate capability="write">
+          <Link href={`/devis/${id}/edit`}>
+            <Button variant="outline">Modifier</Button>
+          </Link>
+        </CrmCapabilityGate>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

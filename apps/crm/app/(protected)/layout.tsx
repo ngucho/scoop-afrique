@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession, getAccessToken } from '@/lib/auth0'
-import { hasReadCrm } from '@/lib/rbac'
+import { crmCapabilities } from '@/lib/rbac'
 import { CrmLayoutClient } from '@/components/layout/CrmLayoutClient'
 
 const LOGIN_PAGE = '/login'
@@ -21,7 +21,8 @@ export default async function ProtectedLayout({
   }
 
   const permissions = Array.isArray(tokenResult.permissions) ? tokenResult.permissions : []
-  if (!hasReadCrm(permissions)) {
+  const capabilities = crmCapabilities(permissions)
+  if (!capabilities.canRead) {
     redirect(LOGIN_PAGE)
   }
 
@@ -32,6 +33,7 @@ export default async function ProtectedLayout({
       userEmail={user.email ?? undefined}
       userName={user.name ?? undefined}
       userAvatar={user.picture ?? undefined}
+      capabilities={capabilities}
     >
       {children}
     </CrmLayoutClient>

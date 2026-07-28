@@ -6,6 +6,7 @@ import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 export default async function ContractsPage({
   searchParams,
@@ -38,9 +39,11 @@ export default async function ContractsPage({
         <Heading as="h1" level="h1">
           Contrats
         </Heading>
-        <Link href="/contracts/new">
-          <Button>Nouveau contrat</Button>
-        </Link>
+        <CrmCapabilityGate capability="manage">
+          <Link href="/contracts/new">
+            <Button>Nouveau contrat</Button>
+          </Link>
+        </CrmCapabilityGate>
       </div>
 
       <Suspense fallback={null}>

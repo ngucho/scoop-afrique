@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from 'scoop'
 import { Link2, Copy, Check, X } from 'lucide-react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 export function DevisActions({
   devisId,
@@ -19,6 +20,7 @@ export function DevisActions({
   const [signLink, setSignLink] = useState<string | null>(null)
   const [loadingSignLink, setLoadingSignLink] = useState(false)
   const [copied, setCopied] = useState(false)
+  const { canWrite, canManage } = useCrmCapabilities()
 
   async function handleSend() {
     setSending(true)
@@ -94,17 +96,17 @@ export function DevisActions({
         <Button variant="outline" size="sm" onClick={handlePdf}>
           PDF
         </Button>
-        {(status === 'draft' || status === 'sent') && (
+        {canWrite && (status === 'draft' || status === 'sent') && (
           <Button size="sm" onClick={handleSend} disabled={sending}>
             {sending ? 'Envoi…' : 'Envoyer'}
           </Button>
         )}
-        {status === 'sent' && (
+        {canManage && status === 'sent' && (
           <Button size="sm" variant="secondary" onClick={handleConvert} disabled={converting}>
             {converting ? 'Conversion…' : 'Convertir en projet'}
           </Button>
         )}
-        {(status === 'draft' || status === 'sent') && !signLink && (
+        {canWrite && (status === 'draft' || status === 'sent') && !signLink && (
           <Button
             size="sm"
             variant="outline"
@@ -119,7 +121,7 @@ export function DevisActions({
       </div>
 
       {/* Sign link panel */}
-      {signLink && (
+      {canWrite && signLink && (
         <div className="w-full mt-2 flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
           <Link2 className="h-4 w-4 text-primary shrink-0" />
           <span className="text-xs text-muted-foreground flex-1 truncate font-mono">{signLink}</span>

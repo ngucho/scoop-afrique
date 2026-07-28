@@ -1,8 +1,8 @@
 import { getAccessToken } from '@/lib/auth0'
+import { redirect } from 'next/navigation'
 import {
   crmCapabilities,
-  roleFromPermissions,
-  type CrmRole,
+  type CrmCapabilities,
 } from '@/lib/rbac'
 
 /**
@@ -14,15 +14,20 @@ export async function getCrmIsAdmin(): Promise<boolean> {
 }
 
 export async function getCrmCanManage(): Promise<boolean> {
-  const tokenResult = await getAccessToken()
-  const permissions = tokenResult?.permissions ?? []
-  return crmCapabilities(permissions).canManage
+  return (await getCrmCapabilities()).canManage
 }
 
-/** CRM role for server components (same mapping as backend). */
-export async function getCrmRole(): Promise<CrmRole> {
+export async function getCrmCapabilities(): Promise<CrmCapabilities> {
   const tokenResult = await getAccessToken()
   const permissions = tokenResult?.permissions ?? []
-  return roleFromPermissions(permissions)
+  return crmCapabilities(permissions)
+}
+
+export async function requireCrmWrite(): Promise<void> {
+  if (!(await getCrmCapabilities()).canWrite) redirect('/dashboard')
+}
+
+export async function requireCrmManage(): Promise<void> {
+  if (!(await getCrmCapabilities()).canManage) redirect('/dashboard')
 }
 

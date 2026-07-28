@@ -2,13 +2,14 @@ import { notFound } from 'next/navigation'
 import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { InvoiceBuilder } from '@/components/invoices/InvoiceBuilder'
-import { getCrmCanManage } from '@/lib/crm-admin'
+import { getCrmCanManage, requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function InvoiceEditPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCrmWrite()
   const { id } = await params
   const result = await crmGetServer<Record<string, unknown>>(`invoices/${id}`)
   const invoice = result?.data

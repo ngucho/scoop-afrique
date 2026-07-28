@@ -1,12 +1,14 @@
 import { Heading } from 'scoop'
 import { DevisBuilder } from '@/components/devis/DevisBuilder'
 import { crmGetServer } from '@/lib/api-server'
+import { requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function NewDevisPage({
   searchParams,
 }: {
   searchParams: Promise<{ devis_request_id?: string }>
 }) {
+  await requireCrmWrite()
   const params = await searchParams
   const devisRequestId = params.devis_request_id
 

@@ -6,6 +6,7 @@ import { ContactOrganizations } from '@/components/contacts/ContactOrganizations
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { ActivityClient } from '@/components/activity/ActivityClient'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 export default async function ContactDetailPage({
   params,
@@ -38,9 +39,11 @@ export default async function ContactDetailPage({
           {name}
         </Heading>
         <div className="flex items-center gap-2">
-          <Link href={`/contacts/${id}/edit`}>
-            <Button variant="outline">Modifier</Button>
-          </Link>
+          <CrmCapabilityGate capability="write">
+            <Link href={`/contacts/${id}/edit`}>
+              <Button variant="outline">Modifier</Button>
+            </Link>
+          </CrmCapabilityGate>
           <AdminArchiveRestoreActions
             resource="contacts"
             id={id}

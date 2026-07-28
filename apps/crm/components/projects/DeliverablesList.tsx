@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
 import { MetricsForm } from './MetricsForm'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const DELIVERABLE_TYPES = [
   { value: 'video_short', label: 'Vidéo courte' },
@@ -59,6 +60,7 @@ export function DeliverablesList({
   const [newType, setNewType] = useState('post')
   const [newPlatform, setNewPlatform] = useState('instagram')
   const [metricsFor, setMetricsFor] = useState<string | null>(null)
+  const { canWrite } = useCrmCapabilities()
 
   async function addDeliverable() {
     if (!newTitle.trim()) return
@@ -94,7 +96,7 @@ export function DeliverablesList({
 
   return (
     <div className="space-y-6">
-      <div>
+      {canWrite && <div>
         {showForm ? (
           <div className="rounded-lg border border-border p-4 space-y-3 max-w-md">
             <div>
@@ -143,7 +145,7 @@ export function DeliverablesList({
         ) : (
           <Button onClick={() => setShowForm(true)}>+ Livrable</Button>
         )}
-      </div>
+      </div>}
 
       <div className="space-y-4">
         {deliverables.map((d) => (
@@ -167,18 +169,20 @@ export function DeliverablesList({
                 </a>
               )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setMetricsFor(metricsFor === d.id ? null : d.id)}
-            >
-              {metricsFor === d.id ? 'Fermer' : 'Métriques'}
-            </Button>
+            {canWrite && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMetricsFor(metricsFor === d.id ? null : d.id)}
+              >
+                {metricsFor === d.id ? 'Fermer' : 'Métriques'}
+              </Button>
+            )}
           </div>
         ))}
       </div>
 
-      {metricsFor && (
+      {canWrite && metricsFor && (
         <MetricsForm
           deliverableId={metricsFor}
           onClose={() => setMetricsFor(null)}

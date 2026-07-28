@@ -3,8 +3,8 @@ import { notFound } from 'next/navigation'
 import { Heading, Button } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { DevisRequestActions } from '@/components/devis-requests/DevisRequestActions'
-import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { ExternalLink } from 'lucide-react'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 function InfoRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
@@ -36,7 +36,6 @@ export default async function DevisRequestDetailPage({
   if (!req) notFound()
 
   const name = `${req.first_name ?? ''} ${req.last_name ?? ''}`.trim() || '—'
-  const isAdmin = await getCrmIsAdmin()
   const budget = fmtBudget(
     req.budget_min as number | null,
     req.budget_max as number | null,
@@ -131,19 +130,18 @@ export default async function DevisRequestDetailPage({
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-4">
         {!req.converted_to_devis_id && !req.converted_to_contact_id && !Boolean(req.archived) && (
-          <>
+          <CrmCapabilityGate capability="write">
             <Link href={`/contacts/new?devis_request_id=${id}`}>
               <Button>Créer un contact</Button>
             </Link>
             <Link href={`/devis/new?devis_request_id=${id}`}>
               <Button variant="outline">Créer un devis</Button>
             </Link>
-          </>
+          </CrmCapabilityGate>
         )}
         <DevisRequestActions
           id={id}
           variant="detail"
-          isAdmin={isAdmin}
           archived={Boolean(req.archived)}
           convertedToDevisId={(req.converted_to_devis_id as string) ?? null}
           convertedToContactId={(req.converted_to_contact_id as string) ?? null}

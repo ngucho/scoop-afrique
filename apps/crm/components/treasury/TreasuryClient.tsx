@@ -11,6 +11,7 @@ import {
   CashFlowByMonthChart,
   type CashFlowMonthRow,
 } from '@/components/analytics/CashFlowByMonthChart'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const INCOME_CATS = [
   { value: 'monetization', label: 'Monétisation (pub, partenariats)' },
@@ -67,6 +68,7 @@ export function TreasuryClient({
   initialSearch?: string
 }) {
   const router = useRouter()
+  const { canManage } = useCrmCapabilities()
   const [periodFrom, setPeriodFrom] = useState(rangeFrom)
   const [periodTo, setPeriodTo] = useState(rangeTo)
   useEffect(() => {
@@ -258,7 +260,7 @@ export function TreasuryClient({
         />
       </Suspense>
 
-      <div className="flex flex-wrap gap-2">
+      {canManage && <div className="flex flex-wrap gap-2">
         <Button
           className="rounded-full"
           onClick={() => {
@@ -279,9 +281,9 @@ export function TreasuryClient({
           <Plus className="h-4 w-4 mr-2" />
           Nouveau mouvement
         </Button>
-      </div>
+      </div>}
 
-      <Dialog
+      {canManage && <Dialog
         open={showForm}
         onOpenChange={(open) => {
           if (!open) resetForm()
@@ -399,7 +401,7 @@ export function TreasuryClient({
             />
           </div>
         </div>
-      </Dialog>
+      </Dialog>}
 
       <div className="crm-card overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
@@ -449,7 +451,7 @@ export function TreasuryClient({
                     ) : (
                       <span />
                     )}
-                    <div className="flex gap-1">
+                    {canManage && <div className="flex gap-1">
                       <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(m)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -462,7 +464,7 @@ export function TreasuryClient({
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                    </div>
+                    </div>}
                   </div>
                 </div>
               )
@@ -528,6 +530,8 @@ export function TreasuryClient({
                         })()}
                       </td>
                       <td className="text-right">
+                        {canManage && (
+                        <>
                         <Button
                           type="button"
                           variant="ghost"
@@ -546,6 +550,8 @@ export function TreasuryClient({
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
+                        </>
+                        )}
                       </td>
                     </tr>
                   )

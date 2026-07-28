@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 export function ContractActions({
   contractId,
@@ -14,6 +15,7 @@ export function ContractActions({
 }) {
   const router = useRouter()
   const [signing, setSigning] = useState(false)
+  const { canManage } = useCrmCapabilities()
 
   async function handleSign() {
     if (!confirm('Marquer ce contrat comme signé ?')) return
@@ -43,7 +45,7 @@ export function ContractActions({
       <Button variant="outline" size="sm" onClick={handlePdf}>
         PDF
       </Button>
-      {(status === 'draft' || status === 'sent') && (
+      {canManage && (status === 'draft' || status === 'sent') && (
         <Button size="sm" onClick={handleSign} disabled={signing}>
           {signing ? 'Enregistrement…' : 'Marquer signé'}
         </Button>

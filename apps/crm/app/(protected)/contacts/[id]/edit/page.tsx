@@ -2,12 +2,14 @@ import { notFound } from 'next/navigation'
 import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { ContactForm } from '@/components/contacts/ContactForm'
+import { requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function ContactEditPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCrmWrite()
   const { id } = await params
   const result = await crmGetServer<Record<string, unknown>>(`contacts/${id}`)
   const contact = result?.data

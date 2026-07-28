@@ -2,10 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import {
+  CrmCapabilityGate,
+  useCrmCapabilities,
+} from '@/components/auth/CrmCapabilitiesProvider'
 import { Button, Input, Label, Textarea } from 'scoop'
 
 const lineItemSchema = z.object({
@@ -79,6 +84,7 @@ export function InvoiceBuilder({
   canEditFinancialLines = true,
 }: InvoiceBuilderProps) {
   const router = useRouter()
+  const { canWrite } = useCrmCapabilities()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const initialLineItems = lineItemsFromProject?.length
@@ -173,8 +179,8 @@ export function InvoiceBuilder({
           <p className="font-medium text-amber-800 dark:text-amber-200">Montants verrouillés</p>
           <p className="text-amber-700 dark:text-amber-300 mt-1">
             Cette facture a des paiements enregistrés. Seuls les notes, l&apos;échéance et le rattachement
-            contact/projet sont modifiables. Pour corriger les lignes ou la TVA, un rôle manager ou admin est
-            requis.
+              contact/projet sont modifiables. Pour corriger les lignes ou la TVA, la permission manage:crm est
+              requise.
           </p>
         </div>
       )}
@@ -229,7 +235,9 @@ export function InvoiceBuilder({
           <p className="text-amber-700 dark:text-amber-300 mt-1">
             Créez d&apos;abord un contact/organisation et un projet avant de créer une facture.
           </p>
-          <a href="/projects/new" className="text-primary underline mt-2 inline-block">Créer un projet</a>
+          <CrmCapabilityGate capability="manage">
+            <Link href="/projects/new" className="text-primary underline mt-2 inline-block">Créer un projet</Link>
+          </CrmCapabilityGate>
         </div>
       )}
 
@@ -387,7 +395,7 @@ export function InvoiceBuilder({
         </div>
       </div>
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || !canWrite}>
         {isSubmitting ? 'Enregistrement…' : invoiceId ? 'Mettre à jour' : 'Créer la facture'}
       </Button>
     </form>

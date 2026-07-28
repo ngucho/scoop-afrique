@@ -1,9 +1,4 @@
-/**
- * RBAC helpers for the CRM app.
- * Role is derived from Auth0 JWT permissions (same mapping as backend apps/backend/src/lib/auth0.ts).
- */
-
-export type CrmRole = 'journalist' | 'editor' | 'manager' | 'admin'
+/** Exact Auth0 permission helpers for the CRM app and BFF. */
 
 /** CRM permissions (must match backend) */
 export const CRM_PERMISSIONS = {
@@ -12,30 +7,13 @@ export const CRM_PERMISSIONS = {
   manage: 'manage:crm',
 } as const
 
+export type CrmPermission =
+  (typeof CRM_PERMISSIONS)[keyof typeof CRM_PERMISSIONS]
+
 export interface CrmCapabilities {
   canRead: boolean
   canWrite: boolean
   canManage: boolean
-}
-
-/**
- * Derive role from Auth0 permissions (must match backend apps/backend/src/lib/auth0.ts).
- */
-export function roleFromPermissions(permissions: string[]): CrmRole {
-  if (permissions.includes('manage:users')) return 'admin'
-  if (permissions.includes('delete:articles') || permissions.includes('manage:crm')) return 'manager'
-  if (
-    permissions.includes('publish:articles') ||
-    permissions.includes('write:crm') ||
-    permissions.includes('read:crm')
-  )
-    return 'editor'
-  if (
-    permissions.includes('create:articles') ||
-    permissions.includes('read:articles')
-  )
-    return 'journalist'
-  return 'journalist'
 }
 
 /** Check if user has read:crm permission (minimum for CRM access) */
@@ -61,4 +39,56 @@ export function crmCapabilities(
     canWrite: hasWriteCrm(permissions),
     canManage: hasManageCrm(permissions),
   }
+}
+
+const restorePattern =
+  /^\/(?:contacts|devis|projects|invoices|contracts)\/[^/]+\/restore$/
+const projectClosePattern = /^\/projects\/[^/]+\/close$/
+const devisConvertPattern = /^\/devis\/[^/]+\/convert$/
+const contractSignPattern = /^\/contracts\/[^/]+\/sign$/
+
+function normalizeCrmPath(requestPath: string): string {
+  const path = requestPath.split(/[?#]/, 1)[0] ?? ''
+  const withoutBffPrefix = path.replace(/^\/?api\/crm(?=\/|$)/, '')
+  return `/${withoutBffPrefix.replace(/^\/+/, '')}`
+}
+
+export function requiredCrmPermission(
+  method: string,
+  requestPath: string,
+): CrmPermission {
+  const verb = method.toUpperCase()
+  const path = normalizeCrmPath(requestPath)
+
+  if (verb === 'GET' || verb === 'HEAD' || verb === 'OPTIONS') {
+    return CRM_PERMISSIONS.read
+  }
+  if (verb === 'DELETE') return CRM_PERMISSIONS.manage
+  if (
+    path.startsWith('/settings') ||
+    path.startsWith('/treasury') ||
+    path.startsWith('/services')
+  ) {
+    return CRM_PERMISSIONS.manage
+  }
+  if (verb === 'POST' && (path === '/projects' || path === '/contracts')) {
+    return CRM_PERMISSIONS.manage
+  }
+  if (
+    restorePattern.test(path) ||
+    projectClosePattern.test(path) ||
+    devisConvertPattern.test(path) ||
+    contractSignPattern.test(path)
+  ) {
+    return CRM_PERMISSIONS.manage
+  }
+  return CRM_PERMISSIONS.write
+}
+
+export function canCrmRequest(
+  permissions: string[],
+  method: string,
+  requestPath: string,
+): boolean {
+  return permissions.includes(requiredCrmPermission(method, requestPath))
 }

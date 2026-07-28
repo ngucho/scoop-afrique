@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from 'scoop'
 import { Play, Pause, RotateCcw } from 'lucide-react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 type Status =
   | 'draft'
@@ -19,6 +20,7 @@ type Status =
 export function ProjectStatusActions({ projectId, status }: { projectId: string; status: Status }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const { canWrite } = useCrmCapabilities()
 
   async function setStatus(next: Status) {
     setLoading(true)
@@ -38,7 +40,7 @@ export function ProjectStatusActions({ projectId, status }: { projectId: string;
     router.refresh()
   }
 
-  if (status === 'closed' || status === 'cancelled') {
+  if (!canWrite || status === 'closed' || status === 'cancelled') {
     return null
   }
 

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Edit, Package, Tag, DollarSign, CheckCircle, XCircle } from 'lucide-react'
 import type { CrmListViewMode } from '@/lib/crm-list-query'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const CATEGORY_COLORS: Record<string, string> = {
   content: 'oklch(0.42 0.16 260)',
@@ -22,6 +23,7 @@ export function ServicesClient({
   initialServices: Array<Record<string, unknown>>
   view?: CrmListViewMode
 }) {
+  const { canManage } = useCrmCapabilities()
   if (view === 'list') {
     const sorted = [...initialServices].sort((a, b) =>
       String(a.name ?? '').localeCompare(String(b.name ?? ''), 'fr')
@@ -49,13 +51,15 @@ export function ServicesClient({
                   {Number(s.default_price ?? 0).toLocaleString('fr-FR')} {String(s.currency ?? 'FCFA')}
                 </td>
                 <td>{s.is_active ? 'Oui' : 'Non'}</td>
-                <td>
-                  <Link
+                  <td>
+                    {canManage && (
+                    <Link
                     href={`/services/${s.id}/edit`}
                     className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary"
                   >
-                    <Edit className="h-3.5 w-3.5" />
-                  </Link>
+                      <Edit className="h-3.5 w-3.5" />
+                    </Link>
+                    )}
                 </td>
               </tr>
             ))}
@@ -115,12 +119,12 @@ export function ServicesClient({
                       ) : (
                         <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
                       )}
-                      <Link
+                        {canManage && <Link
                         href={`/services/${s.id}/edit`}
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-muted"
                       >
-                        <Edit className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Link>
+                          <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Link>}
                     </div>
                   </div>
 
