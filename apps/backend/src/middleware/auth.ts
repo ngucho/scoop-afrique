@@ -4,8 +4,8 @@
  */
 import type { Context, Next } from 'hono'
 import {
-  createGetAuthUser,
   getBearerToken,
+  getAuthUser,
   type AuthUser,
   type AuthUserResult,
 } from '../lib/auth.js'
@@ -22,7 +22,7 @@ export function createRequireAuth(
     resolveUser: (c: Context) => Promise<AuthUserResult>
     isAuth0Configured: () => boolean
   } = {
-    resolveUser: createGetAuthUser(),
+    resolveUser: getAuthUser,
     isAuth0Configured: () => config.auth0 !== null,
   },
 ) {
