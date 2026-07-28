@@ -1,5 +1,4 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import {
   createTreasuryMovementSchema,
   updateTreasuryMovementSchema,
@@ -8,7 +7,6 @@ import * as treasuryService from '../../services/crm/treasury.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('manager', 'admin'))
 
 app.get('/', async (c) => {
   const direction = c.req.query('direction') as 'income' | 'expense' | undefined

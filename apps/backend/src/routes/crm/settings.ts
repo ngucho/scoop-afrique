@@ -10,12 +10,10 @@
  * DELETE /settings/reminder-rules/:id — delete rule
  */
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import * as settingsService from '../../services/crm/settings.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 /* ── All settings ── */
 app.get('/', async (c) => {

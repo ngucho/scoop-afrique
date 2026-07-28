@@ -1,11 +1,9 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createServiceSchema, updateServiceSchema } from '../../schemas/crm/service.schema.js'
 import * as serviceService from '../../services/crm/service.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const active = c.req.query('active')
@@ -24,7 +22,7 @@ app.get('/', async (c) => {
   return c.json({ data, total })
 })
 
-app.post('/', requireRole('manager', 'admin'), async (c) => {
+app.post('/', async (c) => {
   let body: unknown
   try {
     body = await c.req.json()
@@ -54,7 +52,7 @@ app.get('/:id', async (c) => {
   return c.json({ data: service })
 })
 
-app.patch('/:id', requireRole('manager', 'admin'), async (c) => {
+app.patch('/:id', async (c) => {
   const id = c.req.param('id')
   const service = await serviceService.getServiceById(id)
   if (!service) return c.json({ error: 'Not found' }, 404)
@@ -74,7 +72,7 @@ app.patch('/:id', requireRole('manager', 'admin'), async (c) => {
   return c.json({ data: updated })
 })
 
-app.delete('/:id', requireRole('manager', 'admin'), async (c) => {
+app.delete('/:id', async (c) => {
   const id = c.req.param('id')
   const service = await serviceService.getServiceById(id)
   if (!service) return c.json({ error: 'Not found' }, 404)

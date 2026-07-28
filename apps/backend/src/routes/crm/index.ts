@@ -1,4 +1,6 @@
 import { Hono } from 'hono'
+import { requireAuth } from '../../middleware/auth.js'
+import { requireCrmPermission } from '../../middleware/crm-authorization.js'
 import dashboardRoutes from './dashboard.js'
 import devisRequestsRoutes from './devis-requests.js'
 import contactsRoutes from './contacts.js'
@@ -18,6 +20,9 @@ import treasuryRoutes from './treasury.js'
 import settingsRoutes from './settings.js'
 
 const app = new Hono()
+
+app.use('*', requireAuth)
+app.use('*', requireCrmPermission)
 
 app.route('/dashboard', dashboardRoutes)
 app.route('/services', servicesRoutes)

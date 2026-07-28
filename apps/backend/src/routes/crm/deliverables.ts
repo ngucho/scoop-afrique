@@ -1,11 +1,9 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { updateDeliverableSchema, deliverableMetricsSchema } from '../../schemas/crm/deliverable.schema.js'
 import * as deliverableService from '../../services/crm/deliverable.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.patch('/:id', async (c) => {
   const id = c.req.param('id')
