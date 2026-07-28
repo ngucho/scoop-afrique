@@ -1,10 +1,8 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import * as paymentService from '../../services/crm/payment.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/:id/receipt/pdf', async (c) => {
   const id = c.req.param('id')

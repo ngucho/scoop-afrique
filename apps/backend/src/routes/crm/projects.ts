@@ -1,5 +1,4 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createProjectSchema, updateProjectSchema } from '../../schemas/crm/project.schema.js'
 import * as projectService from '../../services/crm/project.service.js'
 import * as taskService from '../../services/crm/task.service.js'
@@ -15,17 +14,17 @@ import { createExpenseSchema } from '../../schemas/crm/expense.schema.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const user = c.get('user')
+  const canManageCrm = user.permissions.includes('manage:crm')
   const contactId = c.req.query('contact_id')
   const status = c.req.query('status')
   const withContact = c.req.query('with_contact') === 'true'
   const archivedQuery = c.req.query('archived')
   const archived =
     archivedQuery === 'true'
-      ? user.role === 'admin'
+      ? canManageCrm
         ? true
         : undefined
       : archivedQuery === 'false'
@@ -47,7 +46,7 @@ app.get('/', async (c) => {
   return c.json({ data, total })
 })
 
-app.post('/', requireRole('manager', 'admin'), async (c) => {
+app.post('/', async (c) => {
   const user = c.get('user')
   let body: unknown
   try {
@@ -66,22 +65,24 @@ app.post('/', requireRole('manager', 'admin'), async (c) => {
 
 app.get('/:id', async (c) => {
   const user = c.get('user')
+  const canManageCrm = user.permissions.includes('manage:crm')
   const id = c.req.param('id')
   const project = await projectService.getProjectById(id)
   if (!project) return c.json({ error: 'Not found' }, 404)
-  if (Boolean((project as Record<string, unknown>)['is_archived']) && user.role !== 'admin')
+  if (Boolean((project as Record<string, unknown>)['is_archived']) && !canManageCrm)
     return c.json({ error: 'Not found' }, 404)
   return c.json({ data: project })
 })
 
 app.get('/:id/folder', async (c) => {
   const user = c.get('user')
+  const canManageCrm = user.permissions.includes('manage:crm')
   const id = c.req.param('id')
   const folder = await projectService.getProjectFolder(id)
   if (!folder) return c.json({ error: 'Not found' }, 404)
   if (
     Boolean((folder.project as Record<string, unknown> | undefined)?.['is_archived']) &&
-    user.role !== 'admin'
+    !canManageCrm
   )
     return c.json({ error: 'Not found' }, 404)
   return c.json({ data: folder })
@@ -108,23 +109,23 @@ app.patch('/:id', async (c) => {
   return c.json({ data: updated })
 })
 
-// Admin archive (soft-delete)
-app.delete('/:id', requireRole('admin'), async (c) => {
+// CRM management archive (soft-delete)
+app.delete('/:id', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
   const archived = await projectService.archiveProject(id, user.id)
   return c.json({ data: archived })
 })
 
-// Admin restore (undo archive)
-app.post('/:id/restore', requireRole('admin'), async (c) => {
+// CRM management restore (undo archive)
+app.post('/:id/restore', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
   const restored = await projectService.restoreProject(id, user.id)
   return c.json({ data: restored })
 })
 
-app.post('/:id/close', requireRole('manager', 'admin'), async (c) => {
+app.post('/:id/close', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
   const project = await projectService.getProjectById(id)

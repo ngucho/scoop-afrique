@@ -1,11 +1,9 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createReminderSchema, updateReminderSchema, crmReminderStatusEnum } from '../../schemas/crm/reminder.schema.js'
 import * as reminderService from '../../services/crm/reminder.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 /** Suggestions : devis envoyés non convertis, factures impayées */
 app.get('/follow-up-suggestions', async (c) => {
