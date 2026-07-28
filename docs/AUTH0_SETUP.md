@@ -181,14 +181,30 @@ If the audience is not set, Auth0 will issue an **opaque** access token (for the
 
 ## 6. Backend: Validate JWT and enforce RBAC
 
-The backend:
+Le backend vérifie chaque access token avec `jose` :
 
-1. Reads `Authorization: Bearer <token>`.
-2. Validates the JWT (signature via Auth0 JWKS, `iss`, `aud`, `exp`).
-3. Reads `sub` (user id) and `permissions` (or `scope`) from the payload.
-4. For each endpoint, checks that the required permission is in the list (e.g. `DELETE /admin/articles/:id` requires `delete:articles`).
+- signature RS256 contre `https://<AUTH0_DOMAIN>/.well-known/jwks.json` ;
+- `iss` égal à `https://<AUTH0_DOMAIN>/` ;
+- `aud` égal à `AUTH0_AUDIENCE` ;
+- expiration avec une tolérance d’horloge de 30 secondes.
 
-Mapping from **permissions** to **role-like behavior** (optional): you can keep a small mapping in code, e.g. “if user has `manage:users` then treat as admin” or “if user has `delete:articles` then allow delete.” The PLAN’s role names (journalist, editor, manager, admin) can be derived from permissions for backward compatibility (e.g. `manage:users` → admin, `delete:articles` → manager or above).
+Le cache JWKS prend en charge la rotation des clés. Si aucune clé valide n’est
+disponible et que le JWKS Auth0 est inaccessible, le backend refuse l’accès
+avec `503 AUTH_PROVIDER_UNAVAILABLE`.
+
+| Rôle Auth0 | Permissions CRM requises |
+|---|---|
+| Lecteur CRM | `read:crm` |
+| Éditeur CRM | `read:crm`, `write:crm` |
+| Manager/Admin CRM | `read:crm`, `write:crm`, `manage:crm` |
+
+Les permissions sont cumulatives mais vérifiées exactement par le backend.
+Après toute modification de rôle ou permission Auth0, l’utilisateur doit
+renouveler sa session pour recevoir un nouveau jeton.
+
+Pour chaque endpoint, le backend vérifie directement la permission requise
+dans le jeton. Aucun ancien rôle applicatif ni champ `role` de profil ne sert
+de fallback d’autorisation.
 
 ---
 
