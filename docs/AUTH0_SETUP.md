@@ -158,8 +158,12 @@ A user gets the **union** of all permissions from all assigned roles. Typically 
 - **At login:** Auth0 issues an **ID token** (for the app) and, if the app requested an **access token** for your API, an **access token** (JWT) with:
   - `aud` = your API identifier
   - `sub` = user ID
-  - `permissions` (or `scope`) = list of permissions assigned to that user (from their roles).
-- The **backend** does not store roles; it only trusts the JWT. It checks the `permissions` claim (or `scope`) and allows or denies the action (e.g. “delete article” requires `delete:articles`).
+  - `permissions` = tableau des permissions attribuées à cet utilisateur par ses rôles Auth0.
+- Un rôle applicatif peut être conservé dans le profil en base pour l’affichage
+  ou les relations de données, mais il ne constitue jamais une source ni un
+  fallback d’autorisation CRM. Pour le CRM, le backend consomme uniquement le
+  tableau `permissions` de l’access token Auth0 ; le champ OAuth `scope` n’est
+  pas utilisé pour accorder l’accès.
 - The **frontend** can also read the same token (or the session) to show/hide UI (e.g. “Delete” only if the user has `delete:articles`). The source of truth for authorization is the backend.
 
 ---
