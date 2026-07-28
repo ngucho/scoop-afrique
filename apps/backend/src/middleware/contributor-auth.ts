@@ -3,7 +3,11 @@
  */
 import type { Context, Next } from 'hono'
 import { getBearerToken } from '../lib/auth.js'
-import { verifyAuth0Token, verifyReaderAuth0Token } from '../lib/auth0.js'
+import {
+  readerInfoFromVerifiedToken,
+  staffInfoFromVerifiedToken,
+} from '../lib/auth0.js'
+import { verifyConfiguredAuth0Jwt } from '../lib/auth0-jwt.js'
 import { getOrCreateProfile } from '../services/profile.service.js'
 import { config } from '../config/env.js'
 import { logger } from '../lib/logger.js'
@@ -33,7 +37,18 @@ export async function requireContributorAuth(c: Context, next: Next) {
     )
   }
 
-  const reader = verifyReaderAuth0Token(token)
+  const verified = await verifyConfiguredAuth0Jwt(token)
+  if (!verified.ok) {
+    if (verified.reason === 'AUTH_PROVIDER_UNAVAILABLE') {
+      return c.json(
+        { error: 'Authentication provider unavailable', code: verified.reason },
+        503,
+      )
+    }
+    return c.json({ error: 'Unauthorized', code: 'INVALID_TOKEN' }, 401)
+  }
+
+  const reader = readerInfoFromVerifiedToken(verified.token)
   if (reader) {
     const profile = await getOrCreateProfile({
       sub: reader.sub,
@@ -50,8 +65,8 @@ export async function requireContributorAuth(c: Context, next: Next) {
     return
   }
 
-  const staffResult = await verifyAuth0Token(token)
-  if (staffResult.ok) {
+  const staff = staffInfoFromVerifiedToken(verified.token)
+  if (staff) {
     return c.json(
       {
         error:
@@ -73,7 +88,13 @@ export async function optionalContributorAuth(c: Context, next: Next) {
     await next()
     return
   }
-  const reader = verifyReaderAuth0Token(token)
+  const verified = await verifyConfiguredAuth0Jwt(token)
+  if (!verified.ok) {
+    await next()
+    return
+  }
+
+  const reader = readerInfoFromVerifiedToken(verified.token)
   if (reader) {
     const profile = await getOrCreateProfile({
       sub: reader.sub,
@@ -86,12 +107,7 @@ export async function optionalContributorAuth(c: Context, next: Next) {
       email: reader.email,
       isReader: true,
     } satisfies ContributorContext as never)
-    await next()
-    return
   }
-  const staffResult = await verifyAuth0Token(token)
-  if (staffResult.ok) {
-    // Staff JWT: do not attach a Tribune viewer (would bypass reader-only rules).
-  }
+
   await next()
 }
