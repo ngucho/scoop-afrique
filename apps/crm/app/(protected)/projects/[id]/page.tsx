@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -99,12 +100,14 @@ export default async function ProjectDetailPage({
         <div className="flex flex-col items-end gap-2 shrink-0">
           <ProjectStatusActions projectId={id} status={statusForActions} />
           <div className="flex items-center gap-2">
-          <Link href={`/projects/${id}/edit`}>
-            <button className="crm-quick-action">
-              <Edit className="h-4 w-4 text-muted-foreground" />
-              <span className="hidden sm:inline">Modifier</span>
-            </button>
-          </Link>
+          <CrmCapabilityGate capability="write">
+            <Link href={`/projects/${id}/edit`}>
+              <button className="crm-quick-action">
+                <Edit className="h-4 w-4 text-muted-foreground" />
+                <span className="hidden sm:inline">Modifier</span>
+              </button>
+            </Link>
+          </CrmCapabilityGate>
           <AdminArchiveRestoreActions
             resource="projects"
             id={id}

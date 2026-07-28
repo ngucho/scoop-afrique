@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { crmGetServer } from '@/lib/api-server'
 import { Inbox, ArrowRight, Clock, Mail, Package } from 'lucide-react'
 import { DevisRequestActions } from '@/components/devis-requests/DevisRequestActions'
-import { getCrmIsAdmin } from '@/lib/crm-admin'
 
 function timeAgo(dateStr: string): string {
   const d = new Date(dateStr)
@@ -18,8 +17,6 @@ function timeAgo(dateStr: string): string {
 export default async function DevisRequestsPage() {
   const result = await crmGetServer<Array<Record<string, unknown>>>('devis-requests?limit=100')
   const requests = result?.data ?? []
-
-  const isAdmin = await getCrmIsAdmin()
 
   const pending = requests.filter(
     (r) => !r.converted_to_devis_id && !r.converted_to_contact_id && !r.archived
@@ -116,7 +113,7 @@ export default async function DevisRequestsPage() {
                         </div>
                       </Link>
                       <div className="shrink-0">
-                        <DevisRequestActions id={r.id as string} variant="card" isAdmin={isAdmin} />
+              <DevisRequestActions id={r.id as string} variant="card" />
                       </div>
                     </div>
                   )
@@ -171,8 +168,7 @@ export default async function DevisRequestsPage() {
                             <DevisRequestActions
                               id={r.id as string}
                               variant="card"
-                              isAdmin={isAdmin}
-                              archived={Boolean(r.archived)}
+                  archived={Boolean(r.archived)}
                               convertedToDevisId={(r.converted_to_devis_id as string) ?? null}
                               convertedToContactId={(r.converted_to_contact_id as string) ?? null}
                             />

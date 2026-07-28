@@ -7,6 +7,7 @@ import { InvoicePaymentsSection } from '@/components/invoices/InvoicePaymentsSec
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { ActivityClient } from '@/components/activity/ActivityClient'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 export default async function InvoiceDetailPage({
   params,
@@ -48,11 +49,13 @@ export default async function InvoiceDetailPage({
           {invoice.reference as string}
         </Heading>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href={`/invoices/${id}/edit`}>
-            <Button variant="secondary" size="sm" className="rounded-full">
-              Modifier la facture
-            </Button>
-          </Link>
+          <CrmCapabilityGate capability="write">
+            <Link href={`/invoices/${id}/edit`}>
+              <Button variant="secondary" size="sm" className="rounded-full">
+                Modifier la facture
+              </Button>
+            </Link>
+          </CrmCapabilityGate>
           <InvoiceActions invoiceId={id} status={invoice.status as string} />
           <AdminArchiveRestoreActions
             resource="invoices"

@@ -3,22 +3,27 @@
 import { useState } from 'react'
 import { CrmSidebar } from './CrmSidebar'
 import { CrmHeader } from './CrmHeader'
+import { CrmCapabilitiesProvider } from '@/components/auth/CrmCapabilitiesProvider'
+import type { CrmCapabilities } from '@/lib/rbac'
 
 export function CrmLayoutClient({
   userEmail,
   userName,
   userAvatar,
+  capabilities,
   children,
 }: {
   userEmail?: string
   userName?: string
   userAvatar?: string
+  capabilities: CrmCapabilities
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <CrmCapabilitiesProvider capabilities={capabilities}>
+      <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -51,6 +56,7 @@ export function CrmLayoutClient({
           </div>
         </main>
       </div>
-    </div>
+      </div>
+    </CrmCapabilitiesProvider>
   )
 }

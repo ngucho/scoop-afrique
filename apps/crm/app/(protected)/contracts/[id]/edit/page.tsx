@@ -2,12 +2,14 @@ import { notFound } from 'next/navigation'
 import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { ContractForm } from '@/components/contracts/ContractForm'
+import { requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function ContractEditPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCrmWrite()
   const { id } = await params
   const result = await crmGetServer<Record<string, unknown>>(`contracts/${id}`)
   const contract = result?.data

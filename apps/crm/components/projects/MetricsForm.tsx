@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const schema = z.object({
   views: z.coerce.number().int().min(0).optional(),
@@ -30,6 +31,7 @@ export function MetricsForm({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { canWrite } = useCrmCapabilities()
   const [submitting, setSubmitting] = useState(false)
   const {
     register,
@@ -111,7 +113,7 @@ export function MetricsForm({
           </div>
         </div>
         <div className="flex gap-2 pt-2">
-          <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={submitting || !canWrite}>
             {submitting ? 'Enregistrement…' : 'Enregistrer'}
           </Button>
           <Button type="button" variant="outline" onClick={onClose}>

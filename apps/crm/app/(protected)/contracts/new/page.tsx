@@ -1,8 +1,10 @@
 import { Heading } from 'scoop'
 import { ContractForm } from '@/components/contracts/ContractForm'
 import { crmGetServer } from '@/lib/api-server'
+import { requireCrmManage } from '@/lib/crm-admin'
 
 export default async function NewContractPage() {
+  await requireCrmManage()
   const [contactsRes, projectsRes] = await Promise.all([
     crmGetServer<Array<Record<string, unknown>>>('contacts?limit=100'),
     crmGetServer<Array<Record<string, unknown>>>('projects?limit=100'),

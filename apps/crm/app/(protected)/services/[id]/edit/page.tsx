@@ -2,12 +2,14 @@ import { notFound } from 'next/navigation'
 import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { ServiceForm } from '@/components/services/ServiceForm'
+import { requireCrmManage } from '@/lib/crm-admin'
 
 export default async function EditServicePage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCrmManage()
   const { id } = await params
   const res = await crmGetServer<Record<string, unknown>>(`services/${id}`)
   const service = res?.data

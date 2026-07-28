@@ -7,6 +7,7 @@ import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { ContactsListToolbar } from '@/components/contacts/ContactsListToolbar'
 import { buildContactsQuery, sortToggleHref, type ContactsListParams } from '@/lib/crm-list-query'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 const TYPE_COLORS: Record<string, string> = {
   prospect: 'crm-pill crm-pill-sent',
@@ -94,12 +95,14 @@ export default async function ContactsPage({
             {isAdmin ? ` · ${archivedTotal} archivé${archivedTotal !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
-        <Link href="/contacts/new">
-          <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
-            <Plus className="h-4 w-4" />
-            Nouveau contact
-          </Button>
-        </Link>
+        <CrmCapabilityGate capability="write">
+          <Link href="/contacts/new">
+            <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
+              <Plus className="h-4 w-4" />
+              Nouveau contact
+            </Button>
+          </Link>
+        </CrmCapabilityGate>
       </div>
 
       <Suspense fallback={<div className="crm-card p-4 text-muted-foreground text-sm">Chargement des filtres…</div>}>
@@ -119,9 +122,11 @@ export default async function ContactsPage({
             <p className="text-sm text-muted-foreground">
               Ajustez les filtres ou ajoutez votre premier contact
             </p>
-            <Link href="/contacts/new">
-              <Button className="mt-4 rounded-full px-5">Créer un contact</Button>
-            </Link>
+            <CrmCapabilityGate capability="write">
+              <Link href="/contacts/new">
+                <Button className="mt-4 rounded-full px-5">Créer un contact</Button>
+              </Link>
+            </CrmCapabilityGate>
           </div>
         </div>
       ) : (

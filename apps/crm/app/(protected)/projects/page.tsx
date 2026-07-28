@@ -7,6 +7,7 @@ import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -66,12 +67,14 @@ export default async function ProjectsPage({
             {isAdmin ? ` · ${archivedProjects.length} archivé${archivedProjects.length !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
-        <Link href="/projects/new">
-          <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
-            <Plus className="h-4 w-4" />
-            Nouveau projet
-          </Button>
-        </Link>
+        <CrmCapabilityGate capability="manage">
+          <Link href="/projects/new">
+            <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
+              <Plus className="h-4 w-4" />
+              Nouveau projet
+            </Button>
+          </Link>
+        </CrmCapabilityGate>
       </div>
 
       <Suspense fallback={null}>
@@ -104,9 +107,11 @@ export default async function ProjectsPage({
             <ClipboardList className="crm-empty-icon h-12 w-12" />
             <p className="crm-empty-title">Aucun projet</p>
             <p className="text-sm text-muted-foreground">Créez votre premier projet client</p>
-            <Link href="/projects/new">
-              <Button className="mt-4 rounded-full px-5">Créer un projet</Button>
-            </Link>
+            <CrmCapabilityGate capability="manage">
+              <Link href="/projects/new">
+                <Button className="mt-4 rounded-full px-5">Créer un projet</Button>
+              </Link>
+            </CrmCapabilityGate>
           </div>
         </div>
       ) : view === 'list' ? (

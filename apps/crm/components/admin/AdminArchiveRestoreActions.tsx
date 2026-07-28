@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Archive, RotateCcw } from 'lucide-react'
 import { crmDelete, crmPost } from '@/lib/api'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 type ResourcePath =
   | 'contacts'
@@ -26,8 +27,9 @@ export function AdminArchiveRestoreActions({
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const { canManage } = useCrmCapabilities()
 
-  if (!isAdmin) return null
+  if (!isAdmin || !canManage) return null
 
   async function handleArchive(e: React.MouseEvent<HTMLButtonElement>) {
     e.preventDefault()
@@ -35,7 +37,7 @@ export function AdminArchiveRestoreActions({
     if (loading) return
 
     const reason = prompt('Raison (optionnelle) ?')?.trim()
-    if (!confirm('Supprimer = archiver ? (réversible par un admin)')) return
+    if (!confirm('Supprimer = archiver ? (réversible avec manage:crm)')) return
 
     setLoading(true)
     const res = await crmDelete(`${resource}/${id}`)

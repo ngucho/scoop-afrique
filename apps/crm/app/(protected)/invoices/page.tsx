@@ -7,6 +7,7 @@ import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -81,12 +82,14 @@ export default async function InvoicesPage({
             {isAdmin ? ` · ${archivedInvoices.length} archivé${archivedInvoices.length !== 1 ? 's' : ''}` : ''}
           </p>
         </div>
-        <Link href="/invoices/new">
-          <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
-            <Plus className="h-4 w-4" />
-            Nouvelle facture
-          </Button>
-        </Link>
+        <CrmCapabilityGate capability="write">
+          <Link href="/invoices/new">
+            <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
+              <Plus className="h-4 w-4" />
+              Nouvelle facture
+            </Button>
+          </Link>
+        </CrmCapabilityGate>
       </div>
 
       <Suspense fallback={null}>
@@ -129,9 +132,11 @@ export default async function InvoicesPage({
             <Receipt className="crm-empty-icon h-12 w-12" />
             <p className="crm-empty-title">Aucune facture</p>
             <p className="text-sm text-muted-foreground">Créez votre première facture</p>
-            <Link href="/invoices/new">
-              <Button className="mt-4 rounded-full px-5">Créer une facture</Button>
-            </Link>
+            <CrmCapabilityGate capability="write">
+              <Link href="/invoices/new">
+                <Button className="mt-4 rounded-full px-5">Créer une facture</Button>
+              </Link>
+            </CrmCapabilityGate>
           </div>
         </div>
       ) : view === 'cards' ? (
@@ -224,13 +229,15 @@ export default async function InvoicesPage({
                       </span>
                     </td>
                     <td className="text-center">
-                      <Link
-                        href={`/invoices/${inv.id}/edit`}
-                        className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
-                        title="Modifier"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Link>
+                      <CrmCapabilityGate capability="write">
+                        <Link
+                          href={`/invoices/${inv.id}/edit`}
+                          className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
+                          title="Modifier"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                      </CrmCapabilityGate>
                     </td>
                     <td>
                       <AdminArchiveRestoreActions
@@ -340,13 +347,15 @@ export default async function InvoicesPage({
                       </span>
                     </td>
                     <td className="text-center">
-                      <Link
-                        href={`/invoices/${inv.id}/edit`}
-                        className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
-                        title="Modifier"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Link>
+                      <CrmCapabilityGate capability="write">
+                        <Link
+                          href={`/invoices/${inv.id}/edit`}
+                          className="inline-flex p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted/80 transition-colors"
+                          title="Modifier"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                      </CrmCapabilityGate>
                     </td>
                     <td>
                       <AdminArchiveRestoreActions

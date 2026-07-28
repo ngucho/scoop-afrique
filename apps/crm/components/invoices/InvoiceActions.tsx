@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 export function InvoiceActions({
   invoiceId,
@@ -14,6 +15,7 @@ export function InvoiceActions({
 }) {
   const router = useRouter()
   const [sending, setSending] = useState(false)
+  const { canWrite } = useCrmCapabilities()
 
   async function handleSend() {
     setSending(true)
@@ -40,7 +42,7 @@ export function InvoiceActions({
       <Button variant="outline" size="sm" onClick={handlePdf}>
         PDF
       </Button>
-      {(status === 'draft' || status === 'sent') && (
+      {canWrite && (status === 'draft' || status === 'sent') && (
         <Button size="sm" onClick={handleSend} disabled={sending}>
           {sending ? 'Envoi…' : 'Envoyer'}
         </Button>

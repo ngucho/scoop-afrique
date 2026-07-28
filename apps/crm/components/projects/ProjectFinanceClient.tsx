@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Input, Label } from 'scoop'
 import { FileText, Receipt, ExternalLink } from 'lucide-react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 interface ProjectFinanceClientProps {
   projectId: string
@@ -27,6 +28,7 @@ export function ProjectFinanceClient({
   const [expenseAmount, setExpenseAmount] = useState('')
   const [expenseCategory, setExpenseCategory] = useState('')
   const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const { canWrite } = useCrmCapabilities()
 
   async function addExpense() {
     const amount = parseInt(expenseAmount, 10)
@@ -186,7 +188,7 @@ export function ProjectFinanceClient({
 
       <section className="crm-card p-5">
         <h2 className="text-sm font-semibold mb-4">Dépenses</h2>
-        {showExpenseForm ? (
+        {canWrite && (showExpenseForm ? (
           <div className="rounded-lg border border-border p-4 space-y-3 max-w-md bg-muted/20">
             <div>
               <Label>Titre</Label>
@@ -232,7 +234,7 @@ export function ProjectFinanceClient({
           <Button variant="outline" onClick={() => setShowExpenseForm(true)}>
             + Dépense
           </Button>
-        )}
+        ))}
 
         {expenses.length > 0 && (
           <div className="mt-4 rounded-lg border border-border overflow-hidden">

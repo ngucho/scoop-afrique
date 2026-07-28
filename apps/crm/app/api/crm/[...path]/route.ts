@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAccessToken } from '@/lib/auth0'
-import { hasReadCrm } from '@/lib/rbac'
+import { canCrmRequest } from '@/lib/rbac'
 import {
   generateRequestId,
   logApiRequest,
@@ -63,7 +63,7 @@ async function proxyRequest(
   }
 
   const permissions = Array.isArray(tokenResult.permissions) ? tokenResult.permissions : []
-  if (!hasReadCrm(permissions)) {
+  if (!canCrmRequest(permissions, method, pathSegments.join('/'))) {
     logApiError({
       requestId,
       method,

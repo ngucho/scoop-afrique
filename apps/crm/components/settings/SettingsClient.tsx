@@ -24,6 +24,7 @@ import {
   Wallet,
   MoreHorizontal,
 } from 'lucide-react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 /* ─────────────────────────────────────────────
    Types
@@ -143,6 +144,7 @@ function SectionTab({ icon: Icon, label, active, onClick }: { icon: React.Elemen
    Main Component
    ───────────────────────────────────────────── */
 export function SettingsClient() {
+  const { canManage } = useCrmCapabilities()
   const [tab, setTab] = useState<'payment' | 'company' | 'reminders' | 'rules'>('payment')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -369,7 +371,15 @@ export function SettingsClient() {
       </aside>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
+      <fieldset
+        disabled={!canManage}
+        className="flex-1 min-w-0 border-0 p-0 m-0 disabled:opacity-80"
+      >
+        {!canManage && (
+          <p className="mb-4 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            Consultation seule — les modifications exigent la permission manage:crm.
+          </p>
+        )}
 
         {/* ── Payment Methods ── */}
         {tab === 'payment' && (
@@ -821,7 +831,7 @@ export function SettingsClient() {
 
               {reminderPrefs.auto_send_enabled && (
                 <div>
-                  <label className="block text-sm font-medium mb-2">Heure d'envoi automatique</label>
+                    <label className="block text-sm font-medium mb-2">Heure d&apos;envoi automatique</label>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -970,7 +980,7 @@ export function SettingsClient() {
             </div>
           </div>
         )}
-      </div>
+      </fieldset>
     </div>
   )
 }

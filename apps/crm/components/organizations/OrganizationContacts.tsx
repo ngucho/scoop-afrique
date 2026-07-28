@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Button } from 'scoop'
 import { Users, Plus, X } from 'lucide-react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 type Contact = { id: string; first_name?: string; last_name?: string; email?: string; role?: string }
 type ContactOption = { id: string; first_name?: string; last_name?: string }
@@ -21,6 +22,7 @@ export function OrganizationContacts({
   const [contacts, setContacts] = useState<Contact[]>(initialContacts)
   const [selectedContactId, setSelectedContactId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const { canWrite, canManage } = useCrmCapabilities()
 
   const linkedIds = new Set(contacts.map((c) => c.id))
   const availableContacts = allContacts.filter((c) => !linkedIds.has(c.id))
@@ -81,18 +83,20 @@ export function OrganizationContacts({
                   {contactName(c)}
                   {c.role ? ` (${c.role})` : ''}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => handleUnlink(c.id)}
-                  className="p-1 text-muted-foreground hover:text-destructive"
-                  aria-label="Retirer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => handleUnlink(c.id)}
+                    className="p-1 text-muted-foreground hover:text-destructive"
+                    aria-label="Retirer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
-          {availableContacts.length > 0 && (
+          {canWrite && availableContacts.length > 0 && (
             <div className="flex gap-2">
               <select
                 value={selectedContactId}
