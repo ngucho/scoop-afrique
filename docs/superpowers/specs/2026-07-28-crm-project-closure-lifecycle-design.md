@@ -219,6 +219,7 @@ Nouvelle table `crm_invoice_adjustments` :
 - `reason TEXT NOT NULL` ;
 - `external_reference TEXT NULL` ;
 - `evidence_url TEXT NULL` ;
+- `manager_attestation BOOLEAN NOT NULL DEFAULT false` ;
 - `effective_at TIMESTAMPTZ NOT NULL` ;
 - `created_by UUID` ;
 - `created_at TIMESTAMPTZ`.
@@ -227,9 +228,14 @@ Pour une facture émise, un avoir doit comporter la référence du document FNE
 ou comptable correspondant avant la clôture. L’intégration FNE elle-même reste
 hors de ce lot.
 
+Une même facture peut recevoir plusieurs ajustements si une partie du solde
+correspond à des prestations non réalisées et une autre partie à une créance
+abandonnée. La somme des ajustements de clôture doit couvrir exactement le
+solde restant de la facture.
+
 La facture reçoit également :
 
-- `closure_resolution` : `paid`, `credit_note` ou `bad_debt` ;
+- `closure_resolution` : `paid`, `credit_note`, `bad_debt` ou `mixed` ;
 - `closure_resolved_at TIMESTAMPTZ NULL` ;
 - `closure_resolved_by UUID NULL`.
 
@@ -351,9 +357,16 @@ Corps :
     {
       "invoice_id": "uuid",
       "type": "credit_note",
-      "amount": 300000,
+      "amount": 180000,
       "reason": "Prestations restantes non réalisées",
       "external_reference": "AV-FNE-2026-001"
+    },
+    {
+      "invoice_id": "uuid",
+      "type": "bad_debt",
+      "amount": 120000,
+      "reason": "Travail livré non recouvré après abandon client",
+      "manager_attestation": true
     }
   ]
 }
@@ -371,6 +384,9 @@ Permission requise : `manage:crm`.
 
 La restauration est refusée si l’opération contient un ajustement
 `credit_note` ou `bad_debt`.
+
+L’ancien endpoint de restauration directe ne peut pas désarchiver un dossier
+clos. Il doit appeler cette politique ou retourner `PROJECT_RESTORE_FORBIDDEN`.
 
 ### 10.4 Régularisation historique
 
@@ -424,6 +440,10 @@ Code HTTP : `409 Conflict`.
 La garde couvre :
 
 - modification, clôture ou relation de contact du projet ;
+- ancien endpoint direct `/projects/:id/close` lorsqu’il tente de remplacer la
+  clôture de dossier auditée ;
+- ancien endpoint direct `/projects/:id/restore` lorsqu’il tente de
+  désarchiver sans la politique de restauration ;
 - création et modification de tâches, livrables et métriques ;
 - création et modification de dépenses ;
 - création, modification, envoi, signature, conversion ou archivage de devis,

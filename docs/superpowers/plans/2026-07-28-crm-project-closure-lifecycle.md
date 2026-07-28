@@ -156,6 +156,7 @@ export const crmInvoiceClosureResolutionEnum = pgEnum('crm_invoice_closure_resol
   'paid',
   'credit_note',
   'bad_debt',
+  'mixed',
 ])
 ```
 
@@ -164,8 +165,9 @@ Add nullable archive metadata to the four document tables. Add
 `ON DELETE RESTRICT`. Add the three tables and foreign keys with
 `ON DELETE RESTRICT` for closure and financial records. Store
 `idempotency_key UUID NOT NULL UNIQUE` and `request_hash TEXT NOT NULL` on each
-closure operation. Add `cancelled` to the existing task enum without changing
-existing values.
+closure operation. Store `manager_attestation BOOLEAN NOT NULL DEFAULT false`
+on invoice adjustments. Add `cancelled` to the existing task enum without
+changing existing values.
 
 - [ ] **Step 4: Create the additive SQL migration**
 
@@ -336,7 +338,11 @@ SHA-256. Exclude volatile display-only fields. Include:
 
 For `credit_note`, `external_reference` is mandatory when invoice status is not
 `draft`. For `bad_debt`, `reason` and either `evidence_url` or an explicit
-`manager_attestation: true` are mandatory.
+`manager_attestation: true` are mandatory. Allow multiple
+`invoice_resolutions` rows for the same invoice; validation groups them by
+invoice and requires the grouped amount to equal the remaining invoice balance.
+Set invoice `closure_resolution` to `mixed` when both `credit_note` and
+`bad_debt` resolve one invoice.
 
 - [ ] **Step 6: Verify GREEN**
 
@@ -483,7 +489,8 @@ The fake records transaction calls and can throw at a chosen step. Test:
 
 - project lock is acquired before reloading the snapshot;
 - stale version or fingerprint fails with `CLOSURE_PREVIEW_STALE`;
-- every open invoice is resolved exactly once;
+- every open invoice has grouped resolutions whose sum exactly matches its
+  remaining balance;
 - a thrown child update produces no committed fake state;
 - repeated idempotency key returns the first result;
 - a different payload with the same key returns `IDEMPOTENCY_CONFLICT`;
@@ -491,6 +498,8 @@ The fake records transaction calls and can throw at a chosen step. Test:
 - restore replays only items created by the selected closure operation and does
   not restore children archived independently before closure;
 - restore fails after `credit_note` or `bad_debt`;
+- the existing `/projects/:id/restore` route cannot bypass
+  `restoreClosedProject`;
 - follow-up creation requires a sealed archive, creates a fresh reference,
   persists `predecessor_project_id`, copies only client, organisation, service
   and descriptive context, and copies no document or financial record.
@@ -626,7 +635,9 @@ corepack pnpm --dir apps/backend exec node --import tsx --test src/services/crm/
 Add the guard before every write. Route-only guards are insufficient because
 internal service calls must also be protected.
 
-The old `DELETE /projects/:id` must no longer archive directly. Return:
+The old `DELETE /projects/:id`, `POST /projects/:id/close` and
+`POST /projects/:id/restore` routes must no longer archive, close or restore
+directly. `DELETE` and direct `close` return:
 
 ```json
 {
@@ -635,13 +646,16 @@ The old `DELETE /projects/:id` must no longer archive directly. Return:
 }
 ```
 
-with `409`.
+with `409`. Direct `restore` must call `restoreClosedProject`; if the project
+has irreversible financial adjustments, return `409 PROJECT_RESTORE_FORBIDDEN`.
 
 - [ ] **Step 4: Add representative route tests**
 
 Use Hono requests to prove archived project refusal for:
 
 - project patch;
+- project contact add/remove;
+- direct project close/delete/restore legacy routes;
 - task creation/update/delete;
 - deliverable and metric mutation;
 - expense creation;
