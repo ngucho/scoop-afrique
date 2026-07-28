@@ -71,9 +71,11 @@ export function createGetAuthUser(dependencies: {
   }
 }
 
-const resolveAuthUser = createGetAuthUser()
+export const getAuthUser = createGetAuthUser()
 
-export async function getAuthUser(c: Context): Promise<AuthUser | null> {
-  const result = await resolveAuthUser(c)
+export async function getOptionalAuthUser(
+  c: Context,
+): Promise<AuthUser | null> {
+  const result = await getAuthUser(c)
   return result.ok ? result.user : null
 }
