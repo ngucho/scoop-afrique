@@ -189,7 +189,11 @@ export function summarizeAccessTokenForLogs(accessToken: string): {
     return { decode_ok: false, summary: { decode: 'JWT_MALFORMED' } }
   }
 
-  const permissions = (payload.permissions as string[] | undefined) ?? []
+  const permissions: string[] =
+    Array.isArray(payload.permissions) &&
+    payload.permissions.every((permission) => typeof permission === 'string')
+      ? payload.permissions
+      : []
   const aud = payload.aud
   const expectedAud = config.auth0?.audience
   const audMatch =
