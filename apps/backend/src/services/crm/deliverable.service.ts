@@ -5,6 +5,7 @@ import { eq, desc } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmDeliverables, crmDeliverableMetrics } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertEntityProjectWritable, assertProjectWritable } from './project-write-guard.js'
 import type {
   CreateDeliverableInput,
   UpdateDeliverableInput,
@@ -36,6 +37,7 @@ export async function createDeliverable(
   input: CreateDeliverableInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(projectId)
   const db = getDb()
   const [deliverable] = await db
     .insert(crmDeliverables)
@@ -60,6 +62,7 @@ export async function updateDeliverable(
   id: string,
   input: UpdateDeliverableInput
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('deliverable', id)
   const db = getDb()
   const update: Partial<typeof crmDeliverables.$inferInsert> = {}
   if (input.title !== undefined) update.title = input.title.trim()
@@ -79,6 +82,7 @@ export async function addDeliverableMetrics(
   deliverableId: string,
   input: DeliverableMetricsInput
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('deliverable', deliverableId)
   const db = getDb()
   let engagementRate: number | null = null
   if (

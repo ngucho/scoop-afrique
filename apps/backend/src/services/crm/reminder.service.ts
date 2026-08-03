@@ -5,6 +5,7 @@ import { eq, and, desc, asc, sql, isNull, isNotNull, inArray, ilike, or } from '
 import { getDb } from '../../db/index.js'
 import { crmReminders, crmDevis, crmInvoices, crmContacts } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertEntityProjectWritable, assertInvoiceProjectWritable, assertProjectWritable } from './project-write-guard.js'
 import type { CreateReminderInput, UpdateReminderInput } from '../../schemas/crm/reminder.schema.js'
 
 type ReminderStatus =
@@ -251,6 +252,8 @@ export async function createReminder(
   input: CreateReminderInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(input.project_id)
+  await assertInvoiceProjectWritable(input.invoice_id)
   const db = getDb()
   const status = initialStatus(input)
   const [reminder] = await db
@@ -276,6 +279,9 @@ export async function updateReminder(
   id: string,
   input: UpdateReminderInput
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('reminder', id)
+  await assertProjectWritable(input.project_id)
+  await assertInvoiceProjectWritable(input.invoice_id)
   const db = getDb()
   const existing = await getReminderById(id)
   if (!existing) throw new Error('Reminder not found')
@@ -307,6 +313,7 @@ export async function updateReminder(
 }
 
 export async function markReminderSent(id: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('reminder', id)
   const db = getDb()
   const [reminder] = await db
     .update(crmReminders)

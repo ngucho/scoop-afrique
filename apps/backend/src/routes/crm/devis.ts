@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { createDevisSchema, updateDevisSchema } from '../../schemas/crm/devis.schema.js'
 import * as devisService from '../../services/crm/devis.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
 
@@ -65,6 +66,7 @@ app.get('/:id', async (c) => {
 })
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('devis', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const devis = await devisService.getDevisById(id)
@@ -87,6 +89,7 @@ app.patch('/:id', async (c) => {
 
 // CRM management archive (soft-delete)
 app.delete('/:id', async (c) => {
+  await assertEntityProjectWritable('devis', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const archived = await devisService.archiveDevis(id, user.id)
@@ -95,6 +98,7 @@ app.delete('/:id', async (c) => {
 
 // CRM management restore (undo archive)
 app.post('/:id/restore', async (c) => {
+  await assertEntityProjectWritable('devis', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const restored = await devisService.restoreDevis(id, user.id)
@@ -102,6 +106,7 @@ app.post('/:id/restore', async (c) => {
 })
 
 app.post('/:id/send', async (c) => {
+  await assertEntityProjectWritable('devis', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const devis = await devisService.getDevisWithContactAndProject(id)
@@ -156,6 +161,7 @@ app.get('/:id/pdf', async (c) => {
 })
 
 app.post('/:id/sign-token', async (c) => {
+  await assertEntityProjectWritable('devis', c.req.param('id'))
   const id = c.req.param('id')
   const devis = await devisService.getDevisById(id)
   if (!devis) return c.json({ error: 'Not found' }, 404)
@@ -169,6 +175,7 @@ app.post('/:id/sign-token', async (c) => {
 })
 
 app.post('/:id/convert', async (c) => {
+  await assertEntityProjectWritable('devis', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const devis = await devisService.getDevisWithContact(id)

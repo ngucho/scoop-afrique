@@ -7,6 +7,7 @@ import { crmContracts, crmContacts } from '../../db/schema.js'
 import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertEntityProjectWritable, assertProjectWritable } from './project-write-guard.js'
 import type { CreateContractInput, UpdateContractInput } from '../../schemas/crm/contract.schema.js'
 
 export async function listContracts(params?: {
@@ -124,6 +125,7 @@ export async function createContract(
   input: CreateContractInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(input.project_id)
   const reference = await nextReference('CTR')
   const db = getDb()
 
@@ -158,6 +160,8 @@ export async function updateContract(
   input: UpdateContractInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('contract', id)
+  await assertProjectWritable(input.project_id)
   const db = getDb()
   const update: Partial<typeof crmContracts.$inferInsert> = {}
   if (input.project_id !== undefined) update.projectId = input.project_id || null
@@ -182,6 +186,7 @@ export async function updateContract(
 }
 
 export async function archiveContract(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('contract', id)
   const db = getDb()
   const [contract] = await db
     .update(crmContracts)
@@ -202,6 +207,7 @@ export async function archiveContract(id: string, archivedBy?: string): Promise<
 }
 
 export async function restoreContract(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('contract', id)
   const db = getDb()
   const [contract] = await db
     .update(crmContracts)
@@ -222,6 +228,7 @@ export async function restoreContract(id: string, restoredBy?: string): Promise<
 }
 
 export async function markContractSigned(id: string, signedBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('contract', id)
   const db = getDb()
   const [contract] = await db
     .update(crmContracts)

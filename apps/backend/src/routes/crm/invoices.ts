@@ -4,6 +4,7 @@ import { createPaymentSchema, updatePaymentSchema } from '../../schemas/crm/paym
 import * as invoiceService from '../../services/crm/invoice.service.js'
 import * as paymentService from '../../services/crm/payment.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
 
@@ -84,6 +85,7 @@ app.get('/:id', async (c) => {
 })
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const canManageCrm = user.permissions.includes('manage:crm')
   const id = c.req.param('id')
@@ -139,6 +141,7 @@ app.patch('/:id', async (c) => {
 
 // CRM management archive (soft-delete)
 app.delete('/:id', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const archived = await invoiceService.archiveInvoice(id, user.id)
@@ -147,6 +150,7 @@ app.delete('/:id', async (c) => {
 
 // CRM management restore (undo archive)
 app.post('/:id/restore', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const restored = await invoiceService.restoreInvoice(id, user.id)
@@ -154,6 +158,7 @@ app.post('/:id/restore', async (c) => {
 })
 
 app.post('/:id/send', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const invoice = await invoiceService.getInvoiceWithContactAndProject(id)
@@ -208,6 +213,7 @@ app.get('/:id/pdf', async (c) => {
 })
 
 app.post('/:id/payments', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const invoice = await invoiceService.getInvoiceById(id)
@@ -250,6 +256,7 @@ app.get('/:id/payments', async (c) => {
 })
 
 app.patch('/:id/payments/:paymentId', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const invoiceId = c.req.param('id')
   const paymentId = c.req.param('paymentId')
