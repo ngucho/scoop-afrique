@@ -11,7 +11,65 @@ import {
   crmContacts,
   crmTreasuryMovements,
   crmPayments,
+  crmInvoiceAdjustments,
 } from '../../db/schema.js'
+
+export type ReceivablesInput = {
+  invoices: Array<{ id: string; status: string; total: number; amountPaid: number }>
+  payments: Array<{ invoiceId: string; amount: number }>
+  adjustments: Array<{ invoiceId: string; type: 'credit_note' | 'bad_debt'; amount: number }>
+}
+
+export type ReceivablesSummary = {
+  grossInvoiced: number
+  cashCollected: number
+  creditNotes: number
+  badDebt: number
+  /** Solde réellement recouvrable : reste dû moins avoirs et créances abandonnées. */
+  collectibleOutstanding: number
+}
+
+/**
+ * Sépare ce qui a été encaissé de ce qui a été abandonné.
+ *
+ * Une facture soldée par un avoir ou une créance abandonnée conserve son total
+ * d'origine : elle sort de l'encours recouvrable sans jamais gonfler la
+ * trésorerie encaissée.
+ */
+export function summarizeReceivables(input: ReceivablesInput): ReceivablesSummary {
+  const adjustedByInvoice = new Map<string, { creditNote: number; badDebt: number }>()
+  let creditNotes = 0
+  let badDebt = 0
+  for (const adjustment of input.adjustments) {
+    const entry = adjustedByInvoice.get(adjustment.invoiceId) ?? { creditNote: 0, badDebt: 0 }
+    if (adjustment.type === 'credit_note') {
+      entry.creditNote += adjustment.amount
+      creditNotes += adjustment.amount
+    } else {
+      entry.badDebt += adjustment.amount
+      badDebt += adjustment.amount
+    }
+    adjustedByInvoice.set(adjustment.invoiceId, entry)
+  }
+
+  let grossInvoiced = 0
+  let collectibleOutstanding = 0
+  for (const invoice of input.invoices) {
+    grossInvoiced += invoice.total
+    if (['paid', 'cancelled', 'draft'].includes(invoice.status)) continue
+    const adjusted = adjustedByInvoice.get(invoice.id)
+    const resolved = (adjusted?.creditNote ?? 0) + (adjusted?.badDebt ?? 0)
+    collectibleOutstanding += Math.max(0, invoice.total - invoice.amountPaid - resolved)
+  }
+
+  return {
+    grossInvoiced,
+    cashCollected: input.payments.reduce((sum, payment) => sum + payment.amount, 0),
+    creditNotes,
+    badDebt,
+    collectibleOutstanding,
+  }
+}
 
 /** Mois calendaires YYYY-MM entre deux dates inclusives (startStr <= endStr, format YYYY-MM-DD). */
 export function monthKeysInclusive(startStr: string, endStr: string): string[] {
@@ -155,10 +213,10 @@ export async function getRevenueByMonth(
       amount: crmPayments.amount,
     })
     .from(crmPayments)
+    // Trésorerie réalisée : un encaissement reste compté après archivage.
     .innerJoin(crmInvoices, eq(crmPayments.invoiceId, crmInvoices.id))
     .where(
       and(
-        eq(crmInvoices.isArchived, false),
         gte(crmPayments.paidAt, new Date(`${queryFrom}T00:00:00.000Z`)),
         lte(crmPayments.paidAt, new Date(`${queryTo}T23:59:59.999Z`)),
       ),
@@ -322,6 +380,14 @@ export type FinancialSummary = {
   invoicesPaid: number
   invoicesUnpaid: number
   invoicesOverdue: number
+  /** Total facturé brut : jamais réécrit par une clôture. */
+  grossInvoiced: number
+  /** Avoirs émis lors des clôtures de la période. */
+  creditNotes: number
+  /** Créances abandonnées lors des clôtures de la période. */
+  badDebt: number
+  /** Encours réellement recouvrable, avoirs et créances abandonnées déduits. */
+  collectibleOutstanding: number
   revenueByMonth: RevenueByMonth[]
   expensesByCategory: Array<{ category: string; amount: number; count: number }>
   cashFlow: Array<{ month: string; revenue: number; expenses: number; net: number }>
@@ -340,7 +406,7 @@ export async function getFinancialSummary(
   /** Factures « dans la période » : date d'échéance, ou date de création si pas d'échéance */
   const invoiceInPeriod = sql`COALESCE(${crmInvoices.dueDate}, (${crmInvoices.createdAt}::date))`
 
-  const [invoices, paymentRows, expenses, treasuryRows] = await Promise.all([
+  const [invoices, paymentRows, expenses, treasuryRows, adjustmentRows] = await Promise.all([
     db
       .select({
         id: crmInvoices.id,
@@ -369,10 +435,10 @@ export async function getFinancialSummary(
         contactId: crmInvoices.contactId,
       })
       .from(crmPayments)
+      // Trésorerie réalisée : périmètre historique complet, archives comprises.
       .innerJoin(crmInvoices, eq(crmPayments.invoiceId, crmInvoices.id))
       .where(
         and(
-          eq(crmInvoices.isArchived, false),
           gte(crmPayments.paidAt, new Date(`${startStr}T00:00:00.000Z`)),
           lte(crmPayments.paidAt, new Date(`${endStr}T23:59:59.999Z`)),
         ),
@@ -399,7 +465,38 @@ export async function getFinancialSummary(
           sql`${crmTreasuryMovements.occurredAt} <= ${endStr}::date`,
         ),
       ),
+    db
+      .select({
+        invoiceId: crmInvoiceAdjustments.invoiceId,
+        type: crmInvoiceAdjustments.type,
+        amount: crmInvoiceAdjustments.amount,
+      })
+      .from(crmInvoiceAdjustments)
+      .where(
+        and(
+          gte(crmInvoiceAdjustments.effectiveAt, new Date(`${startStr}T00:00:00.000Z`)),
+          lte(crmInvoiceAdjustments.effectiveAt, new Date(`${endStr}T23:59:59.999Z`)),
+        ),
+      ),
   ])
+
+  const receivables = summarizeReceivables({
+    invoices: invoices.map((invoice) => ({
+      id: invoice.id,
+      status: invoice.status,
+      total: Number(invoice.total) ?? 0,
+      amountPaid: Number(invoice.amountPaid) ?? 0,
+    })),
+    payments: paymentRows.map((payment) => ({
+      invoiceId: String(payment.invoiceId),
+      amount: Number(payment.amount) ?? 0,
+    })),
+    adjustments: adjustmentRows.map((adjustment) => ({
+      invoiceId: adjustment.invoiceId,
+      type: adjustment.type,
+      amount: Number(adjustment.amount) ?? 0,
+    })),
+  })
 
   const contactIdSet = new Set<string>()
   for (const p of paymentRows) {
@@ -573,6 +670,10 @@ export async function getFinancialSummary(
     invoicesPaid,
     invoicesUnpaid,
     invoicesOverdue,
+    grossInvoiced: receivables.grossInvoiced,
+    creditNotes: receivables.creditNotes,
+    badDebt: receivables.badDebt,
+    collectibleOutstanding: receivables.collectibleOutstanding,
     revenueByMonth,
     expensesByCategory,
     cashFlow,
@@ -632,7 +733,15 @@ async function getOutstandingReceivablesFcfa(): Promise<number> {
         sql`${crmInvoices.status} NOT IN ('paid', 'cancelled')`
       )
     )
-  return Number(row?.v ?? 0)
+  const [adjusted] = await db
+    .select({
+      v: sql<number>`coalesce(sum(${crmInvoiceAdjustments.amount}), 0)::bigint`,
+    })
+    .from(crmInvoiceAdjustments)
+    .innerJoin(crmInvoices, eq(crmInvoiceAdjustments.invoiceId, crmInvoices.id))
+    .where(eq(crmInvoices.isArchived, false))
+  // summarizeReceivables() applique la meme regle sur des lignes deja chargees.
+  return Math.max(0, Number(row?.v ?? 0) - Number(adjusted?.v ?? 0))
 }
 
 function daysInclusive(startStr: string, endStr: string): number {
@@ -662,13 +771,9 @@ export async function getFinancialBilanLedger(
         v: sql<number>`coalesce(sum(${crmPayments.amount}), 0)::bigint`,
       })
       .from(crmPayments)
+      // Solde d'ouverture : tous les encaissements antérieurs, archives incluses.
       .innerJoin(crmInvoices, eq(crmPayments.invoiceId, crmInvoices.id))
-      .where(
-        and(
-          eq(crmInvoices.isArchived, false),
-          lt(crmPayments.paidAt, new Date(`${startStr}T00:00:00.000Z`)),
-        ),
-      ),
+      .where(lt(crmPayments.paidAt, new Date(`${startStr}T00:00:00.000Z`))),
     db
       .select({
         v: sql<number>`coalesce(sum(${crmExpenses.amount}), 0)::bigint`,

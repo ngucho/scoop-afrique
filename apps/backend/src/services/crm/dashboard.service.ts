@@ -68,10 +68,10 @@ export async function getDashboardKpis(opts?: { from?: string; to?: string }): P
       paidAt: crmPayments.paidAt,
     })
     .from(crmPayments)
+    // Trésorerie réalisée : un encaissement reste compté après archivage.
     .innerJoin(crmInvoices, eq(crmPayments.invoiceId, crmInvoices.id))
     .where(
       and(
-        eq(crmInvoices.isArchived, false),
         gte(crmPayments.paidAt, new Date(`${fromStr}T00:00:00Z`)),
         lte(crmPayments.paidAt, new Date(`${toStr}T23:59:59Z`))
       )
@@ -121,14 +121,19 @@ export async function getDashboardKpis(opts?: { from?: string; to?: string }): P
   const sentDevis = await db
     .select({ total: crmDevis.total })
     .from(crmDevis)
-    .where(eq(crmDevis.status, 'sent'))
+    .where(and(eq(crmDevis.status, 'sent'), eq(crmDevis.isArchived, false)))
   const pipelineAmount = sentDevis.reduce((s, i) => s + (Number(i.total) ?? 0), 0)
   const pipelineCount = sentDevis.length
 
   const activeProjectsRows = await db
     .select()
     .from(crmProjects)
-    .where(inArray(crmProjects.status, ['in_progress', 'review', 'delivered']))
+    .where(
+      and(
+        inArray(crmProjects.status, ['in_progress', 'review', 'delivered']),
+        eq(crmProjects.isArchived, false)
+      )
+    )
   const activeProjects = activeProjectsRows.length
 
   const overdueProjectsRows = await db
@@ -137,7 +142,8 @@ export async function getDashboardKpis(opts?: { from?: string; to?: string }): P
     .where(
       and(
         lt(crmProjects.endDate, today),
-        notInArray(crmProjects.status, ['closed', 'cancelled'])
+        notInArray(crmProjects.status, ['closed', 'cancelled']),
+        eq(crmProjects.isArchived, false)
       )
     )
   const overdueProjects = overdueProjectsRows.length
@@ -145,7 +151,12 @@ export async function getDashboardKpis(opts?: { from?: string; to?: string }): P
   const unpaidInvoices = await db
     .select({ total: crmInvoices.total, amountPaid: crmInvoices.amountPaid })
     .from(crmInvoices)
-    .where(inArray(crmInvoices.status, ['sent', 'partial', 'overdue']))
+    .where(
+      and(
+        inArray(crmInvoices.status, ['sent', 'partial', 'overdue']),
+        eq(crmInvoices.isArchived, false)
+      )
+    )
   const unpaidInvoicesAmount = unpaidInvoices.reduce(
     (s, i) => s + ((Number(i.total) ?? 0) - (Number(i.amountPaid) ?? 0)),
     0
