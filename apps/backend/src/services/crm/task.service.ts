@@ -7,6 +7,7 @@ import { crmTasks } from '../../db/schema.js'
 import { logActivity } from './activity.service.js'
 import { toSnakeRecord } from './crm-util.js'
 import type { CreateTaskInput, UpdateTaskInput } from '../../schemas/crm/task.schema.js'
+import { assertEntityProjectWritable, assertProjectWritable } from './project-write-guard.js'
 
 export async function listTasksByProject(projectId: string): Promise<Array<Record<string, unknown>>> {
   const db = getDb()
@@ -31,6 +32,7 @@ export async function createTask(
   input: CreateTaskInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(projectId)
   const db = getDb()
   const [task] = await db
     .insert(crmTasks)
@@ -63,6 +65,7 @@ export async function updateTask(
   input: UpdateTaskInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('task', id)
   const db = getDb()
   const update: Partial<typeof crmTasks.$inferInsert> = {}
   if (input.title !== undefined) update.title = input.title.trim()
@@ -88,6 +91,7 @@ export async function updateTask(
 }
 
 export async function deleteTask(id: string): Promise<void> {
+  await assertEntityProjectWritable('task', id)
   const db = getDb()
   await db.delete(crmTasks).where(eq(crmTasks.id, id))
 }

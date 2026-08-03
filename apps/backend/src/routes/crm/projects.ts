@@ -11,6 +11,12 @@ import {
   deliverableMetricsSchema,
 } from '../../schemas/crm/deliverable.schema.js'
 import { createExpenseSchema } from '../../schemas/crm/expense.schema.js'
+import * as closureService from '../../services/crm/project-closure.service.js'
+import { ClosurePolicyError } from '../../services/crm/project-closure.policy.js'
+import {
+  assertProjectWritable,
+  ProjectClosureRequiredError,
+} from '../../services/crm/project-write-guard.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
@@ -91,6 +97,7 @@ app.get('/:id/folder', async (c) => {
 app.patch('/:id', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
+  await assertProjectWritable(id)
   const project = await projectService.getProjectById(id)
   if (!project) return c.json({ error: 'Not found' }, 404)
 
@@ -109,29 +116,30 @@ app.patch('/:id', async (c) => {
   return c.json({ data: updated })
 })
 
-// CRM management archive (soft-delete)
-app.delete('/:id', async (c) => {
-  const user = c.get('user')
-  const id = c.req.param('id')
-  const archived = await projectService.archiveProject(id, user.id)
-  return c.json({ data: archived })
+// L'archivage direct est remplacé par la clôture transactionnelle : archiver un
+// projet sans résoudre ses factures ouvertes laisserait le dossier incohérent.
+app.delete('/:id', async () => {
+  throw new ProjectClosureRequiredError()
 })
 
-// CRM management restore (undo archive)
+app.post('/:id/close', async () => {
+  throw new ProjectClosureRequiredError()
+})
+
+// La restauration passe obligatoirement par le service de clôture : il refuse
+// de rouvrir un dossier scellé par un avoir ou une créance abandonnée.
 app.post('/:id/restore', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
-  const restored = await projectService.restoreProject(id, user.id)
-  return c.json({ data: restored })
-})
-
-app.post('/:id/close', async (c) => {
-  const user = c.get('user')
-  const id = c.req.param('id')
-  const project = await projectService.getProjectById(id)
-  if (!project) return c.json({ error: 'Not found' }, 404)
-  const updated = await projectService.closeProject(id, user.id)
-  return c.json({ data: updated })
+  try {
+    const result = await closureService.restoreClosedProject(id, user.id)
+    return c.json({ data: result })
+  } catch (error) {
+    if (error instanceof ClosurePolicyError) {
+      return c.json({ error: error.code, message: error.message }, 409)
+    }
+    throw error
+  }
 })
 
 // Project Contacts (many-to-many)
@@ -143,6 +151,7 @@ app.get('/:id/contacts', async (c) => {
 
 app.post('/:id/contacts', async (c) => {
   const id = c.req.param('id')
+  await assertProjectWritable(id)
   let body: unknown
   try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
   const { contact_id, role, is_primary } = body as Record<string, unknown>
@@ -159,6 +168,7 @@ app.post('/:id/contacts', async (c) => {
 app.delete('/:id/contacts/:contactId', async (c) => {
   const id = c.req.param('id')
   const contactId = c.req.param('contactId')
+  await assertProjectWritable(id)
   await projectService.removeProjectContact(id, contactId)
   return c.json({ success: true })
 })
@@ -175,6 +185,7 @@ app.get('/:id/tasks', async (c) => {
 app.post('/:id/tasks', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
+  await assertProjectWritable(id)
   const project = await projectService.getProjectById(id)
   if (!project) return c.json({ error: 'Not found' }, 404)
 
@@ -205,6 +216,7 @@ app.get('/:id/deliverables', async (c) => {
 app.post('/:id/deliverables', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
+  await assertProjectWritable(id)
   const project = await projectService.getProjectById(id)
   if (!project) return c.json({ error: 'Not found' }, 404)
 
@@ -235,6 +247,7 @@ app.get('/:id/expenses', async (c) => {
 app.post('/:id/expenses', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
+  await assertProjectWritable(id)
   const project = await projectService.getProjectById(id)
   if (!project) return c.json({ error: 'Not found' }, 404)
 

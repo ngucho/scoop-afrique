@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { createContractSchema, updateContractSchema } from '../../schemas/crm/contract.schema.js'
 import * as contractService from '../../services/crm/contract.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
 
@@ -65,6 +66,7 @@ app.get('/:id', async (c) => {
 })
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('contract', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const contract = await contractService.getContractById(id)
@@ -87,6 +89,7 @@ app.patch('/:id', async (c) => {
 
 // CRM management archive (soft-delete)
 app.delete('/:id', async (c) => {
+  await assertEntityProjectWritable('contract', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const archived = await contractService.archiveContract(id, user.id)
@@ -95,6 +98,7 @@ app.delete('/:id', async (c) => {
 
 // CRM management restore (undo archive)
 app.post('/:id/restore', async (c) => {
+  await assertEntityProjectWritable('contract', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const restored = await contractService.restoreContract(id, user.id)
@@ -122,6 +126,7 @@ app.get('/:id/pdf', async (c) => {
 })
 
 app.patch('/:id/sign', async (c) => {
+  await assertEntityProjectWritable('contract', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const contract = await contractService.getContractById(id)

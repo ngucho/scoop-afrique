@@ -5,6 +5,7 @@ import {
 } from '../../schemas/crm/treasury.schema.js'
 import * as treasuryService from '../../services/crm/treasury.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
 
@@ -58,6 +59,7 @@ app.post('/', async (c) => {
 })
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('treasury', c.req.param('id'))
   const id = c.req.param('id')
   let body: unknown
   try {
@@ -82,6 +84,7 @@ app.patch('/:id', async (c) => {
 })
 
 app.delete('/:id', async (c) => {
+  await assertEntityProjectWritable('treasury', c.req.param('id'))
   const id = c.req.param('id')
   const existing = await treasuryService.getTreasuryMovementById(id)
   if (!existing) return c.json({ error: 'Not found' }, 404)
