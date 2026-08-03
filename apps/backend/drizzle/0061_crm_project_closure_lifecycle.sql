@@ -192,3 +192,15 @@ BEGIN
       FOR ALL TO service_role USING (true) WITH CHECK (true);
   END IF;
 END $$;
+
+-- Backfill project archive metadata only. Child entities are never regularized
+-- automatically: legacy archives are reconciled explicitly through the closure
+-- assistant.
+UPDATE public.crm_projects
+SET archived_at = COALESCE(updated_at, created_at),
+    archive_reason = COALESCE(
+      archive_reason,
+      'Archive antérieure à la gestion des clôtures'
+    )
+WHERE is_archived = true
+  AND archived_at IS NULL;

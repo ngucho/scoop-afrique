@@ -31,6 +31,17 @@ test('project closure migration is additive, audited, and private', () => {
   assert.match(migration, /request_hash TEXT NOT NULL/i)
 })
 
+test('migration backfills project archive metadata only', () => {
+  assert.match(
+    migration,
+    /UPDATE public\.crm_projects\s+SET archived_at = COALESCE\(updated_at, created_at\)/,
+  )
+  assert.match(migration, /WHERE is_archived = true\s+AND archived_at IS NULL;/)
+  for (const child of ['crm_devis', 'crm_invoices', 'crm_contracts', 'crm_tasks', 'crm_reminders']) {
+    assert.doesNotMatch(migration, new RegExp(`UPDATE public\\.${child}\\b`))
+  }
+})
+
 test('drizzle schema exposes closure metadata and adjustments', () => {
   assert.match(schema, /crmProjectClosureOperations/)
   assert.match(schema, /crmProjectClosureItems/)

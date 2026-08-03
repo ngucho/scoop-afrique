@@ -12,6 +12,7 @@ export interface ClosureDocument {
   id: string
   status: string
   isArchived: boolean
+  reference?: string
   updatedAt?: string
 }
 
@@ -73,6 +74,45 @@ export interface ClosurePlan {
 export interface ClosurePreview {
   closureVersion: number
   fingerprint: string
-  openInvoices: Array<{ id: string; remaining: number; allowedResolutions: InvoiceResolutionType[] }>
+  /** Archive héritée sans opération de clôture enregistrée. */
+  requiresReconciliation: boolean
+  openInvoices: Array<{
+    id: string
+    reference?: string
+    remaining: number
+    allowedResolutions: InvoiceResolutionType[]
+  }>
   counts: Record<string, number>
+}
+
+export interface ClosureResult {
+  operationId: string
+  projectId: string
+  closureType: ClosureType
+  restorable: boolean
+  summary: {
+    archivedDevis: number
+    archivedInvoices: number
+    archivedContracts: number
+    cancelledTasks: number
+    cancelledReminders: number
+    invoiceAdjustments: number
+    preserved: number
+  }
+}
+
+export interface RestoreResult {
+  operationId: string
+  projectId: string
+  restoredEntities: number
+}
+
+export interface ArchiveReconciliationRow {
+  projectId: string
+  reference: string
+  title: string
+  archivedAt: string | null
+  archiveReason: string | null
+  counts: Record<string, number>
+  unresolvedInvoiceTotal: number
 }
