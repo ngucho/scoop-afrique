@@ -137,8 +137,8 @@ test('reads and downloads of an archived folder are never blocked by the guard',
   ]) {
     // La lecture atteint la couche données (absente ici) au lieu d'être
     // arrêtée en 409 : c'est la preuve que la garde ne s'applique pas.
-    const outcome = await app.request(path).then(
-      (response) => `status:${response.status}`,
+    const outcome = await Promise.resolve(app.request(path)).then(
+      (response: Response) => `status:${response.status}`,
       (error: Error) => `threw:${error.message}`,
     )
     assert.notEqual(outcome, 'status:409', `${path} must not be refused by the guard`)
