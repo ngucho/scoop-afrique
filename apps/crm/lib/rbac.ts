@@ -44,6 +44,9 @@ export function crmCapabilities(
 const restorePattern =
   /^\/(?:contacts|devis|projects|invoices|contracts)\/[^/]+\/restore$/
 const projectClosePattern = /^\/projects\/[^/]+\/close$/
+/** Parité avec `backend/src/middleware/crm-authorization.ts`. */
+const projectClosureManagePattern =
+  /^\/projects\/(?:archive-reconciliation|[^/]+\/(?:closure-preview|close-and-archive|create-follow-up|archive-reconciliation))$/
 const devisConvertPattern = /^\/devis\/[^/]+\/convert$/
 const contractSignPattern = /^\/contracts\/[^/]+\/sign$/
 
@@ -60,6 +63,9 @@ export function requiredCrmPermission(
   const verb = method.toUpperCase()
   const path = normalizeCrmPath(requestPath)
 
+  // Les chemins de clôture sont classés avant la règle générique des lectures :
+  // l'aperçu expose l'intégralité du dossier financier.
+  if (projectClosureManagePattern.test(path)) return CRM_PERMISSIONS.manage
   if (verb === 'GET' || verb === 'HEAD' || verb === 'OPTIONS') {
     return CRM_PERMISSIONS.read
   }

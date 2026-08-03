@@ -8,6 +8,7 @@ import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveResto
 import { CrmSearchViewToolbar } from '@/components/crm/CrmSearchViewToolbar'
 import { listSearchFromParams, parseListView } from '@/lib/crm-list-query'
 import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
+import { ProjectArchiveReconciliation } from '@/components/projects/ProjectArchiveReconciliation'
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Brouillon',
@@ -84,6 +85,9 @@ export default async function ProjectsPage({
           defaultView="cards"
         />
       </Suspense>
+
+      {/* Archives héritées : seules à pouvoir encore être régularisées. */}
+      <ProjectArchiveReconciliation />
 
       {/* Stats bar */}
       {activeProjects.length > 0 && (
