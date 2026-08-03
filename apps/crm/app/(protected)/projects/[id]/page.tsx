@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Button } from 'scoop'
-import { ProjectCloseButton } from '@/components/projects/ProjectCloseButton'
 import { ProjectStatusActions } from '@/components/projects/ProjectStatusActions'
 import { ProjectContactsWidget } from '@/components/projects/ProjectContactsWidget'
+import { ProjectClosureWizard } from '@/components/projects/ProjectClosureWizard'
+import { ProjectArchivedBanner } from '@/components/projects/ProjectArchivedBanner'
 import { crmGetServer } from '@/lib/api-server'
 import { ActivityClient } from '@/components/activity/ActivityClient'
 import {
@@ -47,18 +48,29 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params
 
-  const [projectRes, contactsRes, allContactsRes, activityRes] = await Promise.all([
-    crmGetServer<Record<string, unknown>>(`projects/${id}`),
-    crmGetServer<Array<Record<string, unknown>>>(`projects/${id}/contacts`),
-    crmGetServer<Array<Record<string, unknown>>>('contacts?limit=200'),
-    crmGetServer<Array<Record<string, unknown>>>(`activity/project/${id}?limit=50`),
-  ])
+  const [projectRes, contactsRes, allContactsRes, activityRes, folderRes, contractsRes] =
+    await Promise.all([
+      crmGetServer<Record<string, unknown>>(`projects/${id}`),
+      crmGetServer<Array<Record<string, unknown>>>(`projects/${id}/contacts`),
+      crmGetServer<Array<Record<string, unknown>>>('contacts?limit=200'),
+      crmGetServer<Array<Record<string, unknown>>>(`activity/project/${id}?limit=50`),
+      crmGetServer<Record<string, unknown>>(`projects/${id}/folder`),
+      crmGetServer<Array<Record<string, unknown>>>(
+        `contracts?project_id=${id}&archived=true&limit=100`,
+      ),
+    ])
 
   const project = projectRes?.data
   if (!project) notFound()
 
   const isAdmin = await getCrmIsAdmin()
   const isArchived = Boolean((project as Record<string, unknown>)['is_archived'])
+  const projectReference = String(project.reference ?? '')
+  // Un dossier « scellé » a été clôturé par l'assistant : il porte une opération.
+  const isSealedArchive = isArchived && Boolean(project.archive_operation_id)
+  const predecessorProjectId = project.predecessor_project_id
+    ? String(project.predecessor_project_id)
+    : null
   const projectContacts = contactsRes?.data ?? []
   const allContacts = allContactsRes?.data ?? []
   const activity = activityRes?.data ?? []
@@ -73,6 +85,55 @@ export default async function ProjectDetailPage({
     | 'delivered'
     | 'closed'
     | 'cancelled'
+
+  // Dossier archivé : les documents restent groupés et consultables en lecture.
+  const folder = (folderRes?.data ?? {}) as Record<string, unknown>
+  const folderDevis = folder.devis ? [folder.devis as Record<string, unknown>] : []
+  const folderInvoices = (folder.invoices ?? []) as Array<Record<string, unknown>>
+  const folderPayments = folderInvoices.flatMap(
+    (invoice) => (invoice.payments ?? []) as Array<Record<string, unknown>>,
+  )
+  const money = (value: unknown) =>
+    `${Number(value ?? 0).toLocaleString('fr-FR')} ${String(project.currency ?? 'FCFA')}`
+
+  const historicalGroups = [
+    {
+      label: 'Devis',
+      items: folderDevis.map((devis) => ({
+        key: `devis-${String(devis.id)}`,
+        label: String(devis.reference ?? devis.id),
+        detail: money(devis.total),
+      })),
+    },
+    {
+      label: 'Factures et ajustements',
+      items: folderInvoices.map((invoice) => ({
+        key: `invoice-${String(invoice.id)}`,
+        label: String(invoice.reference ?? invoice.id),
+        detail: `${money(invoice.total)}${
+          invoice.closure_resolution ? ` · ${String(invoice.closure_resolution)}` : ''
+        }`,
+      })),
+    },
+    {
+      label: 'Paiements et reçus',
+      items: folderPayments.map((payment) => ({
+        key: `payment-${String(payment.id)}`,
+        label: `${formatDate(payment.paid_at as string)}${
+          payment.receipt_pdf_url ? ' · reçu disponible' : ''
+        }`,
+        detail: money(payment.amount),
+      })),
+    },
+    {
+      label: 'Contrats',
+      items: (contractsRes?.data ?? []).map((contract) => ({
+        key: `contract-${String(contract.id)}`,
+        label: String(contract.reference ?? contract.id),
+        detail: String(contract.status ?? ''),
+      })),
+    },
+  ]
 
   const SUB_TABS = [
     { href: `/projects/${id}/tasks`, label: 'Tâches', icon: ClipboardList },
@@ -97,27 +158,54 @@ export default async function ProjectDetailPage({
             <p className="crm-page-subtitle mt-1 line-clamp-2">{String(project.description)}</p>
           ) : null}
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <ProjectStatusActions projectId={id} status={statusForActions} />
-          <div className="flex items-center gap-2">
-          <CrmCapabilityGate capability="write">
-            <Link href={`/projects/${id}/edit`}>
-              <button className="crm-quick-action">
-                <Edit className="h-4 w-4 text-muted-foreground" />
-                <span className="hidden sm:inline">Modifier</span>
-              </button>
-            </Link>
-          </CrmCapabilityGate>
-          <AdminArchiveRestoreActions
-            resource="projects"
-            id={id}
-            isArchived={isArchived}
-            isAdmin={isAdmin}
-          />
-          {isActive && <ProjectCloseButton projectId={id} />}
+        {/* Un dossier archivé n'expose aucune action de mutation. */}
+        {isArchived ? (
+          <div className="shrink-0" />
+        ) : (
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <ProjectStatusActions projectId={id} status={statusForActions} />
+            <div className="flex items-center gap-2">
+              <CrmCapabilityGate capability="write">
+                <Link href={`/projects/${id}/edit`}>
+                  <button className="crm-quick-action">
+                    <Edit className="h-4 w-4 text-muted-foreground" />
+                    <span className="hidden sm:inline">Modifier</span>
+                  </button>
+                </Link>
+              </CrmCapabilityGate>
+              <AdminArchiveRestoreActions
+                resource="projects"
+                id={id}
+                isArchived={isArchived}
+                isAdmin={isAdmin}
+              />
+              {isActive && (
+                <ProjectClosureWizard projectId={id} projectReference={projectReference} />
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
+
+      {isArchived ? (
+        <ProjectArchivedBanner
+          projectId={id}
+          archivedAt={project.archived_at as string | null}
+          archiveReason={(project.archive_reason ?? project.closure_reason) as string | null}
+          closureType={project.closure_type as string | null}
+          sealed={isSealedArchive}
+        />
+      ) : null}
+
+      {predecessorProjectId ? (
+        <p className="text-sm text-muted-foreground">
+          Ce projet fait suite au dossier archivé{' '}
+          <Link href={`/projects/${predecessorProjectId}`} className="underline">
+            voir le projet précédent
+          </Link>
+          .
+        </p>
+      ) : null}
 
       {/* Quick nav */}
       <div className="flex items-center gap-1 p-1 rounded-xl w-fit" style={{ background: 'var(--muted)' }}>
@@ -223,6 +311,32 @@ export default async function ProjectDetailPage({
           />
         </div>
       </div>
+
+      {isArchived ? (
+        <section className="crm-card space-y-4 p-5" aria-label="Documents historiques">
+          <h2 className="text-sm font-semibold">Documents historiques</h2>
+          {historicalGroups.every((group) => group.items.length === 0) ? (
+            <p className="text-sm text-muted-foreground">Aucun document rattaché à ce dossier.</p>
+          ) : null}
+          {historicalGroups.map((group) =>
+            group.items.length === 0 ? null : (
+              <div key={group.label} className="space-y-1">
+                <h3 className="crm-section-title mb-0">
+                  {group.label} ({group.items.length})
+                </h3>
+                <ul className="divide-y divide-border text-sm">
+                  {group.items.map((item) => (
+                    <li key={item.key} className="flex justify-between gap-3 py-2">
+                      <span className="min-w-0 truncate">{item.label}</span>
+                      <span className="shrink-0 text-muted-foreground">{item.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ),
+          )}
+        </section>
+      ) : null}
 
       <div className="space-y-2">
         <p className="crm-section-title mb-0">Journal d&apos;activité</p>

@@ -49,6 +49,12 @@ const requestCases = [
   ['DELETE', 'contacts/123', 'manage:crm'],
   ['POST', 'contacts/123/restore', 'manage:crm'],
   ['POST', 'projects/123/close', 'manage:crm'],
+  ['GET', 'projects/123/closure-preview', 'manage:crm'],
+  ['GET', '/api/crm/projects/123/closure-preview', 'manage:crm'],
+  ['POST', 'projects/123/close-and-archive', 'manage:crm'],
+  ['POST', 'projects/123/create-follow-up', 'manage:crm'],
+  ['GET', 'projects/archive-reconciliation', 'manage:crm'],
+  ['POST', 'projects/123/archive-reconciliation', 'manage:crm'],
   ['POST', 'devis/123/convert', 'manage:crm'],
   ['POST', 'contracts', 'manage:crm'],
   ['PATCH', 'contracts/123/sign', 'manage:crm'],
@@ -82,4 +88,28 @@ test('manager permission does not inherit read or write', () => {
   assert.equal(canCrmRequest(manager, 'DELETE', 'contacts/123'), true)
   assert.equal(canCrmRequest(manager, 'GET', 'contacts'), false)
   assert.equal(canCrmRequest(manager, 'POST', 'contacts'), false)
+})
+
+test('only a manager can preview or close a project folder', () => {
+  const reader = ['read:crm']
+  const writer = ['read:crm', 'write:crm']
+  const manager = ['manage:crm']
+
+  for (const path of [
+    'projects/123/closure-preview',
+    'projects/archive-reconciliation',
+  ]) {
+    assert.equal(canCrmRequest(reader, 'GET', path), false)
+    assert.equal(canCrmRequest(writer, 'GET', path), false)
+    assert.equal(canCrmRequest(manager, 'GET', path), true)
+  }
+
+  for (const path of [
+    'projects/123/close-and-archive',
+    'projects/123/create-follow-up',
+    'projects/123/archive-reconciliation',
+  ]) {
+    assert.equal(canCrmRequest(writer, 'POST', path), false)
+    assert.equal(canCrmRequest(manager, 'POST', path), true)
+  }
 })
