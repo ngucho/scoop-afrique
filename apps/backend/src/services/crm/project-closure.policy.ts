@@ -10,11 +10,15 @@ import type {
 
 export type ClosurePolicyErrorCode =
   | 'PROJECT_ARCHIVED'
+  | 'PROJECT_ALREADY_CLOSED'
+  | 'PROJECT_NOT_ARCHIVED'
   | 'CLOSURE_PREVIEW_STALE'
   | 'INVOICE_RESOLUTION_REQUIRED'
   | 'INVOICE_RESOLUTION_MISMATCH'
   | 'CREDIT_NOTE_REFERENCE_REQUIRED'
   | 'BAD_DEBT_EVIDENCE_REQUIRED'
+  | 'PROJECT_RESTORE_FORBIDDEN'
+  | 'IDEMPOTENCY_CONFLICT'
 
 export class ClosurePolicyError extends Error {
   constructor(readonly code: ClosurePolicyErrorCode, message: string) {
@@ -61,14 +65,23 @@ function validateResolution(invoice: ClosureSnapshot['invoices'][number], resolu
   }
 }
 
-export function buildClosurePreview(snapshot: ClosureSnapshot): ClosurePreview {
+export function buildClosurePreview(
+  snapshot: ClosureSnapshot,
+  options: { requiresReconciliation?: boolean } = {},
+): ClosurePreview {
   return {
     closureVersion: snapshot.project.closureVersion,
     fingerprint: closureFingerprint(snapshot),
+    requiresReconciliation: options.requiresReconciliation ?? false,
     openInvoices: snapshot.invoices
       .filter(isOpenInvoice)
       .sort((left, right) => left.id.localeCompare(right.id))
-      .map((invoice) => ({ id: invoice.id, remaining: remaining(invoice), allowedResolutions: ['credit_note', 'bad_debt'] })),
+      .map((invoice) => ({
+        id: invoice.id,
+        reference: invoice.reference,
+        remaining: remaining(invoice),
+        allowedResolutions: ['credit_note', 'bad_debt'],
+      })),
     counts: {
       devis: snapshot.devis.length,
       invoices: snapshot.invoices.length,
@@ -83,8 +96,12 @@ export function buildClosurePreview(snapshot: ClosureSnapshot): ClosurePreview {
   }
 }
 
-export function buildClosurePlan(snapshot: ClosureSnapshot, input: CloseProjectInput): ClosurePlan {
-  if (snapshot.project.isArchived) {
+export function buildClosurePlan(
+  snapshot: ClosureSnapshot,
+  input: CloseProjectInput,
+  options: { allowArchived?: boolean } = {},
+): ClosurePlan {
+  if (snapshot.project.isArchived && !options.allowArchived) {
     throw new ClosurePolicyError('PROJECT_ARCHIVED', 'Le projet est déjà archivé.')
   }
   const fingerprint = closureFingerprint(snapshot)
