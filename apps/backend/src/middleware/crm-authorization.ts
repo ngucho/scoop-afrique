@@ -15,6 +15,8 @@ function relativeCrmPath(requestPath: string, apiPrefix: string): string {
 const restorePattern =
   /^\/(?:contacts|devis|projects|invoices|contracts)\/[^/]+\/restore$/
 const projectClosePattern = /^\/projects\/[^/]+\/close$/
+const projectClosureManagePattern =
+  /^\/projects\/(?:archive-reconciliation|[^/]+\/(?:closure-preview|close-and-archive|create-follow-up|archive-reconciliation))$/
 const devisConvertPattern = /^\/devis\/[^/]+\/convert$/
 const contractSignPattern = /^\/contracts\/[^/]+\/sign$/
 
@@ -26,6 +28,7 @@ export function requiredCrmPermission(
   const verb = method.toUpperCase()
   const path = relativeCrmPath(requestPath, apiPrefix)
 
+  if (projectClosureManagePattern.test(path)) return CRM_PERMISSIONS.manage
   if (verb === 'GET' || verb === 'HEAD' || verb === 'OPTIONS') {
     return CRM_PERMISSIONS.read
   }
