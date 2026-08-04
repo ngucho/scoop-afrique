@@ -6,9 +6,10 @@ Migration concernée : `apps/backend/drizzle/0061_crm_project_closure_lifecycle.
 `postgres`), et enregistrée dans `public.__drizzle_migrations__` sous
 `created_at = 1785715200000`.
 
-Elle a été appliquée **sans `drizzle-kit migrate`**, pour la raison décrite en
-section 2.2 — lire cette section avant toute migration future, la cause est
-toujours présente.
+Elle a été appliquée **sans `drizzle-kit migrate`**, cet outil étant alors
+inutilisable sur ce dépôt (section 2.2). La cause a depuis été corrigée, ainsi
+que l'historique des migrations `0048`–`0060` (section 2.2 bis) : `pnpm
+db:migrate` est de nouveau la commande normale.
 
 ---
 
@@ -56,41 +57,28 @@ migration est additive, mais elle modifie un type énuméré
 (`ALTER TYPE crm_task_status ADD VALUE 'cancelled'`), opération non réversible
 par `DROP`.
 
-### 2.2 `drizzle-kit migrate` est INUTILISABLE sur ce dépôt — bloquant
+### 2.2 Fins de ligne — corrigé le 4 août 2026
 
-**Ne lancez pas `pnpm db:migrate` sur ce dépôt sous Windows.** Il tenterait de
-rejouer **les 49 migrations depuis `0000`** sur la base de production.
+`drizzle-kit` identifie une migration par le SHA-256 du contenu de son fichier
+`.sql`. Le dépôt n'avait pas de `.gitattributes` et `core.autocrlf=true` (défaut
+Windows) extrayait les fichiers en **CRLF**, alors que les migrations déjà
+appliquées avaient été hachées en **LF**.
 
-Cause : `drizzle-kit` identifie une migration par le SHA-256 du contenu de son
-fichier `.sql`. Les lignes déjà enregistrées l'ont été à partir d'un contenu en
-**LF**, alors que le dépôt est extrait en **CRLF** sur Windows (conversion Git
-au checkout). Les hachages recalculés localement ne correspondent donc à rien.
+Conséquence mesurée avant correction : `migrate` ne reconnaissait plus que
+**2 migrations sur 49** et aurait rejoué tout l'historique depuis `0000` sur la
+base de production.
 
-Mesuré sur cette base le 4 août 2026 :
+| Forme du contenu haché | Avant correctif | Après correctif |
+| --- | --- | --- |
+| brut, tel qu'extrait | 2 / 49 | 46 / 49 |
+| normalisé en LF | 45 / 49 | 46 / 49 |
 
-| Forme du contenu haché | Correspondances sur 49 entrées de journal |
-| --- | --- |
-| brut (CRLF, tel qu'extrait) | 2 |
-| normalisé en LF | 45 |
+**Correctif appliqué** : un `.gitattributes` à la racine force `*.sql text
+eol=lf` (ainsi que `drizzle/meta/*.json`), et les fichiers ont été réextraits.
+Les 64 fichiers `.sql` ne contiennent plus aucun CR.
 
-Autrement dit, `migrate` ne reconnaîtrait que 2 migrations sur 49.
-
-**Procédure sûre** — appliquer une migration ciblée puis l'enregistrer
-soi-même, en hachant le contenu **normalisé en LF** :
-
-```ts
-const content = readFileSync(`drizzle/${TAG}.sql`, 'utf8').replace(/\r\n/g, '\n')
-const hash = createHash('sha256').update(content).digest('hex')
-// … exécuter le SQL, puis :
-INSERT INTO public.__drizzle_migrations__ (hash, created_at) VALUES ($hash, $when)
-```
-
-Le `when` est celui de l'entrée de journal correspondante.
-
-**Correctif de fond recommandé** (hors périmètre de ce chantier) : ajouter
-`*.sql text eol=lf` dans `.gitattributes` et réextraire, afin que les fichiers
-de migration restent en LF sur toutes les plateformes. `drizzle-kit migrate`
-redeviendrait alors utilisable.
+Ne supprimez pas ce `.gitattributes` : le problème reviendrait à la première
+extraction sous Windows.
 
 Vérification de l'état réel de la base — noter le nom exact de la table, défini
 par `drizzle.config.ts` (`migrations.table`) :
@@ -102,21 +90,47 @@ SELECT hash, created_at FROM public.__drizzle_migrations__ ORDER BY created_at;
 Une table `drizzle.__drizzle_migrations` existe aussi mais elle est **vide** :
 ce n'est pas celle utilisée par ce projet.
 
-### 2.2 bis — Fichiers `0048`–`0060` absents du journal
+### 2.2 bis — Historique `0048`–`0060` réconcilié le 4 août 2026
 
-`_journal.json` saute du tag `0047_devis_sign_token` à
-`0061_crm_project_closure_lifecycle`. Les fichiers `0048` à `0060` existent sur
-disque sans entrée de journal ; ils ont été appliqués hors du mécanisme Drizzle.
+`_journal.json` sautait du tag `0047_devis_sign_token` à
+`0061_crm_project_closure_lifecycle` : les treize fichiers `0048`–`0060`
+existaient sur disque sans entrée de journal ni ligne de suivi.
 
-Cette dérive **préexiste** à ce chantier et n'a pas été corrigée ici, pour ne
-pas réécrire un historique de migrations partagé. Elle est sans effet sur
-`migrate` (qui ne lit que le journal), mais elle signifie que ces treize
-migrations ne sont suivies par aucun outil.
+État constaté puis corrigé :
 
-Constat au 4 août 2026 : sur les témoins vérifiés, `article_audio_jobs` existe
-en base, mais `reader_saved_articles`, `reader_article_history` et
-`article_visitor_metrics` **sont absents** — les migrations `0048`, `0050` et
-`0058` ne semblent donc pas appliquées sur cette base. À arbitrer séparément.
+| Migrations | Constat | Action |
+| --- | --- | --- |
+| `0051`–`0060` (10) | déjà appliquées en base | enregistrées, sans réexécution |
+| `0048`, `0049`, `0050` (3) | **absentes** de la base | appliquées puis enregistrées |
+
+Les trois appliquées créent `reader_saved_articles`, `reader_article_history`
+et cinq index de lecture publique (dont deux trigrammes, d'où
+`CREATE EXTENSION pg_trgm`). L'event trigger `ensure_public_table_rls` posé par
+`0057` a automatiquement activé la RLS sur les deux nouvelles tables ; aucun
+droit n'est accordé à `anon` ni `authenticated`.
+
+Le journal compte désormais **62 entrées contiguës** (`idx` 0 à 61), `0061`
+ayant été renuméroté de `idx=48` à `idx=61`. Le suivi se faisant par hachage et
+non par `idx`, cette renumérotation est sans effet sur l'appariement.
+
+### 2.2 ter — Hachages `0027_*` réalignés
+
+Trois fichiers (`0027_reader_digest`, `0027_media_operations`,
+`0027_reader_platform_admin`) avaient un contenu divergeant du hachage
+enregistré. Vérifié : **tous** les objets qu'ils déclarent existent en base, et
+les deux modifications retrouvées dans l'historique Git sont sémantiquement
+neutres (un commentaire ; l'ajout de gardes `EXCEPTION WHEN duplicate_object`).
+Leurs hachages enregistrés ont donc été réalignés sur le contenu actuel.
+
+Sans ce réalignement `migrate` aurait tenté de les rejouer, et
+`0027_reader_digest` aurait échoué : ses `CREATE TYPE` ne sont pas gardés.
+
+**Résultat** : `pnpm db:migrate` est de nouveau utilisable et ne fait plus rien
+(exécuté à blanc le 4 août 2026, volumétrie inchangée).
+
+Subsiste une ligne de suivi orpheline (`created_at=1742428800000`) sans fichier
+correspondant, vestige d'une migration supprimée ou renommée. Sans effet :
+`drizzle-kit` ignore les lignes qu'il ne connaît pas.
 
 ### 2.3 Permissions Auth0
 
