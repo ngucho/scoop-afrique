@@ -70,6 +70,10 @@ export async function getClosurePreview(projectId: string): Promise<ClosurePrevi
   return buildClosurePreview(snapshot, { requiresReconciliation })
 }
 
+function statusById(rows: Array<{ id: string; status: string }>, id: string): string {
+  return rows.find((row) => row.id === id)?.status ?? ''
+}
+
 const EMPTY_SUMMARY: ClosureResult['summary'] = {
   archivedDevis: 0,
   archivedInvoices: 0,
@@ -174,8 +178,16 @@ async function runClosure(
         archiveInvoiceIds: plan.archiveInvoiceIds,
         archiveContractIds: plan.archiveContractIds,
         cancelDraftInvoiceIds: plan.cancelDraftInvoiceIds,
-        cancelTaskIds: plan.cancelTaskIds,
-        cancelReminderIds: plan.cancelReminderIds,
+        // Le statut d'origine accompagne chaque annulation : sans lui, une
+        // restauration rendrait un statut par défaut au lieu du vrai.
+        cancelTasks: plan.cancelTaskIds.map((id) => ({
+          id,
+          status: statusById(snapshot.tasks, id),
+        })),
+        cancelReminders: plan.cancelReminderIds.map((id) => ({
+          id,
+          status: statusById(snapshot.reminders, id),
+        })),
         preserved: plan.preserved,
         nextClosureVersion: snapshot.project.closureVersion + 1,
       },

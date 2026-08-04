@@ -57,7 +57,12 @@ interface FakeState {
     summary: Record<string, unknown>
     adjustments: number
   }>
-  committedItems: Array<{ entityType: string; entityId: string; action: string }>
+  committedItems: Array<{
+    entityType: string
+    entityId: string
+    action: string
+    previousStatus?: string
+  }>
   restoredOperationIds: string[]
   followUps: Array<Record<string, unknown>>
 }
@@ -137,8 +142,21 @@ function createFakeRepository(options: FakeOptions = {}): {
       for (const entityId of commit.archiveDevisIds as string[]) {
         state.committedItems.push({ entityType: 'devis', entityId, action: 'archived' })
       }
-      for (const entityId of commit.cancelTaskIds as string[]) {
-        state.committedItems.push({ entityType: 'task', entityId, action: 'cancelled' })
+      for (const task of commit.cancelTasks as Array<{ id: string; status: string }>) {
+        state.committedItems.push({
+          entityType: 'task',
+          entityId: task.id,
+          action: 'cancelled',
+          previousStatus: task.status,
+        })
+      }
+      for (const reminder of commit.cancelReminders as Array<{ id: string; status: string }>) {
+        state.committedItems.push({
+          entityType: 'reminder',
+          entityId: reminder.id,
+          action: 'cancelled',
+          previousStatus: reminder.status,
+        })
       }
       return id
     },
@@ -372,6 +390,40 @@ test('restore succeeds only for a closure without financial adjustment', async (
   const restored = await restoreClosedProject('project-1', ACTOR)
   assert.equal(restored.operationId, closure.operationId)
   assert.deepEqual(state.restoredOperationIds, [closure.operationId])
+})
+
+test('cancelled tasks and reminders record their original status', async () => {
+  const snapshot = snapshotFixture({
+    invoices: [],
+    tasks: [
+      { id: 'task-todo', status: 'todo' },
+      { id: 'task-progress', status: 'in_progress' },
+      { id: 'task-blocked', status: 'blocked' },
+      { id: 'task-done', status: 'done' },
+    ],
+    reminders: [
+      { id: 'reminder-draft', status: 'draft' },
+      { id: 'reminder-scheduled', status: 'scheduled' },
+      { id: 'reminder-sent', status: 'sent' },
+    ],
+  })
+  const { repository, state } = createFakeRepository({ snapshot })
+  setClosureRepository(repository)
+
+  await closeAndArchiveProject('project-1', closeInput(snapshot), ACTOR, KEY_A)
+
+  // Sans le statut d'origine, la restauration rendrait « todo » à une tâche
+  // qui était « in_progress ».
+  const statusOf = (entityId: string) =>
+    state.committedItems.find((item) => item.entityId === entityId)?.previousStatus
+
+  assert.equal(statusOf('task-todo'), 'todo')
+  assert.equal(statusOf('task-progress'), 'in_progress')
+  assert.equal(statusOf('task-blocked'), 'blocked')
+  assert.equal(statusOf('task-done'), undefined, 'a done task is never cancelled')
+  assert.equal(statusOf('reminder-draft'), 'draft')
+  assert.equal(statusOf('reminder-scheduled'), 'scheduled')
+  assert.equal(statusOf('reminder-sent'), undefined, 'a sent reminder is never cancelled')
 })
 
 test('restore replays only the items of the selected operation', async () => {
