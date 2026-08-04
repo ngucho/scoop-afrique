@@ -232,8 +232,9 @@ export interface ClosureCommit {
   archiveInvoiceIds: string[]
   archiveContractIds: string[]
   cancelDraftInvoiceIds: string[]
-  cancelTaskIds: string[]
-  cancelReminderIds: string[]
+  /** Statut d'origine conservé pour que la restauration soit fidèle. */
+  cancelTasks: Array<{ id: string; status: string }>
+  cancelReminders: Array<{ id: string; status: string }>
   preserved: Array<{ entityType: string; entityId: string }>
   nextClosureVersion: number
 }
@@ -318,7 +319,14 @@ export async function persistClosure(commit: ClosureCommit, handle: DbHandle): P
         .set({ status: 'cancelled', updatedAt: now })
         .where(inArray(crmInvoices.id, commit.cancelDraftInvoiceIds))
       for (const entityId of commit.cancelDraftInvoiceIds) {
-        items.push({ operationId, entityType: 'invoice', entityId, action: 'cancelled' })
+        items.push({
+          operationId,
+          entityType: 'invoice',
+          entityId,
+          action: 'cancelled',
+          // Seules des factures en brouillon sont annulées par la clôture.
+          previousState: { status: 'draft' },
+        })
       }
     }
 
@@ -358,22 +366,34 @@ export async function persistClosure(commit: ClosureCommit, handle: DbHandle): P
       }
     }
 
-    if (commit.cancelTaskIds.length) {
+    if (commit.cancelTasks.length) {
       await tx
         .update(crmTasks)
         .set({ status: 'cancelled', updatedAt: now })
-        .where(inArray(crmTasks.id, commit.cancelTaskIds))
-      for (const entityId of commit.cancelTaskIds) {
-        items.push({ operationId, entityType: 'task', entityId, action: 'cancelled' })
+        .where(inArray(crmTasks.id, commit.cancelTasks.map((task) => task.id)))
+      for (const task of commit.cancelTasks) {
+        items.push({
+          operationId,
+          entityType: 'task',
+          entityId: task.id,
+          action: 'cancelled',
+          previousState: { status: task.status },
+        })
       }
     }
-    if (commit.cancelReminderIds.length) {
+    if (commit.cancelReminders.length) {
       await tx
         .update(crmReminders)
         .set({ status: 'cancelled', updatedAt: now })
-        .where(inArray(crmReminders.id, commit.cancelReminderIds))
-      for (const entityId of commit.cancelReminderIds) {
-        items.push({ operationId, entityType: 'reminder', entityId, action: 'cancelled' })
+        .where(inArray(crmReminders.id, commit.cancelReminders.map((reminder) => reminder.id)))
+      for (const reminder of commit.cancelReminders) {
+        items.push({
+          operationId,
+          entityType: 'reminder',
+          entityId: reminder.id,
+          action: 'cancelled',
+          previousState: { status: reminder.status },
+        })
       }
     }
 
@@ -454,6 +474,21 @@ export async function persistRestore(
         .filter((item) => item.entityType === entityType && item.action === action)
         .map((item) => item.entityId)
 
+    /**
+     * Regroupe les entités annulées par statut d'origine : la restauration
+     * rend son statut exact à chaque ligne au lieu d'en imposer un par défaut.
+     */
+    const byPreviousStatus = (entityType: string, fallback: string) => {
+      const groups = new Map<string, string[]>()
+      for (const item of items) {
+        if (item.entityType !== entityType || item.action !== 'cancelled') continue
+        const status =
+          (item.previousState as { status?: string } | null)?.status ?? fallback
+        groups.set(status, [...(groups.get(status) ?? []), item.entityId])
+      }
+      return groups
+    }
+
     const devisIds = idsFor('devis', 'archived')
     if (devisIds.length) {
       await tx.update(crmDevis).set(clearArchive).where(inArray(crmDevis.id, devisIds))
@@ -462,30 +497,35 @@ export async function persistRestore(
     if (invoiceIds.length) {
       await tx.update(crmInvoices).set(clearArchive).where(inArray(crmInvoices.id, invoiceIds))
     }
-    const cancelledInvoiceIds = idsFor('invoice', 'cancelled')
-    if (cancelledInvoiceIds.length) {
+    for (const [status, ids] of byPreviousStatus('invoice', 'draft')) {
       await tx
         .update(crmInvoices)
-        .set({ status: 'draft', updatedAt: now })
-        .where(inArray(crmInvoices.id, cancelledInvoiceIds))
+        .set({
+          status: status as (typeof crmInvoices.status.enumValues)[number],
+          updatedAt: now,
+        })
+        .where(inArray(crmInvoices.id, ids))
     }
     const contractIds = idsFor('contract', 'archived')
     if (contractIds.length) {
       await tx.update(crmContracts).set(clearArchive).where(inArray(crmContracts.id, contractIds))
     }
     const taskIds = idsFor('task', 'cancelled')
-    if (taskIds.length) {
+    for (const [status, ids] of byPreviousStatus('task', 'todo')) {
       await tx
         .update(crmTasks)
-        .set({ status: 'todo', updatedAt: now })
-        .where(inArray(crmTasks.id, taskIds))
+        .set({ status: status as (typeof crmTasks.status.enumValues)[number], updatedAt: now })
+        .where(inArray(crmTasks.id, ids))
     }
     const reminderIds = idsFor('reminder', 'cancelled')
-    if (reminderIds.length) {
+    for (const [status, ids] of byPreviousStatus('reminder', 'scheduled')) {
       await tx
         .update(crmReminders)
-        .set({ status: 'scheduled', updatedAt: now })
-        .where(inArray(crmReminders.id, reminderIds))
+        .set({
+          status: status as (typeof crmReminders.status.enumValues)[number],
+          updatedAt: now,
+        })
+        .where(inArray(crmReminders.id, ids))
     }
 
     await tx
