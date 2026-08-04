@@ -2,9 +2,13 @@
 
 Migration concernée : `apps/backend/drizzle/0061_crm_project_closure_lifecycle.sql`.
 
-**Cette migration n'a pas été appliquée.** La branche contient le code et le
-fichier SQL ; l'application en base distante est une opération manuelle,
-distincte, décrite ci-dessous.
+**État : appliquée en production le 4 août 2026** (PostgreSQL 17.6, base
+`postgres`), et enregistrée dans `public.__drizzle_migrations__` sous
+`created_at = 1785715200000`.
+
+Elle a été appliquée **sans `drizzle-kit migrate`**, pour la raison décrite en
+section 2.2 — lire cette section avant toute migration future, la cause est
+toujours présente.
 
 ---
 
@@ -52,37 +56,67 @@ migration est additive, mais elle modifie un type énuméré
 (`ALTER TYPE crm_task_status ADD VALUE 'cancelled'`), opération non réversible
 par `DROP`.
 
-### 2.2 Réconcilier l'historique Drizzle — bloquant
+### 2.2 `drizzle-kit migrate` est INUTILISABLE sur ce dépôt — bloquant
 
-`apps/backend/drizzle/meta/_journal.json` s'arrête au tag `0047_devis_sign_token`
-puis reprend directement à `0061_crm_project_closure_lifecycle`.
+**Ne lancez pas `pnpm db:migrate` sur ce dépôt sous Windows.** Il tenterait de
+rejouer **les 49 migrations depuis `0000`** sur la base de production.
 
-Les fichiers `0048` à `0060` existent sur disque **sans entrée de journal** :
+Cause : `drizzle-kit` identifie une migration par le SHA-256 du contenu de son
+fichier `.sql`. Les lignes déjà enregistrées l'ont été à partir d'un contenu en
+**LF**, alors que le dépôt est extrait en **CRLF** sur Windows (conversion Git
+au checkout). Les hachages recalculés localement ne correspondent donc à rien.
 
+Mesuré sur cette base le 4 août 2026 :
+
+| Forme du contenu haché | Correspondances sur 49 entrées de journal |
+| --- | --- |
+| brut (CRLF, tel qu'extrait) | 2 |
+| normalisé en LF | 45 |
+
+Autrement dit, `migrate` ne reconnaîtrait que 2 migrations sur 49.
+
+**Procédure sûre** — appliquer une migration ciblée puis l'enregistrer
+soi-même, en hachant le contenu **normalisé en LF** :
+
+```ts
+const content = readFileSync(`drizzle/${TAG}.sql`, 'utf8').replace(/\r\n/g, '\n')
+const hash = createHash('sha256').update(content).digest('hex')
+// … exécuter le SQL, puis :
+INSERT INTO public.__drizzle_migrations__ (hash, created_at) VALUES ($hash, $when)
 ```
-0048_reader_saved_articles.sql        0055_reader_audio_assets_bucket.sql
-0049_public_read_performance_indexes  0056_reader_audio_assets_bucket_limit.sql
-0050_reader_article_history.sql       0057_public_rls_hardening.sql
-0051_article_audio_jobs.sql           0058_article_visitor_metrics.sql
-0052_article_audio_expiration.sql     0059_private_crm_documents.sql
-0053_homepage_top_stories_48h.sql     0060_prevent_public_media_listing.sql
-0054_homepage_streaming_layouts.sql
-```
 
-Cette dérive **préexiste** à ce chantier : elle n'a pas été introduite ici et
-n'a volontairement pas été corrigée dans cette branche, pour ne pas réécrire un
-historique de migrations partagé.
+Le `when` est celui de l'entrée de journal correspondante.
 
-**Avant tout `drizzle-kit migrate`**, vérifier pour chaque tag `0048`–`0060`
-si son contenu est déjà présent dans la base cible, puis aligner
-`__drizzle_migrations` en conséquence. Sans cette réconciliation, `migrate`
-rejouera treize migrations déjà appliquées.
+**Correctif de fond recommandé** (hors périmètre de ce chantier) : ajouter
+`*.sql text eol=lf` dans `.gitattributes` et réextraire, afin que les fichiers
+de migration restent en LF sur toutes les plateformes. `drizzle-kit migrate`
+redeviendrait alors utilisable.
 
-Vérification de l'état réel de la base :
+Vérification de l'état réel de la base — noter le nom exact de la table, défini
+par `drizzle.config.ts` (`migrations.table`) :
 
 ```sql
-SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at;
+SELECT hash, created_at FROM public.__drizzle_migrations__ ORDER BY created_at;
 ```
+
+Une table `drizzle.__drizzle_migrations` existe aussi mais elle est **vide** :
+ce n'est pas celle utilisée par ce projet.
+
+### 2.2 bis — Fichiers `0048`–`0060` absents du journal
+
+`_journal.json` saute du tag `0047_devis_sign_token` à
+`0061_crm_project_closure_lifecycle`. Les fichiers `0048` à `0060` existent sur
+disque sans entrée de journal ; ils ont été appliqués hors du mécanisme Drizzle.
+
+Cette dérive **préexiste** à ce chantier et n'a pas été corrigée ici, pour ne
+pas réécrire un historique de migrations partagé. Elle est sans effet sur
+`migrate` (qui ne lit que le journal), mais elle signifie que ces treize
+migrations ne sont suivies par aucun outil.
+
+Constat au 4 août 2026 : sur les témoins vérifiés, `article_audio_jobs` existe
+en base, mais `reader_saved_articles`, `reader_article_history` et
+`article_visitor_metrics` **sont absents** — les migrations `0048`, `0050` et
+`0058` ne semblent donc pas appliquées sur cette base. À arbitrer séparément.
 
 ### 2.3 Permissions Auth0
 
@@ -91,13 +125,24 @@ rôle, aucune inclusion implicite depuis `read:crm` ou `write:crm`.
 
 ---
 
-## 3. Application de la migration
+## 3. Application de la migration — journal d'exécution
 
-```powershell
-# 1. Sauvegarde préalable (hors de ce dépôt)
-# 2. Réconciliation de l'historique 0048–0060 (section 2.2)
-corepack pnpm --filter @scoop-afrique/backend run db:migrate
-```
+Appliquée le **4 août 2026**, en trois temps, sans `drizzle-kit migrate` :
+
+1. `ALTER TYPE public.crm_task_status ADD VALUE IF NOT EXISTS 'cancelled'` isolé
+   en premier — cette instruction ne tolère pas toujours un bloc transactionnel
+   implicite selon la version PostgreSQL ;
+2. le reste du fichier, en un seul lot ;
+3. `INSERT INTO public.__drizzle_migrations__ (hash, created_at)` avec le
+   SHA-256 du contenu **normalisé en LF** :
+   `5e89788d3775977de92d788bef45db68a0f227c967646b66d649de1f4392c704`
+   et `created_at = 1785715200000`.
+
+La migration étant intégralement idempotente (`IF NOT EXISTS`, gardes `DO $$`),
+elle peut être rejouée sans dommage.
+
+Résultat mesuré : 18 vérifications sur 18 (section 4), volumétrie inchangée
+(47 projets, 47 factures, 3 tâches, 44 paiements), 6 archives régularisables.
 
 ---
 
