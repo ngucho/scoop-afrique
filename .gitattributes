@@ -1,0 +1,14 @@
+# Fins de ligne
+#
+# `drizzle-kit` identifie une migration par le SHA-256 du contenu de son fichier
+# `.sql`. Avec `core.autocrlf=true` (défaut sous Windows), les fichiers étaient
+# extraits en CRLF alors que les migrations déjà appliquées avaient été hachées
+# en LF : `drizzle-kit migrate` ne reconnaissait plus que 2 migrations sur 49 et
+# aurait rejoué tout l'historique sur la base de production.
+#
+# Forcer LF sur les `.sql` rend le hachage stable sur toutes les plateformes.
+*.sql text eol=lf
+
+# Même raison pour le journal, qui porte les tags et horodatages associés.
+# Motif non ancré (`**/`) : le journal vit sous `apps/backend/drizzle/meta/`.
+**/drizzle/meta/*.json text eol=lf
