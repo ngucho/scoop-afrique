@@ -2,13 +2,14 @@ import { notFound } from 'next/navigation'
 import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { InvoiceBuilder } from '@/components/invoices/InvoiceBuilder'
-import { getCrmRole } from '@/lib/crm-admin'
+import { getCrmCanManage, requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function InvoiceEditPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCrmWrite()
   const { id } = await params
   const result = await crmGetServer<Record<string, unknown>>(`invoices/${id}`)
   const invoice = result?.data
@@ -34,12 +35,11 @@ export default async function InvoiceEditPage({
     internal_notes: (invoice.internal_notes as string) ?? undefined,
   }
 
-  const role = await getCrmRole()
+  const canManageCrm = await getCrmCanManage()
   const amountPaid = Number(invoice.amount_paid ?? 0)
   const invStatus = String(invoice.status ?? '')
   const hasPayment = amountPaid > 0 || invStatus === 'paid' || invStatus === 'partial'
-  const privileged = role === 'manager' || role === 'admin'
-  const canEditFinancialLines = !hasPayment || privileged
+  const canEditFinancialLines = !hasPayment || canManageCrm
 
   const [contactsRes, projectsRes] = await Promise.all([
     crmGetServer<Array<Record<string, unknown>>>('contacts?limit=100'),

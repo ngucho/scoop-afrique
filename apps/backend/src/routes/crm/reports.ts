@@ -1,10 +1,8 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import * as reportsService from '../../services/crm/reports.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 

@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation'
 import { Check, Trash2, RotateCcw } from 'lucide-react'
 import { crmPatch, crmDelete } from '@/lib/api'
 import { useState } from 'react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 interface DevisRequestActionsProps {
   id: string
   variant?: 'card' | 'detail'
-  isAdmin?: boolean
   archived?: boolean
   convertedToDevisId?: string | null
   convertedToContactId?: string | null
@@ -17,13 +17,13 @@ interface DevisRequestActionsProps {
 export function DevisRequestActions({
   id,
   variant = 'card',
-  isAdmin = false,
   archived = false,
   convertedToDevisId = null,
   convertedToContactId = null,
 }: DevisRequestActionsProps) {
   const router = useRouter()
   const [loading, setLoading] = useState<'treat' | 'restore' | 'delete' | null>(null)
+  const { canWrite, canManage } = useCrmCapabilities()
 
   const isConverted = Boolean(convertedToDevisId || convertedToContactId)
   const isCompact = variant === 'card'
@@ -43,7 +43,7 @@ export function DevisRequestActions({
   }
 
   async function handleDelete() {
-    if (!isAdmin) return
+    if (!canManage) return
     if (!confirm('Supprimer cette demande ? Cette action est irréversible.')) return
     setLoading('delete')
     const res = await crmDelete(`devis-requests/${id}`)
@@ -55,7 +55,7 @@ export function DevisRequestActions({
   return (
     <div className={`flex items-center gap-1 ${isCompact ? '' : 'gap-2'}`}>
       {/* Restaurer — uniquement si archivé par erreur (pas converti) */}
-      {archived && !isConverted && (
+      {canWrite && archived && !isConverted && (
         <button
           type="button"
           onClick={handleRestore}
@@ -71,7 +71,7 @@ export function DevisRequestActions({
       )}
 
       {/* Marquer traité — uniquement si pas encore archivé/traité */}
-      {!archived && !isConverted && (
+      {canWrite && !archived && !isConverted && (
         <button
           type="button"
           onClick={handleTreat}
@@ -86,8 +86,8 @@ export function DevisRequestActions({
         </button>
       )}
 
-      {/* Supprimer — admin seulement */}
-      {isAdmin && (
+      {/* La suppression définitive exige la capacité manage:crm. */}
+      {canManage && (
         <button
           type="button"
           onClick={handleDelete}

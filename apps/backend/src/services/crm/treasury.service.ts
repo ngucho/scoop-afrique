@@ -5,6 +5,7 @@ import { eq, and, desc, asc, sql, ilike, or } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmTreasuryMovements } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertEntityProjectWritable, assertProjectWritable } from './project-write-guard.js'
 import type { CreateTreasuryMovementInput, UpdateTreasuryMovementInput } from '../../schemas/crm/treasury.schema.js'
 import { treasuryExpenseCategories, treasuryIncomeCategories } from '../../schemas/crm/treasury.schema.js'
 
@@ -83,6 +84,7 @@ export async function createTreasuryMovement(
   input: CreateTreasuryMovementInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(input.project_id)
   const db = getDb()
   const [row] = await db
     .insert(crmTreasuryMovements)
@@ -119,6 +121,8 @@ export async function updateTreasuryMovement(
   id: string,
   input: UpdateTreasuryMovementInput
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('treasury', id)
+  await assertProjectWritable(input.project_id)
   const db = getDb()
   const existing = await getTreasuryMovementById(id)
   if (!existing) throw new Error('Not found')
@@ -151,6 +155,7 @@ export async function updateTreasuryMovement(
 }
 
 export async function deleteTreasuryMovement(id: string): Promise<void> {
+  await assertEntityProjectWritable('treasury', id)
   const db = getDb()
   await db.delete(crmTreasuryMovements).where(eq(crmTreasuryMovements.id, id))
 }

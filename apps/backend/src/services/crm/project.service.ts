@@ -7,6 +7,7 @@ import { crmProjects, crmProjectContacts, crmContacts, devisRequests } from '../
 import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertProjectWritable } from './project-write-guard.js'
 import type { CreateProjectInput, UpdateProjectInput } from '../../schemas/crm/project.schema.js'
 import * as devisService from './devis.service.js'
 import * as invoiceService from './invoice.service.js'
@@ -255,6 +256,7 @@ export async function updateProject(
   input: UpdateProjectInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(id)
   const db = getDb()
   const update: Partial<typeof crmProjects.$inferInsert> = {}
   if (input.title !== undefined) update.title = input.title.trim()
@@ -286,45 +288,10 @@ export async function updateProject(
   return toSnakeRecord(project as Record<string, unknown>)
 }
 
-export async function archiveProject(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
-  const db = getDb()
-  const [project] = await db
-    .update(crmProjects)
-    .set({ isArchived: true })
-    .where(eq(crmProjects.id, id))
-    .returning()
-  if (!project) throw new Error('Failed to archive project')
-
-  await logActivity({
-    entityType: 'project',
-    entityId: id,
-    action: 'archived',
-    description: `Projet ${project.reference} archivé`,
-    createdBy: archivedBy ?? undefined,
-  })
-
-  return toSnakeRecord(project as Record<string, unknown>)
-}
-
-export async function restoreProject(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
-  const db = getDb()
-  const [project] = await db
-    .update(crmProjects)
-    .set({ isArchived: false })
-    .where(eq(crmProjects.id, id))
-    .returning()
-  if (!project) throw new Error('Failed to restore project')
-
-  await logActivity({
-    entityType: 'project',
-    entityId: id,
-    action: 'restored',
-    description: `Projet ${project.reference} restauré`,
-    createdBy: restoredBy ?? undefined,
-  })
-
-  return toSnakeRecord(project as Record<string, unknown>)
-}
+// archiveProject(), restoreProject() et closeProject() ont été retirés : archiver,
+// rouvrir ou clore un projet passe désormais exclusivement par
+// project-closure.service.ts, qui résout les factures ouvertes, journalise
+// l'opération et verrouille le projet dans une transaction unique.
 
 // ── Project Contacts (many-to-many) ──────────────────────────────────
 
@@ -362,6 +329,7 @@ export async function addProjectContact(
   role: string = 'client',
   isPrimary: boolean = false
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(projectId)
   const db = getDb()
   if (isPrimary) {
     await db
@@ -388,25 +356,9 @@ export async function addProjectContact(
 }
 
 export async function removeProjectContact(projectId: string, contactId: string): Promise<void> {
+  await assertProjectWritable(projectId)
   const db = getDb()
   await db
     .delete(crmProjectContacts)
     .where(and(eq(crmProjectContacts.projectId, projectId), eq(crmProjectContacts.contactId, contactId)))
-}
-
-export async function closeProject(id: string, closedBy?: string): Promise<Record<string, unknown>> {
-  const db = getDb()
-  const [project] = await db
-    .update(crmProjects)
-    .set({ status: 'closed', closedAt: new Date() })
-    .where(eq(crmProjects.id, id))
-    .returning()
-  if (!project) throw new Error('Failed to close project')
-  await logActivity({
-    entityType: 'project',
-    entityId: id,
-    action: 'closed',
-    createdBy: closedBy ?? undefined,
-  })
-  return toSnakeRecord(project as Record<string, unknown>)
 }

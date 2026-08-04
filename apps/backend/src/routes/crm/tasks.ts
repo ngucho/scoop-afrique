@@ -1,14 +1,14 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { updateTaskSchema } from '../../schemas/crm/task.schema.js'
 import * as taskService from '../../services/crm/task.service.js'
 import * as projectService from '../../services/crm/project.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('task', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const task = await taskService.getTaskById(id)
@@ -29,7 +29,8 @@ app.patch('/:id', async (c) => {
   return c.json({ data: updated })
 })
 
-app.delete('/:id', requireRole('manager', 'admin'), async (c) => {
+app.delete('/:id', async (c) => {
+  await assertEntityProjectWritable('task', c.req.param('id'))
   const id = c.req.param('id')
   const task = await taskService.getTaskById(id)
   if (!task) return c.json({ error: 'Not found' }, 404)

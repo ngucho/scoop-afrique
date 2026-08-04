@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button, Input, Label, Textarea } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const schema = z.object({
   name: z.string().min(1, 'Nom requis'),
@@ -29,6 +30,7 @@ export function OrganizationForm({
   defaultValues?: Partial<FormData>
 }) {
   const router = useRouter()
+  const { canWrite } = useCrmCapabilities()
   const {
     register,
     handleSubmit,
@@ -119,7 +121,7 @@ export function OrganizationForm({
         <Label htmlFor="notes">Notes</Label>
         <Textarea id="notes" {...register('notes')} rows={3} placeholder="Notes internes..." />
       </div>
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || !canWrite}>
         {isSubmitting ? 'Enregistrement…' : 'Enregistrer'}
       </Button>
     </form>

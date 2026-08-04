@@ -1,12 +1,10 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createContactSchema, updateContactSchema } from '../../schemas/crm/contact.schema.js'
 import * as contactService from '../../services/crm/contact.service.js'
 import * as organizationService from '../../services/crm/organization.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const type = c.req.query('type')
@@ -119,7 +117,7 @@ app.patch('/:id', async (c) => {
   return c.json({ data: updated })
 })
 
-app.delete('/:id', requireRole('admin'), async (c) => {
+app.delete('/:id', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
   const contact = await contactService.getContactById(id)
@@ -128,8 +126,8 @@ app.delete('/:id', requireRole('admin'), async (c) => {
   return c.json({ data: { id, archived: true } })
 })
 
-// Admin restore (undo archive)
-app.post('/:id/restore', requireRole('admin'), async (c) => {
+// CRM management restore (undo archive)
+app.post('/:id/restore', async (c) => {
   const user = c.get('user')
   const id = c.req.param('id')
   const contact = await contactService.getContactById(id)

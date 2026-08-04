@@ -10,6 +10,7 @@ import {
   type ReminderChannel,
   type ReminderTypeKey,
 } from '@/lib/reminder-message-templates'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 export type FollowUpSuggestion = {
   key: string
@@ -56,6 +57,7 @@ export function NewReminderModal({
   contacts: ContactOpt[]
 }) {
   const router = useRouter()
+  const { canWrite } = useCrmCapabilities()
   const [suggestions, setSuggestions] = useState<FollowUpSuggestion[]>([])
   const [loadingSug, setLoadingSug] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -144,6 +146,8 @@ export function NewReminderModal({
     onOpenChange(false)
     router.refresh()
   }
+
+  if (!canWrite) return null
 
   return (
     <Dialog

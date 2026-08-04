@@ -8,6 +8,7 @@ import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { computeLineItems } from './line-items.util.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertEntityProjectWritable, assertProjectWritable } from './project-write-guard.js'
 import type { CreateInvoiceInput, UpdateInvoiceInput } from '../../schemas/crm/invoice.schema.js'
 
 export async function listInvoices(params?: {
@@ -235,6 +236,7 @@ export async function createInvoice(
   input: CreateInvoiceInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(input.project_id)
   const reference = await nextReference('FAC')
   const { lineItems, subtotal, taxAmount, total } = computeTotals(input.line_items, input.tax_rate ?? 0)
   const discount = Math.max(0, input.discount_amount ?? 0)
@@ -287,6 +289,7 @@ export async function updateInvoice(
   input: UpdateInvoiceInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('invoice', id)
   const db = getDb()
   const existing = await getInvoiceById(id)
   if (!existing) throw new Error('Facture non trouvée')
@@ -336,6 +339,7 @@ export async function updateInvoice(
 }
 
 export async function archiveInvoice(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('invoice', id)
   const db = getDb()
   const [invoice] = await db
     .update(crmInvoices)
@@ -356,6 +360,7 @@ export async function archiveInvoice(id: string, archivedBy?: string): Promise<R
 }
 
 export async function restoreInvoice(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('invoice', id)
   const db = getDb()
   const [invoice] = await db
     .update(crmInvoices)
@@ -376,6 +381,7 @@ export async function restoreInvoice(id: string, restoredBy?: string): Promise<R
 }
 
 export async function markInvoiceSent(id: string, updatedBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('invoice', id)
   const db = getDb()
   const [invoice] = await db
     .update(crmInvoices)
@@ -397,6 +403,7 @@ export async function updateInvoiceAmountPaid(
   amountPaid: number,
   paidAt?: string
 ): Promise<void> {
+  await assertEntityProjectWritable('invoice', id)
   const db = getDb()
   const inv = await getInvoiceById(id)
   if (!inv) throw new Error('Facture non trouvée')

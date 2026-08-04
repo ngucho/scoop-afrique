@@ -2,12 +2,14 @@ import { notFound } from 'next/navigation'
 import { Heading } from 'scoop'
 import { crmGetServer } from '@/lib/api-server'
 import { DevisBuilder } from '@/components/devis/DevisBuilder'
+import { requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function DevisEditPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCrmWrite()
   const { id } = await params
   const result = await crmGetServer<Record<string, unknown>>(`devis/${id}`)
   const devis = result?.data

@@ -9,6 +9,7 @@ import { nextReference } from '../../lib/reference.js'
 import { logActivity } from './activity.service.js'
 import { computeLineItems } from './line-items.util.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertEntityProjectWritable, assertProjectWritable } from './project-write-guard.js'
 import type { CreateDevisInput, UpdateDevisInput } from '../../schemas/crm/devis.schema.js'
 
 export async function listDevis(params?: {
@@ -201,6 +202,7 @@ export async function createDevis(
   input: CreateDevisInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(input.project_id)
   const reference = await nextReference('DV')
   const { lineItems, subtotal, taxAmount, total } = computeTotals(input.line_items, input.tax_rate ?? 0)
 
@@ -259,6 +261,7 @@ export async function updateDevis(
   input: UpdateDevisInput,
   updatedBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('devis', id)
   const db = getDb()
   const existing = await getDevisById(id)
   if (!existing) throw new Error('Devis non trouvé')
@@ -303,6 +306,7 @@ export async function updateDevis(
 }
 
 export async function archiveDevis(id: string, archivedBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('devis', id)
   const db = getDb()
   const [devis] = await db
     .update(crmDevis)
@@ -323,6 +327,7 @@ export async function archiveDevis(id: string, archivedBy?: string): Promise<Rec
 }
 
 export async function restoreDevis(id: string, restoredBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('devis', id)
   const db = getDb()
   const [devis] = await db
     .update(crmDevis)
@@ -343,6 +348,7 @@ export async function restoreDevis(id: string, restoredBy?: string): Promise<Rec
 }
 
 export async function markDevisSent(id: string, updatedBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('devis', id)
   const db = getDb()
   const [devis] = await db
     .update(crmDevis)
@@ -360,6 +366,7 @@ export async function markDevisSent(id: string, updatedBy?: string): Promise<Rec
 }
 
 export async function markDevisAccepted(id: string, updatedBy?: string): Promise<Record<string, unknown>> {
+  await assertEntityProjectWritable('devis', id)
   const db = getDb()
   const [devis] = await db
     .update(crmDevis)
@@ -382,6 +389,7 @@ export async function setDevisPdfUrl(id: string, pdfUrl: string): Promise<void> 
 }
 
 export async function generateSignToken(id: string): Promise<string> {
+  await assertEntityProjectWritable('devis', id)
   const db = getDb()
   const existing = await getDevisById(id)
   if (!existing) throw new Error('Devis non trouvé')
@@ -430,6 +438,7 @@ export async function signDevis(
 ): Promise<Record<string, unknown>> {
   const db = getDb()
   const devis = await getDevisBySignToken(token)
+  await assertEntityProjectWritable('devis', devis ? String(devis.id) : null)
   if (!devis) throw new Error('Lien de signature invalide ou expiré')
   if (devis.signed_at) throw new Error('Ce devis a déjà été signé')
 

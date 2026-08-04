@@ -16,6 +16,6 @@ export interface ReaderAuthUser {
 export async function getReaderAuthUser(c: Context): Promise<ReaderAuthUser | null> {
   const token = getBearerToken(c)
   if (!token) return null
-  const r = inspectTokenForReaderRoutes(token)
+  const r = await inspectTokenForReaderRoutes(token)
   return r.ok ? r.user : null
 }

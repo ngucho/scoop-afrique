@@ -1,12 +1,14 @@
 import { Heading } from 'scoop'
 import { InvoiceBuilder } from '@/components/invoices/InvoiceBuilder'
 import { crmGetServer } from '@/lib/api-server'
+import { requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function NewInvoicePage({
   searchParams,
 }: {
   searchParams: Promise<{ project_id?: string }>
 }) {
+  await requireCrmWrite()
   const params = await searchParams
   const projectId = params.project_id
 

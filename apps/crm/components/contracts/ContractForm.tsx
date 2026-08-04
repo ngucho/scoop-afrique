@@ -1,10 +1,15 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import {
+  CrmCapabilityGate,
+  useCrmCapabilities,
+} from '@/components/auth/CrmCapabilitiesProvider'
 import { Button, Input, Label, Select, Textarea } from 'scoop'
 import { CONTRACT_MODELS, CONTRACT_TYPE_SELECT_OPTIONS } from '@/lib/contract-models'
 
@@ -39,6 +44,8 @@ export function ContractForm({
   projects = [],
 }: ContractFormProps) {
   const router = useRouter()
+  const { canWrite, canManage } = useCrmCapabilities()
+  const canSubmit = contractId ? canWrite : canManage
   const {
     register,
     handleSubmit,
@@ -153,7 +160,9 @@ export function ContractForm({
           <p className="text-amber-700 dark:text-amber-300 mt-1">
             Créez d&apos;abord un contact (client/organisation) avant de créer un contrat.
           </p>
-          <a href="/contacts/new" className="text-primary underline mt-2 inline-block">Créer un contact</a>
+          <CrmCapabilityGate capability="write">
+            <Link href="/contacts/new" className="text-primary underline mt-2 inline-block">Créer un contact</Link>
+          </CrmCapabilityGate>
         </div>
       )}
       {projects.length > 0 && (
@@ -192,7 +201,7 @@ export function ContractForm({
           interlocuteur.
         </p>
       </div>
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || !canSubmit}>
         {isSubmitting ? 'Enregistrement…' : contractId ? 'Mettre à jour' : 'Créer le contrat'}
       </Button>
     </form>

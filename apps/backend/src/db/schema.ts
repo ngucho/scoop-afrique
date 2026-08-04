@@ -4,6 +4,7 @@
  */
 import { sql } from 'drizzle-orm'
 import {
+  type AnyPgColumn,
   pgTable,
   uuid,
   text,
@@ -122,6 +123,7 @@ export const crmTaskStatusEnum = pgEnum('crm_task_status', [
   'in_progress',
   'done',
   'blocked',
+  'cancelled',
 ])
 export const crmTaskPriorityEnum = pgEnum('crm_task_priority', [
   'low',
@@ -187,7 +189,26 @@ export const crmPlatformEnum = pgEnum('crm_platform', [
   'website',
   'other',
 ])
-
+export const crmProjectClosureTypeEnum = pgEnum('crm_project_closure_type', [
+  'completed',
+  'client_abandoned',
+  'mutual_termination',
+  'company_cancelled',
+])
+export const crmProjectClosureStatusEnum = pgEnum('crm_project_closure_status', [
+  'completed',
+  'reversed',
+])
+export const crmInvoiceAdjustmentTypeEnum = pgEnum('crm_invoice_adjustment_type', [
+  'credit_note',
+  'bad_debt',
+])
+export const crmInvoiceClosureResolutionEnum = pgEnum('crm_invoice_closure_resolution', [
+  'paid',
+  'credit_note',
+  'bad_debt',
+  'mixed',
+])
 export const announcementPlacementEnum = pgEnum('announcement_placement', [
   'banner',
   'modal',
@@ -852,6 +873,10 @@ export const crmDevis = pgTable('crm_devis', {
   signToken: text('sign_token').unique(),
   signedAt: timestamp('signed_at', { withTimezone: true }),
   signatureData: text('signature_data'),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  archivedBy: uuid('archived_by'),
+  archiveReason: text('archive_reason'),
+  archiveOperationId: uuid('archive_operation_id'),
   createdBy: uuid('created_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -867,6 +892,18 @@ export const crmProjects = pgTable('crm_projects', {
   serviceSlug: text('service_slug'),
   status: crmProjectStatusEnum('status').notNull().default('draft'),
   isArchived: boolean('is_archived').notNull().default(false),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  archivedBy: uuid('archived_by'),
+  archiveReason: text('archive_reason'),
+  archiveOperationId: uuid('archive_operation_id'),
+  predecessorProjectId: uuid('predecessor_project_id').references(
+    (): AnyPgColumn => crmProjects.id,
+    { onDelete: 'restrict' },
+  ),
+  closureType: crmProjectClosureTypeEnum('closure_type'),
+  closureReason: text('closure_reason'),
+  closedBy: uuid('closed_by'),
+  closureVersion: integer('closure_version').notNull().default(0),
   description: text('description'),
   objectives: text('objectives'),
   deliverablesSummary: text('deliverables_summary'),
@@ -951,6 +988,13 @@ export const crmInvoices = pgTable('crm_invoices', {
   reference: text('reference').notNull().unique(),
   status: crmInvoiceStatusEnum('status').notNull().default('draft'),
   isArchived: boolean('is_archived').notNull().default(false),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  archivedBy: uuid('archived_by'),
+  archiveReason: text('archive_reason'),
+  archiveOperationId: uuid('archive_operation_id'),
+  closureResolution: crmInvoiceClosureResolutionEnum('closure_resolution'),
+  closureResolvedAt: timestamp('closure_resolved_at', { withTimezone: true }),
+  closureResolvedBy: uuid('closure_resolved_by'),
   lineItems: jsonb('line_items').notNull().default([]),
   subtotal: integer('subtotal').notNull().default(0),
   taxRate: real('tax_rate').notNull().default(0),
@@ -984,6 +1028,81 @@ export const crmPayments = pgTable('crm_payments', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 })
 
+export const crmProjectClosureOperations = pgTable(
+  'crm_project_closure_operations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => crmProjects.id, { onDelete: 'restrict' }),
+    idempotencyKey: uuid('idempotency_key').notNull().unique(),
+    requestHash: text('request_hash').notNull(),
+    closureType: crmProjectClosureTypeEnum('closure_type').notNull(),
+    reason: text('reason').notNull(),
+    previewFingerprint: text('preview_fingerprint').notNull(),
+    status: crmProjectClosureStatusEnum('status').notNull().default('completed'),
+    summary: jsonb('summary').notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    reversedBy: uuid('reversed_by'),
+    reversedAt: timestamp('reversed_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('crm_project_closure_operations_project_id_idx').on(t.projectId),
+    uniqueIndex('crm_project_closure_operations_idempotency_key_idx').on(t.idempotencyKey),
+  ],
+)
+
+export const crmProjectClosureItems = pgTable(
+  'crm_project_closure_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    operationId: uuid('operation_id')
+      .notNull()
+      .references(() => crmProjectClosureOperations.id, { onDelete: 'restrict' }),
+    entityType: text('entity_type').notNull(),
+    entityId: uuid('entity_id').notNull(),
+    action: text('action').notNull(),
+    previousState: jsonb('previous_state'),
+    resultState: jsonb('result_state'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('crm_project_closure_items_operation_id_idx').on(t.operationId),
+    index('crm_project_closure_items_entity_id_idx').on(t.entityId),
+  ],
+)
+
+export const crmInvoiceAdjustments = pgTable(
+  'crm_invoice_adjustments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => crmInvoices.id, { onDelete: 'restrict' }),
+    projectId: uuid('project_id')
+      .notNull()
+      .references(() => crmProjects.id, { onDelete: 'restrict' }),
+    closureOperationId: uuid('closure_operation_id')
+      .notNull()
+      .references(() => crmProjectClosureOperations.id, { onDelete: 'restrict' }),
+    type: crmInvoiceAdjustmentTypeEnum('type').notNull(),
+    amount: integer('amount').notNull(),
+    currency: text('currency').notNull(),
+    reason: text('reason').notNull(),
+    externalReference: text('external_reference'),
+    evidenceUrl: text('evidence_url'),
+    managerAttestation: boolean('manager_attestation').notNull().default(false),
+    effectiveAt: timestamp('effective_at', { withTimezone: true }).notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('crm_invoice_adjustments_invoice_id_idx').on(t.invoiceId),
+    index('crm_invoice_adjustments_operation_id_idx').on(t.closureOperationId),
+  ],
+)
+
 export const crmContracts = pgTable('crm_contracts', {
   id: uuid('id').primaryKey().defaultRandom(),
   projectId: uuid('project_id'),
@@ -995,6 +1114,10 @@ export const crmContracts = pgTable('crm_contracts', {
   content: jsonb('content').notNull().default({}),
   status: crmContractStatusEnum('status').notNull().default('draft'),
   isArchived: boolean('is_archived').notNull().default(false),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  archivedBy: uuid('archived_by'),
+  archiveReason: text('archive_reason'),
+  archiveOperationId: uuid('archive_operation_id'),
   signedAt: timestamp('signed_at', { withTimezone: true }),
   pdfUrl: text('pdf_url'),
   expiresAt: date('expires_at'),

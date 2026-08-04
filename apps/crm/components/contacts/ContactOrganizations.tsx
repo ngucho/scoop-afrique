@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from 'scoop'
 import { Building2, Plus, X } from 'lucide-react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 type Org = { id: string; name: string; type?: string; role?: string }
 type OrgOption = { id: string; name: string }
@@ -21,6 +22,7 @@ export function ContactOrganizations({
   const [selectedOrgId, setSelectedOrgId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(false)
+  const { canWrite, canManage } = useCrmCapabilities()
 
   const linkedIds = new Set(orgs.map((o) => o.id))
   const availableOrgs = allOrganizations.filter((o) => !linkedIds.has(o.id))
@@ -79,18 +81,20 @@ export function ContactOrganizations({
                   {o.name}
                   {o.role ? ` (${o.role})` : ''}
                 </Link>
-                <button
-                  type="button"
-                  onClick={() => handleUnlink(o.id)}
-                  className="p-1 text-muted-foreground hover:text-destructive"
-                  aria-label="Retirer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={() => handleUnlink(o.id)}
+                    className="p-1 text-muted-foreground hover:text-destructive"
+                    aria-label="Retirer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </li>
             ))}
           </ul>
-          {availableOrgs.length > 0 && (
+          {canWrite && availableOrgs.length > 0 && (
             <div className="flex gap-2">
               <select
                 value={selectedOrgId}

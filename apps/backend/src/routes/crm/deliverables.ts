@@ -1,13 +1,13 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { updateDeliverableSchema, deliverableMetricsSchema } from '../../schemas/crm/deliverable.schema.js'
 import * as deliverableService from '../../services/crm/deliverable.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('deliverable', c.req.param('id'))
   const id = c.req.param('id')
   const deliverable = await deliverableService.getDeliverableById(id)
   if (!deliverable) return c.json({ error: 'Not found' }, 404)
@@ -28,6 +28,7 @@ app.patch('/:id', async (c) => {
 })
 
 app.post('/:id/metrics', async (c) => {
+  await assertEntityProjectWritable('deliverable', c.req.param('id'))
   const id = c.req.param('id')
   const deliverable = await deliverableService.getDeliverableById(id)
   if (!deliverable) return c.json({ error: 'Not found' }, 404)

@@ -1,10 +1,8 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import * as dashboardService from '../../services/crm/dashboard.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const from = c.req.query('from')?.slice(0, 10)

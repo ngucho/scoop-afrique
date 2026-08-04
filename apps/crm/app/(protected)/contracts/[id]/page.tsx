@@ -6,6 +6,7 @@ import { ContractActions } from '@/components/contracts/ContractActions'
 import { getCrmIsAdmin } from '@/lib/crm-admin'
 import { AdminArchiveRestoreActions } from '@/components/admin/AdminArchiveRestoreActions'
 import { ActivityClient } from '@/components/activity/ActivityClient'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 export default async function ContractDetailPage({
   params,
@@ -81,9 +82,11 @@ export default async function ContractDetailPage({
         <ActivityClient initialActivity={activity} />
       </div>
 
-      <Link href={`/contracts/${id}/edit`}>
-        <Button variant="outline">Modifier</Button>
-      </Link>
+      <CrmCapabilityGate capability="write">
+        <Link href={`/contracts/${id}/edit`}>
+          <Button variant="outline">Modifier</Button>
+        </Link>
+      </CrmCapabilityGate>
     </div>
   )
 }

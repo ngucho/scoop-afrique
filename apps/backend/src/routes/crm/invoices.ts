@@ -1,20 +1,20 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createInvoiceSchema, updateInvoiceSchema } from '../../schemas/crm/invoice.schema.js'
 import { createPaymentSchema, updatePaymentSchema } from '../../schemas/crm/payment.schema.js'
 import * as invoiceService from '../../services/crm/invoice.service.js'
 import * as paymentService from '../../services/crm/payment.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/summary', async (c) => {
   const user = c.get('user')
+  const canManageCrm = user.permissions.includes('manage:crm')
   const archivedQuery = c.req.query('archived')
   const archived =
     archivedQuery === 'true'
-      ? user.role === 'admin'
+      ? canManageCrm
         ? true
         : undefined
       : archivedQuery === 'false'
@@ -27,13 +27,14 @@ app.get('/summary', async (c) => {
 
 app.get('/', async (c) => {
   const user = c.get('user')
+  const canManageCrm = user.permissions.includes('manage:crm')
   const contactId = c.req.query('contact_id')
   const projectId = c.req.query('project_id')
   const status = c.req.query('status')
   const archivedQuery = c.req.query('archived')
   const archived =
     archivedQuery === 'true'
-      ? user.role === 'admin'
+      ? canManageCrm
         ? true
         : undefined
       : archivedQuery === 'false'
@@ -74,16 +75,19 @@ app.post('/', async (c) => {
 
 app.get('/:id', async (c) => {
   const user = c.get('user')
+  const canManageCrm = user.permissions.includes('manage:crm')
   const id = c.req.param('id')
   const invoice = await invoiceService.getInvoiceWithContactAndProject(id)
   if (!invoice) return c.json({ error: 'Not found' }, 404)
-  if (Boolean((invoice as Record<string, unknown>)['is_archived']) && user.role !== 'admin')
+  if (Boolean((invoice as Record<string, unknown>)['is_archived']) && !canManageCrm)
     return c.json({ error: 'Not found' }, 404)
   return c.json({ data: invoice })
 })
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
+  const canManageCrm = user.permissions.includes('manage:crm')
   const id = c.req.param('id')
   const invoice = await invoiceService.getInvoiceById(id)
   if (!invoice) return c.json({ error: 'Not found' }, 404)
@@ -103,7 +107,7 @@ app.patch('/:id', async (c) => {
   const amountPaid = Number((invoice as Record<string, unknown>).amount_paid ?? 0)
   const invStatus = String((invoice as Record<string, unknown>).status ?? '')
   const hasPayment = amountPaid > 0 || invStatus === 'paid' || invStatus === 'partial'
-  const privileged = user.role === 'manager' || user.role === 'admin'
+  const privileged = canManageCrm
 
   let payload = parsed.data
   if (hasPayment && !privileged) {
@@ -135,16 +139,18 @@ app.patch('/:id', async (c) => {
   return c.json({ data: updated })
 })
 
-// Admin archive (soft-delete)
-app.delete('/:id', requireRole('admin'), async (c) => {
+// CRM management archive (soft-delete)
+app.delete('/:id', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const archived = await invoiceService.archiveInvoice(id, user.id)
   return c.json({ data: archived })
 })
 
-// Admin restore (undo archive)
-app.post('/:id/restore', requireRole('admin'), async (c) => {
+// CRM management restore (undo archive)
+app.post('/:id/restore', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const restored = await invoiceService.restoreInvoice(id, user.id)
@@ -152,6 +158,7 @@ app.post('/:id/restore', requireRole('admin'), async (c) => {
 })
 
 app.post('/:id/send', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const invoice = await invoiceService.getInvoiceWithContactAndProject(id)
@@ -206,6 +213,7 @@ app.get('/:id/pdf', async (c) => {
 })
 
 app.post('/:id/payments', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const id = c.req.param('id')
   const invoice = await invoiceService.getInvoiceById(id)
@@ -248,6 +256,7 @@ app.get('/:id/payments', async (c) => {
 })
 
 app.patch('/:id/payments/:paymentId', async (c) => {
+  await assertEntityProjectWritable('invoice', c.req.param('id'))
   const user = c.get('user')
   const invoiceId = c.req.param('id')
   const paymentId = c.req.param('paymentId')

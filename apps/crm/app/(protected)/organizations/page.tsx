@@ -5,6 +5,7 @@ import { crmGetServer } from '@/lib/api-server'
 import { Plus, Building2, Globe, Mail, Phone, ArrowUpDown } from 'lucide-react'
 import { OrganizationsListToolbar } from '@/components/organizations/OrganizationsListToolbar'
 import { buildOrganizationsQuery, orgSortToggleHref, type OrganizationsListParams } from '@/lib/crm-list-query'
+import { CrmCapabilityGate } from '@/components/auth/CrmCapabilitiesProvider'
 
 const TYPE_LABELS: Record<string, string> = {
   media: 'Média',
@@ -86,12 +87,14 @@ export default async function OrganizationsPage({
             {total} organisation{total !== 1 ? 's' : ''}
           </p>
         </div>
-        <Link href="/organizations/new">
-          <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
-            <Plus className="h-4 w-4" />
-            Nouvelle organisation
-          </Button>
-        </Link>
+        <CrmCapabilityGate capability="write">
+          <Link href="/organizations/new">
+            <Button className="flex items-center gap-2 rounded-full px-5 font-semibold">
+              <Plus className="h-4 w-4" />
+              Nouvelle organisation
+            </Button>
+          </Link>
+        </CrmCapabilityGate>
       </div>
 
       <Suspense fallback={<div className="crm-card p-4 text-muted-foreground text-sm">Chargement des filtres…</div>}>
@@ -108,9 +111,11 @@ export default async function OrganizationsPage({
             <Building2 className="crm-empty-icon h-12 w-12" />
             <p className="crm-empty-title">Aucune organisation</p>
             <p className="text-sm text-muted-foreground">Modifiez les filtres ou créez une organisation</p>
-            <Link href="/organizations/new">
-              <Button className="mt-4 rounded-full px-5">Créer une organisation</Button>
-            </Link>
+            <CrmCapabilityGate capability="write">
+              <Link href="/organizations/new">
+                <Button className="mt-4 rounded-full px-5">Créer une organisation</Button>
+              </Link>
+            </CrmCapabilityGate>
           </div>
         </div>
       ) : (

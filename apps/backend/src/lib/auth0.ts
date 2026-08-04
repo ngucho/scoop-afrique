@@ -1,19 +1,32 @@
 /**
- * Auth0 JWT validation — local only, no Auth0 network calls.
+ * Auth0 identity classification after cryptographic JWT verification.
  *
- * The backend decodes the access token (same technique as the frontend), checks
- * iss, aud, and exp to ensure it comes from our tenant, then reads permissions
- * and maps to a role. Auth0 is only contacted when updating user data (see
- * auth0-management.ts: user_metadata, password).
+ * Authorization decisions consume `VerifiedAuth0Jwt`; unverified decoding is
+ * restricted to diagnostic summaries that never feed profile or role changes.
  */
 import { config } from '../config/env.js'
-import { logger } from './logger.js'
 import {
   hasReaderAccountPermission,
   hasStaffApiAccess,
   READER_ACCOUNT_PERMISSION,
 } from './api-permissions.js'
+import {
+  verifyConfiguredAuth0Jwt,
+  type Auth0JwtFailureReason,
+  type VerifiedAuth0Jwt,
+} from './auth0-jwt.js'
 import type { AppRole, Auth0UserInfo } from '../services/profile.service.js'
+
+export interface StaffAuth0UserInfo extends Auth0UserInfo {
+  permissions: string[]
+}
+
+export type StaffAuthResult =
+  | { ok: true; user: StaffAuth0UserInfo }
+  | {
+      ok: false
+      reason: Auth0JwtFailureReason | 'TOKEN_MISSING_STAFF_PERMISSION'
+    }
 
 /** Verified reader JWT: includes `access:reader` (may coexist with staff permissions on same user). */
 export interface ReaderAuth0TokenInfo {
@@ -56,13 +69,6 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-/** `sub` from JWT payload (bootstrap / logging only; validate iss/aud/exp separately). */
-export function readAccessTokenSub(accessToken: string): string | null {
-  const payload = decodeJwtPayload(accessToken)
-  const sub = payload?.sub
-  return typeof sub === 'string' ? sub : null
-}
-
 const SCOOP_CLAIM_NS = 'https://www.scoop-afrique.com'
 
 /**
@@ -95,175 +101,82 @@ export function readEmailFromAuth0AccessTokenPayload(
   )
 }
 
-/**
- * Verify an Auth0 access token using local validation only (no Auth0 call).
- * Checks: iss matches our tenant, aud matches our API, exp not past, sub present.
- * Returns null if token is invalid or Auth0 config is missing.
- */
-export function verifyAuth0Token(accessToken: string): Auth0UserInfo | null {
-  if (!config.auth0) return null
-  const { domain, audience } = config.auth0
-  const expectedIssuer = `https://${domain}/`
-
-  const payload = decodeJwtPayload(accessToken)
-  if (!payload) {
-    logger.jwtInvalid('Invalid JWT format (decode failed)')
-    return null
-  }
-
-  const sub = payload.sub
-  if (!sub || typeof sub !== 'string') {
-    logger.jwtInvalid('Missing or invalid sub claim')
-    return null
-  }
-
-  const iss = payload.iss
-  if (iss !== expectedIssuer) {
-    logger.jwtInvalid(`Issuer mismatch: expected ${expectedIssuer}, got ${String(iss)}`)
-    return null
-  }
-
-  const aud = payload.aud
-  const audMatch =
-    aud === audience ||
-    (Array.isArray(aud) && aud.includes(audience))
-  if (!audMatch) {
-    logger.jwtInvalid(`Audience mismatch: expected ${audience}, got ${JSON.stringify(aud)}`)
-    return null
-  }
-
-  const exp = payload.exp
-  if (typeof exp !== 'number') {
-    logger.jwtInvalid('Missing exp claim')
-    return null
-  }
-  const now = Math.floor(Date.now() / 1000)
-  const clockTolerance = 30
-  if (exp < now - clockTolerance) {
-    logger.jwtInvalid('Token expired')
-    return null
-  }
-
-  const permissions = (payload.permissions as string[] | undefined) ?? []
-
-  if (!hasStaffApiAccess(permissions)) {
-    logger.jwtInvalid('Staff API requires at least one employee permission (not reader-only)')
-    return null
-  }
-
-  const role = roleFromPermissions(permissions)
-  const email = readEmailFromAuth0AccessTokenPayload(payload, domain)
-
+export function staffInfoFromVerifiedToken(
+  token: VerifiedAuth0Jwt,
+): StaffAuth0UserInfo | null {
+  if (!hasStaffApiAccess(token.permissions)) return null
   return {
-    sub,
-    email,
-    role,
+    sub: token.sub,
+    email: readEmailFromAuth0AccessTokenPayload(
+      token.payload as Record<string, unknown>,
+      config.auth0?.domain ?? '',
+    ),
+    role: roleFromPermissions(token.permissions),
+    permissions: token.permissions,
   }
 }
 
-/**
- * Verify access token for reader-facing API routes: must include `access:reader`.
- * Staff permissions on the same token are allowed (rédaction + abonné).
- * Pure staff tokens (no `access:reader`) are rejected — use `verifyAuth0Token` / staff routes.
- */
-export function verifyReaderAuth0Token(accessToken: string): ReaderAuth0TokenInfo | null {
-  if (!config.auth0) return null
-  const { domain, audience } = config.auth0
-  const expectedIssuer = `https://${domain}/`
-
-  const payload = decodeJwtPayload(accessToken)
-  if (!payload) {
-    logger.jwtInvalid('Invalid JWT format (decode failed)')
-    return null
-  }
-
-  const sub = payload.sub
-  if (!sub || typeof sub !== 'string') {
-    logger.jwtInvalid('Missing or invalid sub claim')
-    return null
-  }
-
-  const iss = payload.iss
-  if (iss !== expectedIssuer) {
-    logger.jwtInvalid(`Issuer mismatch: expected ${expectedIssuer}, got ${String(iss)}`)
-    return null
-  }
-
-  const aud = payload.aud
-  const audMatch =
-    aud === audience ||
-    (Array.isArray(aud) && aud.includes(audience))
-  if (!audMatch) {
-    logger.jwtInvalid(`Audience mismatch: expected ${audience}, got ${JSON.stringify(aud)}`)
-    return null
-  }
-
-  const exp = payload.exp
-  if (typeof exp !== 'number') {
-    logger.jwtInvalid('Missing exp claim')
-    return null
-  }
-  const now = Math.floor(Date.now() / 1000)
-  const clockTolerance = 30
-  if (exp < now - clockTolerance) {
-    logger.jwtInvalid('Token expired')
-    return null
-  }
-
-  const permissions = (payload.permissions as string[] | undefined) ?? []
-  if (!hasReaderAccountPermission(permissions)) {
-    logger.jwtInvalid('Reader API requires access:reader permission')
-    return null
-  }
-
-  const email = readEmailFromAuth0AccessTokenPayload(payload, domain)
-
+export function readerInfoFromVerifiedToken(
+  token: VerifiedAuth0Jwt,
+): ReaderAuth0TokenInfo | null {
+  if (!hasReaderAccountPermission(token.permissions)) return null
   return {
-    sub,
-    email,
+    sub: token.sub,
+    email: readEmailFromAuth0AccessTokenPayload(
+      token.payload as Record<string, unknown>,
+      config.auth0?.domain ?? '',
+    ),
   }
+}
+
+export async function verifyAuth0Token(
+  accessToken: string,
+): Promise<StaffAuthResult> {
+  const verified = await verifyConfiguredAuth0Jwt(accessToken)
+  if (!verified.ok) return verified
+  const user = staffInfoFromVerifiedToken(verified.token)
+  return user
+    ? { ok: true, user }
+    : { ok: false, reason: 'TOKEN_MISSING_STAFF_PERMISSION' }
 }
 
 export type ReaderRouteAuthResult =
   | { ok: true; user: ReaderAuth0TokenInfo }
-  | { ok: false; reason: string }
+  | {
+      ok: false
+      reason: Auth0JwtFailureReason | 'TOKEN_MISSING_API_PERMISSIONS'
+      verifiedSub?: string
+    }
 
 /**
- * Single validation path for `/api/v1/reader/*`: valid JWT for this API + either `access:reader` or a staff API permission.
- * Used for diagnostics when the client gets 401 (Auth0 RBAC, audience, or empty permissions).
+ * Single verified path for `/api/v1/reader/*`: valid JWT for this API plus
+ * either `access:reader` or a staff API permission.
  */
-export function inspectTokenForReaderRoutes(accessToken: string): ReaderRouteAuthResult {
-  if (!config.auth0) return { ok: false, reason: 'AUTH0_NOT_CONFIGURED' }
-  const { domain, audience } = config.auth0
-  const expectedIssuer = `https://${domain}/`
+export async function inspectTokenForReaderRoutes(
+  accessToken: string,
+): Promise<ReaderRouteAuthResult> {
+  const verified = await verifyConfiguredAuth0Jwt(accessToken)
+  if (!verified.ok) return verified
 
-  const payload = decodeJwtPayload(accessToken)
-  if (!payload) return { ok: false, reason: 'JWT_MALFORMED' }
-
-  const sub = payload.sub
-  if (!sub || typeof sub !== 'string') return { ok: false, reason: 'MISSING_SUB' }
-
-  const iss = payload.iss
-  if (iss !== expectedIssuer) return { ok: false, reason: 'ISSUER_MISMATCH' }
-
-  const aud = payload.aud
-  const audMatch = aud === audience || (Array.isArray(aud) && aud.includes(audience))
-  if (!audMatch) return { ok: false, reason: 'AUDIENCE_MISMATCH' }
-
-  const exp = payload.exp
-  if (typeof exp !== 'number') return { ok: false, reason: 'MISSING_EXP' }
-  const now = Math.floor(Date.now() / 1000)
-  const clockTolerance = 30
-  if (exp < now - clockTolerance) return { ok: false, reason: 'TOKEN_EXPIRED' }
-
-  const permissions = (payload.permissions as string[] | undefined) ?? []
-  const email = readEmailFromAuth0AccessTokenPayload(payload, domain)
-
-  if (hasReaderAccountPermission(permissions) || hasStaffApiAccess(permissions)) {
-    return { ok: true, user: { sub, email } }
+  const email = readEmailFromAuth0AccessTokenPayload(
+    verified.token.payload as Record<string, unknown>,
+    config.auth0?.domain ?? '',
+  )
+  if (
+    hasReaderAccountPermission(verified.token.permissions) ||
+    hasStaffApiAccess(verified.token.permissions)
+  ) {
+    return {
+      ok: true,
+      user: { sub: verified.token.sub, email },
+    }
   }
 
-  return { ok: false, reason: 'TOKEN_MISSING_API_PERMISSIONS' }
+  return {
+    ok: false,
+    reason: 'TOKEN_MISSING_API_PERMISSIONS',
+    verifiedSub: verified.token.sub,
+  }
 }
 
 /** Safe JWT payload fields for server logs (no secrets, truncated sub). */
@@ -276,7 +189,11 @@ export function summarizeAccessTokenForLogs(accessToken: string): {
     return { decode_ok: false, summary: { decode: 'JWT_MALFORMED' } }
   }
 
-  const permissions = (payload.permissions as string[] | undefined) ?? []
+  const permissions: string[] =
+    Array.isArray(payload.permissions) &&
+    payload.permissions.every((permission) => typeof permission === 'string')
+      ? payload.permissions
+      : []
   const aud = payload.aud
   const expectedAud = config.auth0?.audience
   const audMatch =

@@ -2,10 +2,15 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useForm, useFieldArray, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
+import {
+  CrmCapabilityGate,
+  useCrmCapabilities,
+} from '@/components/auth/CrmCapabilitiesProvider'
 import { Button, Input, Label, Textarea } from 'scoop'
 
 const lineItemSchema = z.object({
@@ -68,6 +73,7 @@ export function DevisBuilder({
   services = [],
 }: DevisBuilderProps) {
   const router = useRouter()
+  const { canWrite } = useCrmCapabilities()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const {
@@ -225,7 +231,9 @@ export function DevisBuilder({
           <p className="text-amber-700 dark:text-amber-300 mt-1">
             Créez d&apos;abord un contact (ou organisation), puis un projet associé avant de créer un devis.
           </p>
-          <a href="/projects/new" className="text-primary underline mt-2 inline-block">Créer un projet</a>
+          <CrmCapabilityGate capability="manage">
+            <Link href="/projects/new" className="text-primary underline mt-2 inline-block">Créer un projet</Link>
+          </CrmCapabilityGate>
         </div>
       )}
       {contacts.length > 0 && projects.length > 0 && (
@@ -367,7 +375,7 @@ export function DevisBuilder({
         </div>
       </div>
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button type="submit" disabled={isSubmitting || !canWrite}>
         {isSubmitting ? 'Enregistrement…' : devisId ? 'Mettre à jour' : 'Créer le devis'}
       </Button>
     </form>

@@ -1,20 +1,33 @@
 import { getAccessToken } from '@/lib/auth0'
-import { roleFromPermissions, type CrmRole } from '@/lib/rbac'
+import { redirect } from 'next/navigation'
+import {
+  crmCapabilities,
+  type CrmCapabilities,
+} from '@/lib/rbac'
 
 /**
- * Admin check for server components.
- * Uses Auth0 JWT permissions mapped to the CRM role model.
+ * Nom historique utilisé par les pages d'archives.
+ * La capacité réelle est manage:crm, pas un rôle admin.
  */
 export async function getCrmIsAdmin(): Promise<boolean> {
-  const tokenResult = await getAccessToken()
-  const permissions = tokenResult?.permissions ?? []
-  return roleFromPermissions(permissions) === 'admin'
+  return getCrmCanManage()
 }
 
-/** CRM role for server components (same mapping as backend). */
-export async function getCrmRole(): Promise<CrmRole> {
+export async function getCrmCanManage(): Promise<boolean> {
+  return (await getCrmCapabilities()).canManage
+}
+
+export async function getCrmCapabilities(): Promise<CrmCapabilities> {
   const tokenResult = await getAccessToken()
   const permissions = tokenResult?.permissions ?? []
-  return roleFromPermissions(permissions)
+  return crmCapabilities(permissions)
+}
+
+export async function requireCrmWrite(): Promise<void> {
+  if (!(await getCrmCapabilities()).canWrite) redirect('/dashboard')
+}
+
+export async function requireCrmManage(): Promise<void> {
+  if (!(await getCrmCapabilities()).canManage) redirect('/dashboard')
 }
 

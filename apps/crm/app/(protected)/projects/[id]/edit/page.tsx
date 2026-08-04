@@ -3,12 +3,14 @@ import { notFound } from 'next/navigation'
 import { ProjectForm } from '@/components/projects/ProjectForm'
 import { crmGetServer } from '@/lib/api-server'
 import { BackLink } from 'scoop'
+import { requireCrmWrite } from '@/lib/crm-admin'
 
 export default async function ProjectEditPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  await requireCrmWrite()
   const { id } = await params
 
   const [projectRes, contactsRes, orgsRes, devisRes, servicesRes] = await Promise.all([

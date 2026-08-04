@@ -6,6 +6,15 @@
 /** Single permission for the Reader Auth0 application / `reader` role (subscriber account APIs only). */
 export const READER_ACCOUNT_PERMISSION = 'access:reader'
 
+export const CRM_PERMISSIONS = {
+  read: 'read:crm',
+  write: 'write:crm',
+  manage: 'manage:crm',
+} as const
+
+export type CrmPermission =
+  (typeof CRM_PERMISSIONS)[keyof typeof CRM_PERMISSIONS]
+
 /**
  * Permissions that indicate an employee (backoffice / staff API access).
  * Tokens used on staff routes must include at least one of these.

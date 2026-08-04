@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { crmPost, crmDelete } from '@/lib/api'
 import { UserPlus, X, Star, Users } from 'lucide-react'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 type Contact = {
   id: string
@@ -67,6 +68,7 @@ export function ProjectContactsWidget({
   const [selectedContactId, setSelectedContactId] = useState('')
   const [selectedRole, setSelectedRole] = useState('client')
   const [loading, setLoading] = useState(false)
+  const { canWrite, canManage } = useCrmCapabilities()
 
   const linkedIds = new Set(contacts.map((c) => c.contact_id))
   const availableContacts = (allContacts as unknown as Contact[]).filter(
@@ -121,7 +123,7 @@ export function ProjectContactsWidget({
           <Users className="h-4 w-4 text-muted-foreground" strokeWidth={1.8} />
           Clients & Contacts
         </h2>
-        {!adding && availableContacts.length > 0 && (
+        {canWrite && !adding && availableContacts.length > 0 && (
           <button
             onClick={() => setAdding(true)}
             className="flex items-center gap-1 text-xs text-primary hover:underline"
@@ -133,7 +135,7 @@ export function ProjectContactsWidget({
       </div>
 
       {/* Add form */}
-      {adding && (
+      {canWrite && adding && (
         <div className="mb-4 p-3 rounded-xl space-y-2" style={{ background: 'var(--muted)' }}>
           <select
             value={selectedContactId}
@@ -178,7 +180,7 @@ export function ProjectContactsWidget({
         <div className="text-center py-6">
           <Users className="h-8 w-8 text-muted-foreground opacity-30 mx-auto mb-2" />
           <p className="text-xs text-muted-foreground">Aucun contact lié</p>
-          {availableContacts.length > 0 && (
+          {canWrite && availableContacts.length > 0 && (
             <button
               onClick={() => setAdding(true)}
               className="mt-2 text-xs text-primary hover:underline"
@@ -219,13 +221,15 @@ export function ProjectContactsWidget({
                     {ROLE_LABELS[pc.role] ?? pc.role}
                   </span>
                 </div>
-                <button
-                  onClick={() => handleRemove(pc.contact_id)}
-                  disabled={loading}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-destructive/10"
-                >
-                  <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                </button>
+                {canManage && (
+                  <button
+                    onClick={() => handleRemove(pc.contact_id)}
+                    disabled={loading}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-destructive/10"
+                  >
+                    <X className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                  </button>
+                )}
               </div>
             )
           })}

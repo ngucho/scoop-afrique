@@ -1,10 +1,8 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import * as activityService from '../../services/crm/activity.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const limit = Math.min(Number(c.req.query('limit')) || 100, 200)

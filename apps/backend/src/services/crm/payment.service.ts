@@ -7,6 +7,7 @@ import { crmPayments, crmInvoices, crmContacts } from '../../db/schema.js'
 import { logActivity } from './activity.service.js'
 import { updateInvoiceAmountPaid } from './invoice.service.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertInvoiceProjectWritable } from './project-write-guard.js'
 import type { CreatePaymentInput, UpdatePaymentInput } from '../../schemas/crm/payment.schema.js'
 
 export async function listPaymentsByInvoice(invoiceId: string): Promise<Array<Record<string, unknown>>> {
@@ -85,6 +86,7 @@ export async function createPayment(
   input: CreatePaymentInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertInvoiceProjectWritable(invoiceId)
   const db = getDb()
   const paidAt = input.paid_at ? new Date(input.paid_at) : new Date()
 
@@ -125,6 +127,7 @@ export async function updatePayment(
   const existing = await getPaymentById(paymentId)
   if (!existing) throw new Error('Not found')
   const invoiceId = String(existing.invoice_id)
+  await assertInvoiceProjectWritable(invoiceId)
 
   const db = getDb()
   const patch: {

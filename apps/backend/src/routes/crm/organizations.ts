@@ -1,11 +1,9 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createOrganizationSchema, updateOrganizationSchema } from '../../schemas/crm/organization.schema.js'
 import * as organizationService from '../../services/crm/organization.service.js'
 import type { AppEnv } from '../../types.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 app.get('/', async (c) => {
   const search = c.req.query('search')

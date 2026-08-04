@@ -5,6 +5,7 @@ import { eq, desc } from 'drizzle-orm'
 import { getDb } from '../../db/index.js'
 import { crmExpenses } from '../../db/schema.js'
 import { toSnakeRecord } from './crm-util.js'
+import { assertProjectWritable } from './project-write-guard.js'
 import type { CreateExpenseInput } from '../../schemas/crm/expense.schema.js'
 
 export async function listExpensesByProject(projectId: string): Promise<Array<Record<string, unknown>>> {
@@ -22,6 +23,7 @@ export async function createExpense(
   input: CreateExpenseInput,
   createdBy?: string
 ): Promise<Record<string, unknown>> {
+  await assertProjectWritable(projectId)
   const db = getDb()
   const [expense] = await db
     .insert(crmExpenses)

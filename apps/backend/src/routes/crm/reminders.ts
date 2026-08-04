@@ -1,11 +1,10 @@
 import { Hono } from 'hono'
-import { requireAuth, requireRole } from '../../middleware/auth.js'
 import { createReminderSchema, updateReminderSchema, crmReminderStatusEnum } from '../../schemas/crm/reminder.schema.js'
 import * as reminderService from '../../services/crm/reminder.service.js'
 import type { AppEnv } from '../../types.js'
+import { assertEntityProjectWritable } from '../../services/crm/project-write-guard.js'
 
 const app = new Hono<AppEnv>()
-app.use('*', requireAuth, requireRole('editor', 'manager', 'admin'))
 
 /** Suggestions : devis envoyés non convertis, factures impayées */
 app.get('/follow-up-suggestions', async (c) => {
@@ -81,6 +80,7 @@ app.post('/', async (c) => {
 })
 
 app.patch('/:id', async (c) => {
+  await assertEntityProjectWritable('reminder', c.req.param('id'))
   const id = c.req.param('id')
   let body: unknown
   try {
@@ -104,6 +104,7 @@ app.patch('/:id', async (c) => {
 })
 
 app.post('/:id/send', async (c) => {
+  await assertEntityProjectWritable('reminder', c.req.param('id'))
   const id = c.req.param('id')
   const reminder = await reminderService.getReminderById(id)
   if (!reminder) return c.json({ error: 'Not found' }, 404)

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Button, Input, Label } from 'scoop'
+import { useCrmCapabilities } from '@/components/auth/CrmCapabilitiesProvider'
 
 const COLUMNS = [
   { id: 'todo', label: 'À faire' },
@@ -41,6 +42,7 @@ export function TaskBoard({
   )
   const [showForm, setShowForm] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const { canWrite } = useCrmCapabilities()
 
   async function addTask() {
     if (!newTitle.trim()) return
@@ -99,7 +101,7 @@ export function TaskBoard({
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      {canWrite && <div className="flex justify-between items-center">
         {showForm ? (
           <div className="flex gap-2 items-end">
             <div>
@@ -120,7 +122,7 @@ export function TaskBoard({
         ) : (
           <Button onClick={() => setShowForm(true)}>+ Tâche</Button>
         )}
-      </div>
+      </div>}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {COLUMNS.map((col) => (
@@ -128,8 +130,11 @@ export function TaskBoard({
             key={col.id}
             data-column={col.id}
             className="rounded-lg border border-border bg-muted/20 p-3 min-h-[200px]"
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              if (canWrite) e.preventDefault()
+            }}
             onDrop={(e) => {
+              if (!canWrite) return
               e.preventDefault()
               const taskId = e.dataTransfer.getData('taskId')
               const task = tasks.find((t) => t.id === taskId)
@@ -144,6 +149,7 @@ export function TaskBoard({
                   task={task}
                   onStatusChange={(status) => updateTaskStatus(task.id, status)}
                   columns={COLUMNS}
+                  canWrite={canWrite}
                 />
               ))}
             </div>
@@ -158,15 +164,17 @@ function TaskCard({
   task,
   onStatusChange,
   columns,
+  canWrite,
 }: {
   task: Task
   onStatusChange: (status: string) => void
   columns: Array<{ id: string; label: string }>
+  canWrite: boolean
 }) {
   return (
     <div
       className="rounded-md border border-border bg-background p-3 text-sm cursor-grab active:cursor-grabbing hover:shadow-sm"
-      draggable
+      draggable={canWrite}
       onDragStart={(e) => {
         e.dataTransfer.setData('taskId', task.id)
         e.dataTransfer.effectAllowed = 'move'
@@ -182,6 +190,7 @@ function TaskCard({
         className="mt-2 w-full text-xs rounded border border-input bg-background px-2 py-1"
         value={task.status}
         onChange={(e) => onStatusChange(e.target.value)}
+        disabled={!canWrite}
       >
         {columns.map((c) => (
           <option key={c.id} value={c.id}>
